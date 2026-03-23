@@ -67,7 +67,8 @@ const DATA_FILES = {
       }
     ]
   },
-  'candidate_pool.json': { "candidates": [] },
+  'candidate_pool.json':  { "candidates": [] },
+  'company_pool.json':    { "companies": [] },
   'search_templates.json': {
     "templates": {
       "boolean_strings": [],
@@ -107,15 +108,17 @@ app.use(express.static(path.join(__dirname, '..', 'client')));
 
 // ── API Routes ─────────────────────────────────────────────────────────────
 
-const playbooksRouter = require('./routes/playbooks');
-const searchesRouter  = require('./routes/searches');
+const playbooksRouter  = require('./routes/playbooks');
+const searchesRouter   = require('./routes/searches');
 const candidatesRouter = require('./routes/candidates');
 const templatesRouter  = require('./routes/templates');
+const companiesRouter  = require('./routes/companies');
 
 app.use('/api/playbooks',  playbooksRouter);
 app.use('/api/searches',   searchesRouter);
 app.use('/api/candidates', candidatesRouter);
 app.use('/api/templates',  templatesRouter);
+app.use('/api/companies',  companiesRouter);
 
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 
@@ -126,15 +129,18 @@ app.get('/api/stats', (req, res) => {
     const playbooks = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'sector_playbooks.json'), 'utf8'));
     const templates = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'search_templates.json'), 'utf8'));
 
+    const companies = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'company_pool.json'), 'utf8'));
+
     const activeSearches   = searches.searches.filter(s => s.status === 'active').length;
     const totalCandidates  = pool.candidates.length;
+    const totalCompanies   = companies.companies.length;
     const playbooksBuilt   = playbooks.sectors.filter(s => s.build_status !== 'pending').length;
     const t = templates.templates;
     const totalTemplates   = (t.boolean_strings.length + t.pitchbook_params.length +
                                t.outreach_messages.length + t.ideal_candidate_profiles.length +
                                t.screen_question_guides.length);
 
-    res.json({ activeSearches, totalCandidates, playbooksBuilt, totalTemplates });
+    res.json({ activeSearches, totalCandidates, totalCompanies, playbooksBuilt, totalTemplates });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1161,6 +1161,8 @@ tr.row-open > td {
 .modal-header-s3 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .modal-title-s3 { font-size: 18px; font-weight: 700; }
 .modal-close-s3 { background: none; border: none; font-size: 20px; cursor: pointer; color: #666; }
+.modal-s3 { background: #fff; border-radius: 12px; padding: 28px; width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.modal-body-s3 { margin-top: 4px; }
 
 /* Import */
 .import-btn { font-size: 12px; padding: 5px 12px; }
@@ -1303,3 +1305,32 @@ tr.row-open > td {
 .bool-tag button:hover { opacity: 1; }
 .bool-tag-raw { border: none; outline: none; font-size: 12px; flex: 1; min-width: 90px; background: transparent; color: #555; }
 .bool-tag-raw::placeholder { color: #ccc; }
+
+/* ── Company Pool ─────────────────────────────────────────────────────────── */
+
+.cp-type-pill {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  color: #555;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.cp-type-pill.active-all  { background: #5C2D91; color: #fff; border-color: #5C2D91; }
+.cp-type-pill.active-pe   { background: #EDE7F6; color: #5C2D91; border-color: #ce93d8; }
+.cp-type-pill.active-priv { background: #e3f2fd; color: #1565c0; border-color: #90caf9; }
+.cp-type-pill.active-pub  { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+
+.pool-import-result-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.pool-import-result-item:hover { background: #f9f5ff; }
+.pool-import-result-item:last-child { border-bottom: none; }

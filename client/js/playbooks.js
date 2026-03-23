@@ -156,6 +156,19 @@ async function saveSector(sector) {
   }
 }
 
+// ── Cross-module navigation from Company Pool ─────────────────────────────────
+
+async function openFirmInPlaybook(firmId, sectorId) {
+  // Update nav state without triggering full renderPlaybooks re-render
+  currentModule = 'playbooks';
+  document.querySelectorAll('.nav-link').forEach(l => {
+    l.classList.toggle('active', l.dataset.module === 'playbooks');
+  });
+  // Load the sector and open the firm detail directly
+  await renderSectorDetail(sectorId);
+  _renderFirmDetail(firmId);
+}
+
 // ── ENTRY POINT ───────────────────────────────────────────────────────────────
 
 async function renderPlaybooks() {
@@ -876,6 +889,18 @@ function _buildAddFirmForm() {
   return `
     <div class="add-firm-form" style="margin-top:16px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:20px;">
       <h3 style="margin-bottom:16px;font-size:1rem;">Add New PE Firm</h3>
+
+      <!-- Import from Company Pool -->
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;">
+        <label class="form-label">Import from Company Pool <span style="font-weight:400;color:#aaa">(optional — pre-fills fields below)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="nf-pool-search" class="form-control" placeholder="Search PE firms in pool…"
+                 oninput="_onPoolSearchInput(this.value)" autocomplete="off" style="flex:1" />
+          <button class="btn btn-ghost btn-sm" type="button" onclick="_clearPoolImport()">Clear</button>
+        </div>
+        <div id="nf-pool-results" style="display:none;border:1px solid #ddd;border-top:none;border-radius:0 0 4px 4px;max-height:200px;overflow-y:auto;background:#fff;position:relative;z-index:10;"></div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
         <div>
           <label class="form-label">Firm Name *</label>
@@ -930,6 +955,60 @@ function _buildAddFirmForm() {
         <button class="btn btn-ghost btn-sm" onclick="_closeAddFirmForm()">Cancel</button>
       </div>
     </div>`;
+}
+
+// ── Company Pool import helpers ───────────────────────────────────────────────
+
+let _poolSearchTimer = null;
+
+function _onPoolSearchInput(query) {
+  clearTimeout(_poolSearchTimer);
+  const resultsEl = document.getElementById('nf-pool-results');
+  if (!query || query.length < 2) {
+    if (resultsEl) resultsEl.style.display = 'none';
+    return;
+  }
+  _poolSearchTimer = setTimeout(async () => {
+    try {
+      const data = await api('GET', '/companies?type=PE+Firm&text=' + encodeURIComponent(query));
+      const companies = (data.companies || []).slice(0, 10);
+      if (!resultsEl) return;
+      if (!companies.length) {
+        resultsEl.style.display = 'none';
+        return;
+      }
+      resultsEl.innerHTML = companies.map(c => `
+        <div class="pool-import-result-item" onclick="_selectPoolFirm('${c.company_id.replace(/'/g, "\\'")}')">
+          <div style="font-weight:600">${c.name}</div>
+          <div style="font-size:11px;color:#888">${c.hq || ''}${c.size_tier ? ' &bull; ' + c.size_tier : ''}${c.strategy ? ' &bull; ' + c.strategy : ''}</div>
+        </div>
+      `).join('');
+      resultsEl.style.display = 'block';
+    } catch (e) { /* silently ignore */ }
+  }, 150);
+}
+
+async function _selectPoolFirm(companyId) {
+  try {
+    const c = await api('GET', '/companies/' + companyId);
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    setVal('nf-name',     c.name);
+    setVal('nf-hq',       c.hq);
+    setVal('nf-size',     c.size_tier);
+    setVal('nf-strategy', c.strategy);
+    setVal('nf-website',  c.website_url);
+    const searchInput = document.getElementById('nf-pool-search');
+    if (searchInput) searchInput.value = c.name;
+    const resultsEl = document.getElementById('nf-pool-results');
+    if (resultsEl) resultsEl.style.display = 'none';
+  } catch (e) { /* silently ignore */ }
+}
+
+function _clearPoolImport() {
+  const searchInput = document.getElementById('nf-pool-search');
+  const resultsEl   = document.getElementById('nf-pool-results');
+  if (searchInput) searchInput.value = '';
+  if (resultsEl)   resultsEl.style.display = 'none';
 }
 
 async function _submitAddFirm() {

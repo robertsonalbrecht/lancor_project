@@ -54,6 +54,9 @@ function navigateTo(module) {
     case 'searches':
       if (typeof renderSearches === 'function') renderSearches();
       break;
+    case 'companies':
+      if (typeof renderCompanies === 'function') renderCompanies();
+      break;
     case 'pool':
       if (typeof renderPool === 'function') renderPool();
       break;
@@ -109,6 +112,11 @@ async function loadHome() {
           <div class="stat-card-icon">&#128100;</div>
           <div class="stat-card-value">${stats.totalCandidates}</div>
           <div class="stat-card-label">Total Candidates</div>
+        </div>
+        <div class="stat-card clickable" onclick="navigateTo('companies')" title="View Company Pool">
+          <div class="stat-card-icon">&#127970;</div>
+          <div class="stat-card-value">${stats.totalCompanies || 0}</div>
+          <div class="stat-card-label">Companies in Pool</div>
         </div>
         <div class="stat-card clickable" onclick="navigateTo('playbooks')" title="View Sector Playbooks">
           <div class="stat-card-icon">&#128218;</div>
