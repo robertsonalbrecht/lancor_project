@@ -27,19 +27,20 @@ router.get('/', (req, res) => {
 
     if (req.query.sector) {
       results = results.filter(c =>
-        Array.isArray(c.sectors)
-          ? c.sectors.includes(req.query.sector)
-          : c.sector === req.query.sector
+        Array.isArray(c.sector_tags) && c.sector_tags.includes(req.query.sector)
       );
     }
     if (req.query.archetype) {
       results = results.filter(c => c.archetype === req.query.archetype);
     }
-    if (req.query.rating) {
-      results = results.filter(c => String(c.rating) === String(req.query.rating));
+    if (req.query.operator_background) {
+      results = results.filter(c => c.operator_background === req.query.operator_background);
     }
     if (req.query.availability) {
       results = results.filter(c => c.availability === req.query.availability);
+    }
+    if (req.query.rating) {
+      results = results.filter(c => String(c.quality_rating) === String(req.query.rating));
     }
 
     res.json({ candidates: results });
@@ -90,10 +91,29 @@ router.post('/', (req, res) => {
           const search = searchData.searches[searchIdx];
           const pipelineEntry = {
             candidate_id: newCandidate.candidate_id,
-            name: newCandidate.name || '',
-            stage: body.stage || 'Pursuing',
-            date_added: newCandidate.date_added,
-            notes: body.notes || ''
+            name: newCandidate.name,
+            current_title: newCandidate.current_title,
+            current_firm: newCandidate.current_firm,
+            location: newCandidate.home_location || '',
+            linkedin_url: newCandidate.linkedin_url || '',
+            archetype: newCandidate.archetype || 'PE Lateral',
+            source: body.source || 'LinkedIn title search',
+            stage: body.initial_stage || 'Pursuing',
+            lancor_screener: '',
+            screen_date: null,
+            lancor_assessment: '',
+            resume_attached: false,
+            client_meetings: (search.client_contacts || []).map(c => ({
+              contact_name: c.name, status: '—', date: null
+            })),
+            client_feedback: '',
+            next_step: body.notes ? 'See notes' : '',
+            next_step_owner: '',
+            next_step_date: null,
+            dq_reason: '',
+            last_touchpoint: null,
+            notes: body.notes || '',
+            date_added: new Date().toISOString().slice(0,10)
           };
           const pipelineIdx = search.pipeline.findIndex(c => c.candidate_id === newCandidate.candidate_id);
           if (pipelineIdx === -1) {

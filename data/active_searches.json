@@ -4,28 +4,81 @@
       "search_id": "berkshire-industrials-2026",
       "client_name": "Berkshire Partners",
       "role_title": "Industrials Operating Partner",
-      "sectors": ["industrials"],
+      "sectors": [
+        "industrials"
+      ],
       "date_opened": "2026-02-01",
       "date_closed": null,
       "status": "active",
       "lead_recruiter": "Robby Albrecht",
       "ideal_candidate_profile": "",
-      "archetypes_requested": ["PE Lateral", "Industry Operator"],
+      "archetypes_requested": [
+        "PE Lateral",
+        "Industry Operator"
+      ],
       "client_contacts": [
-        { "name": "Marni", "title": "", "display_in_matrix": true },
-        { "name": "Ted", "title": "", "display_in_matrix": true },
-        { "name": "Blake", "title": "", "display_in_matrix": true },
-        { "name": "Sam A", "title": "", "display_in_matrix": true },
-        { "name": "EJ", "title": "", "display_in_matrix": true }
+        {
+          "name": "Marni",
+          "title": "",
+          "display_in_matrix": true
+        },
+        {
+          "name": "Ted",
+          "title": "",
+          "display_in_matrix": true
+        },
+        {
+          "name": "Blake",
+          "title": "",
+          "display_in_matrix": true
+        },
+        {
+          "name": "Sam A",
+          "title": "",
+          "display_in_matrix": true
+        },
+        {
+          "name": "EJ",
+          "title": "",
+          "display_in_matrix": true
+        }
       ],
       "lancor_team": [
-        { "initials": "CC", "full_name": "Chris Conti", "role": "Partner" },
-        { "initials": "SM", "full_name": "Shannon Mace", "role": "Consultant" },
-        { "initials": "RA", "full_name": "Robby Albrecht", "role": "Partner" },
-        { "initials": "KC", "full_name": "Kelli Colacarro", "role": "Consultant" },
-        { "initials": "BD", "full_name": "Brett Dubin", "role": "Consultant" },
-        { "initials": "TO", "full_name": "Tim OToole", "role": "Consultant" },
-        { "initials": "TH", "full_name": "Trever Helwig", "role": "Consultant" }
+        {
+          "initials": "CC",
+          "full_name": "Chris Conti",
+          "role": "Partner"
+        },
+        {
+          "initials": "SM",
+          "full_name": "Shannon Mace",
+          "role": "Consultant"
+        },
+        {
+          "initials": "RA",
+          "full_name": "Robby Albrecht",
+          "role": "Partner"
+        },
+        {
+          "initials": "KC",
+          "full_name": "Kelli Colacarro",
+          "role": "Consultant"
+        },
+        {
+          "initials": "BD",
+          "full_name": "Brett Dubin",
+          "role": "Consultant"
+        },
+        {
+          "initials": "TO",
+          "full_name": "Tim OToole",
+          "role": "Consultant"
+        },
+        {
+          "initials": "TH",
+          "full_name": "Trever Helwig",
+          "role": "Consultant"
+        }
       ],
       "pipeline": [],
       "sourcing_coverage": {

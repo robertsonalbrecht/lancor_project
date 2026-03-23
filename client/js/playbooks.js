@@ -1,4 +1,1240 @@
-// Sector Playbooks — Session 2
-function renderPlaybooks() {
-  document.getElementById('app-content').innerHTML = '<div class="module-placeholder"><h2>Sector Playbooks</h2><p>Module coming in Session 2.</p></div>';
+/* ── Lancor Search OS — Sector Playbooks Module (Session 2) ─────────────── */
+'use strict';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const TIER_ROSTER_DEFAULTS = {
+  'Mega': 22,
+  'Large': 11,
+  'Middle Market': 6,
+  'Lower Middle Market': 3
+};
+
+const REVENUE_ROSTER_DEFAULTS = {
+  'Large Cap': 18,
+  'Upper Middle': 10,
+  'Middle Market': 5,
+  'Lower Middle': 2
+};
+
+const ROSTER_STATUSES = [
+  'Identified',
+  'Outreach sent',
+  'Responded',
+  'In pipeline',
+  'In pursuit',
+  'Placed',
+  'DQ this search',
+  'DQ permanent',
+  'NI',
+  'NI permanent'
+];
+
+const COVERAGE_BANDS = [
+  { min: 0,   max: 0,   cls: 'unsearched', label: 'Unsearched',      color: '#9e9e9e' },
+  { min: 1,   max: 25,  cls: 'low',        label: 'Low',             color: '#ef5350' },
+  { min: 26,  max: 55,  cls: 'moderate',   label: 'Moderate',        color: '#ff9800' },
+  { min: 56,  max: 85,  cls: 'good',       label: 'Good',            color: '#4caf50' },
+  { min: 86,  max: 999, cls: 'high',       label: 'High',            color: '#009688' }
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let _currentSector = null;        // full sector object in memory
+let _activeTab = 'pe-firms';      // 'pe-firms' | 'target-companies' | 'allstar'
+let _openAccordionId = null;      // firm_id or company_id currently expanded
+let _addFirmFormOpen = false;
+let _addCompanyFormOpen = false;
+
+// Filter state
+let _firmFilters = { sizeTier: 'All', strategy: 'All', sectorFocus: 'All', search: '' };
+let _companyFilters = { revenueTier: 'All', ownershipType: 'All', search: '' };
+let _allstarFilters = { archetype: 'All', rating: 'All', availability: 'All', search: '' };
+
+// ── Coverage Helpers ──────────────────────────────────────────────────────────
+
+function getCoverageInfo(entity, isCompany) {
+  // Manual complete overrides everything
+  if (entity.roster_completeness === 'manual-complete') {
+    return { pct: 100, cls: 'complete', label: 'Manual Complete', color: '#5C2D91', fillWidth: 100 };
+  }
+  const defaults = isCompany ? REVENUE_ROSTER_DEFAULTS : TIER_ROSTER_DEFAULTS;
+  const rosterSize = entity.custom_roster_size != null
+    ? entity.custom_roster_size
+    : (isCompany ? defaults[entity.revenue_tier] : defaults[entity.size_tier]) || entity.expected_roster_size || 1;
+
+  const roster = entity.roster || [];
+  const pct = rosterSize > 0 ? Math.min(100, Math.round(roster.length / rosterSize * 100)) : 0;
+
+  for (const band of COVERAGE_BANDS) {
+    if (pct >= band.min && pct <= band.max) {
+      return { pct, cls: band.cls, label: band.label, color: band.color, fillWidth: pct };
+    }
+  }
+  return { pct, cls: 'high', label: 'High', color: '#009688', fillWidth: Math.min(pct, 100) };
+}
+
+function coverageBarHTML(cov) {
+  return `
+    <div class="coverage-bar-container">
+      <div class="coverage-bar">
+        <div class="coverage-bar-fill" style="width:${cov.fillWidth}%;background:${cov.color};"></div>
+      </div>
+      <span class="coverage-pct-label" style="color:${cov.color};">${cov.pct}%</span>
+      <span class="badge-coverage badge-${cov.cls}">${cov.label}</span>
+    </div>`;
+}
+
+// ── Build-status badge HTML ───────────────────────────────────────────────────
+
+function buildStatusBadge(status) {
+  if (status === 'built')   return '<span class="pill pill-active">Built</span>';
+  if (status === 'partial') return '<span class="pill pill-partial">Partial</span>';
+  return '<span class="pill pill-pending">Not yet built</span>';
+}
+
+// ── Pill helpers ──────────────────────────────────────────────────────────────
+
+function sizeTierPill(tier) {
+  const map = {
+    'Mega': 'tier-mega',
+    'Large': 'tier-large',
+    'Middle Market': 'tier-mid',
+    'Lower Middle Market': 'tier-small'
+  };
+  return `<span class="tier-badge ${map[tier] || 'tier-micro'}">${tier}</span>`;
+}
+
+function genericPill(text, colorClass) {
+  return `<span class="pill ${colorClass || ''}" style="background:#EDE7F6;color:#5C2D91;border:1px solid #ce93d8;">${text}</span>`;
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len) + '…' : str;
+}
+
+// ── Persist to API ────────────────────────────────────────────────────────────
+
+async function saveSector(sector) {
+  try {
+    const updated = await api('PUT', `/playbooks/${sector.sector_id}`, sector);
+    _currentSector = updated;
+    return updated;
+  } catch (err) {
+    alert('Save failed: ' + err.message);
+    throw err;
+  }
+}
+
+// ── ENTRY POINT ───────────────────────────────────────────────────────────────
+
+async function renderPlaybooks() {
+  const content = document.getElementById('app-content');
+  content.innerHTML = `<div class="loading"><div class="spinner"></div> Loading playbooks…</div>`;
+
+  try {
+    const data = await api('GET', '/playbooks');
+    const sectors = data.sectors || [];
+    renderSectorGrid(sectors);
+  } catch (err) {
+    content.innerHTML = `<div class="error-banner">Failed to load playbooks: ${err.message}</div>`;
+  }
+}
+
+// ── SECTOR GRID ───────────────────────────────────────────────────────────────
+
+function renderSectorGrid(sectors) {
+  const content = document.getElementById('app-content');
+  const cards = sectors.map(s => {
+    const peFirmCount = (s.pe_firms || []).length;
+    const companyCount = (s.target_companies || []).length;
+    const allstarCount = (s.allstar_pool || []).length;
+    return `
+      <div class="sector-card" onclick="renderSectorDetail('${s.sector_id}')">
+        <div class="sector-card-header">
+          <span class="sector-card-name">${s.sector_name}</span>
+          ${buildStatusBadge(s.build_status)}
+        </div>
+        <div class="sector-stats">
+          <span class="sector-stat"><strong>${peFirmCount}</strong> PE Firms</span>
+          <span class="sector-stat"><strong>${companyCount}</strong> Companies</span>
+          <span class="sector-stat"><strong>${allstarCount}</strong> All-Stars</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="page-header">
+      <h1>Sector Playbooks</h1>
+      <p class="page-subtitle">12 sectors tracked — click any card to open the playbook</p>
+    </div>
+    <div class="sector-grid">${cards}</div>`;
+}
+
+// ── SECTOR DETAIL ─────────────────────────────────────────────────────────────
+
+async function renderSectorDetail(sectorId) {
+  const content = document.getElementById('app-content');
+  content.innerHTML = `<div class="loading"><div class="spinner"></div> Loading…</div>`;
+
+  // Reset state for new sector
+  _activeTab = 'pe-firms';
+  _openAccordionId = null;
+  _addFirmFormOpen = false;
+  _addCompanyFormOpen = false;
+  _firmFilters = { sizeTier: 'All', strategy: 'All', sectorFocus: 'All', search: '' };
+  _companyFilters = { revenueTier: 'All', ownershipType: 'All', search: '' };
+  _allstarFilters = { archetype: 'All', rating: 'All', availability: 'All', search: '' };
+
+  try {
+    const sector = await api('GET', `/playbooks/${sectorId}`);
+    _currentSector = sector;
+    _paintSectorDetail();
+  } catch (err) {
+    content.innerHTML = `<div class="error-banner">Failed to load sector: ${err.message}</div>`;
+  }
+}
+
+function _paintSectorDetail() {
+  const s = _currentSector;
+  const content = document.getElementById('app-content');
+
+  content.innerHTML = `
+    <div class="page-header" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="renderPlaybooks()">&#8592; Sector Playbooks</button>
+      <div style="flex:1;">
+        <h1 style="display:inline;margin-right:12px;">${s.sector_name}</h1>
+        ${buildStatusBadge(s.build_status)}
+        <span class="text-muted text-sm" style="margin-left:12px;">Updated ${formatDate(s.last_updated)}</span>
+      </div>
+    </div>
+
+    <div class="sub-tab-bar" id="sub-tab-bar">
+      <button class="sub-tab ${_activeTab === 'pe-firms' ? 'active' : ''}"
+              onclick="_switchTab('pe-firms')">PE Firms (${(s.pe_firms||[]).length})</button>
+      <button class="sub-tab ${_activeTab === 'target-companies' ? 'active' : ''}"
+              onclick="_switchTab('target-companies')">Target Companies (${(s.target_companies||[]).length})</button>
+      <button class="sub-tab ${_activeTab === 'allstar' ? 'active' : ''}"
+              onclick="_switchTab('allstar')">All-Star Pool (${(s.allstar_pool||[]).length})</button>
+    </div>
+
+    <div id="tab-content"></div>`;
+
+  _renderActiveTab();
+}
+
+function _switchTab(tab) {
+  _activeTab = tab;
+  _openAccordionId = null;
+  // Update tab bar active classes
+  document.querySelectorAll('.sub-tab').forEach(btn => btn.classList.remove('active'));
+  const tabs = document.querySelectorAll('.sub-tab');
+  const tabMap = ['pe-firms', 'target-companies', 'allstar'];
+  tabs.forEach((btn, i) => {
+    if (tabMap[i] === tab) btn.classList.add('active');
+  });
+  _renderActiveTab();
+}
+
+function _renderActiveTab() {
+  if (_activeTab === 'pe-firms')          _renderPeFirmsTab();
+  else if (_activeTab === 'target-companies') _renderCompaniesTab();
+  else                                     _renderAllstarTab();
+}
+
+// ── PE FIRMS TAB ──────────────────────────────────────────────────────────────
+
+function _renderPeFirmsTab() {
+  const container = document.getElementById('tab-content');
+  const s = _currentSector;
+
+  // Filter
+  let firms = (s.pe_firms || []).filter(f => {
+    if (_firmFilters.sizeTier !== 'All' && f.size_tier !== _firmFilters.sizeTier) return false;
+    if (_firmFilters.strategy !== 'All' && f.strategy !== _firmFilters.strategy) return false;
+    if (_firmFilters.sectorFocus !== 'All' && f.sector_focus !== _firmFilters.sectorFocus) return false;
+    if (_firmFilters.search) {
+      const q = _firmFilters.search.toLowerCase();
+      if (!f.name.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Sort: manual-complete last, then by coverage % ascending
+  firms.sort((a, b) => {
+    const aCov = getCoverageInfo(a, false);
+    const bCov = getCoverageInfo(b, false);
+    const aIsManual = a.roster_completeness === 'manual-complete' ? 1 : 0;
+    const bIsManual = b.roster_completeness === 'manual-complete' ? 1 : 0;
+    if (aIsManual !== bIsManual) return aIsManual - bIsManual;
+    return aCov.pct - bCov.pct;
+  });
+
+  const filterHTML = `
+    <div class="filter-bar" id="firm-filter-bar">
+      <span class="filter-label">Filter:</span>
+      <select id="f-size" onchange="_firmFilterChanged()">
+        <option value="All">All Sizes</option>
+        <option value="Mega">Mega</option>
+        <option value="Large">Large</option>
+        <option value="Middle Market">Middle Market</option>
+        <option value="Lower Middle Market">Lower Middle Market</option>
+      </select>
+      <select id="f-strategy" onchange="_firmFilterChanged()">
+        <option value="All">All Strategies</option>
+        <option value="Buyout">Buyout</option>
+        <option value="Growth Equity">Growth Equity</option>
+        <option value="Distressed">Distressed</option>
+        <option value="Turnaround">Turnaround</option>
+        <option value="Multi-Strategy">Multi-Strategy</option>
+      </select>
+      <select id="f-focus" onchange="_firmFilterChanged()">
+        <option value="All">All Focus</option>
+        <option value="Primary">Primary</option>
+        <option value="Significant">Significant</option>
+        <option value="Opportunistic">Opportunistic</option>
+      </select>
+      <input type="text" id="f-search" placeholder="Search firm name…"
+             oninput="_firmFilterChanged()" style="flex:1;min-width:160px;" />
+    </div>`;
+
+  let tableRows = '';
+  if (firms.length === 0) {
+    tableRows = `<tr><td colspan="7" class="empty-state" style="padding:32px;text-align:center;color:#757575;">No firms match the current filters.</td></tr>`;
+  } else {
+    firms.forEach(f => {
+      const cov = getCoverageInfo(f, false);
+      const isOpen = _openAccordionId === f.firm_id;
+      const whyTrunc = truncate(f.why_target, 80);
+      tableRows += `
+        <tr class="firm-row ${isOpen ? 'row-open' : ''}"
+            style="cursor:pointer;"
+            onclick="_toggleFirmAccordion('${f.firm_id}')">
+          <td><strong>${f.name}</strong></td>
+          <td>${f.hq}</td>
+          <td>${sizeTierPill(f.size_tier)}</td>
+          <td>${genericPill(f.strategy)}</td>
+          <td>${genericPill(f.sector_focus)}</td>
+          <td>${coverageBarHTML(cov)}</td>
+          <td title="${(f.why_target || '').replace(/"/g, '&quot;')}" style="max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${whyTrunc}</td>
+        </tr>`;
+      if (isOpen) {
+        tableRows += `<tr class="accordion-tr"><td colspan="7" class="accordion-row" id="accordion-${f.firm_id}">${_buildFirmAccordion(f)}</td></tr>`;
+      }
+    });
+  }
+
+  const addFirmFormHTML = _addFirmFormOpen ? _buildAddFirmForm() : `
+    <div style="padding:12px 0 0;">
+      <button class="btn btn-secondary btn-sm" onclick="_openAddFirmForm()">+ Add PE Firm</button>
+    </div>`;
+
+  container.innerHTML = `
+    ${filterHTML}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Firm Name</th>
+            <th>HQ</th>
+            <th>Size Tier</th>
+            <th>Strategy</th>
+            <th>Sector Focus</th>
+            <th style="min-width:220px;">Coverage</th>
+            <th>Why Target</th>
+          </tr>
+        </thead>
+        <tbody id="firms-tbody">${tableRows}</tbody>
+      </table>
+    </div>
+    <div id="add-firm-form-container">${addFirmFormHTML}</div>`;
+
+  // Restore filter values from state
+  _restoreFirmFilters();
+}
+
+function _restoreFirmFilters() {
+  const sz = document.getElementById('f-size');
+  const st = document.getElementById('f-strategy');
+  const fo = document.getElementById('f-focus');
+  const sr = document.getElementById('f-search');
+  if (sz) sz.value = _firmFilters.sizeTier;
+  if (st) st.value = _firmFilters.strategy;
+  if (fo) fo.value = _firmFilters.sectorFocus;
+  if (sr) sr.value = _firmFilters.search;
+}
+
+function _firmFilterChanged() {
+  _firmFilters.sizeTier    = document.getElementById('f-size').value;
+  _firmFilters.strategy    = document.getElementById('f-strategy').value;
+  _firmFilters.sectorFocus = document.getElementById('f-focus').value;
+  _firmFilters.search      = document.getElementById('f-search').value;
+  _openAccordionId = null;
+  _renderPeFirmsTab();
+}
+
+function _toggleFirmAccordion(firmId) {
+  _openAccordionId = (_openAccordionId === firmId) ? null : firmId;
+  _renderPeFirmsTab();
+}
+
+// ── FIRM ACCORDION ────────────────────────────────────────────────────────────
+
+function _buildFirmAccordion(firm) {
+  const roster = firm.roster || [];
+  const isManual = firm.roster_completeness === 'manual-complete';
+  const cov = getCoverageInfo(firm, false);
+
+  let rosterHTML = '';
+  if (roster.length === 0) {
+    rosterHTML = `<p class="text-muted text-sm" style="margin:8px 0 12px;">No candidates in roster yet.</p>`;
+  } else {
+    const rows = roster.map((c, idx) => {
+      const nameCell = c.linkedin_url
+        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${c.name}</a>`
+        : c.name;
+      const statusOpts = ROSTER_STATUSES.map(s =>
+        `<option value="${s}" ${c.roster_status === s ? 'selected' : ''}>${s}</option>`
+      ).join('');
+      return `
+        <tr>
+          <td>${nameCell}</td>
+          <td>${c.title}</td>
+          <td>
+            <select class="form-control" style="padding:3px 6px;font-size:0.8rem;"
+                    onchange="_updateCandidateStatus('${firm.firm_id}', ${idx}, this.value, false)">
+              ${statusOpts}
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
+                    onclick="_removeCandidate('${firm.firm_id}', ${idx}, false)">&#10005;</button>
+          </td>
+        </tr>`;
+    }).join('');
+    rosterHTML = `
+      <table class="roster-table" style="margin-bottom:12px;">
+        <thead>
+          <tr><th>Name</th><th>Title</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  const overrideHTML = `
+    <div class="override-section" style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;">
+      <strong style="font-size:0.85rem;">Coverage Override</strong>
+      <div style="display:flex;gap:16px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+          <input type="radio" name="override-${firm.firm_id}" value="auto"
+                 ${!isManual ? 'checked' : ''}
+                 onchange="_handleCoverageOverride('${firm.firm_id}', 'auto', false)"> Auto
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+          <input type="radio" name="override-${firm.firm_id}" value="manual-complete"
+                 ${isManual ? 'checked' : ''}
+                 onchange="_handleCoverageOverride('${firm.firm_id}', 'manual-complete', false)"> Mark as Complete
+        </label>
+        ${isManual ? `
+          <input type="text" id="override-note-${firm.firm_id}"
+                 class="form-control" style="max-width:300px;font-size:0.85rem;"
+                 placeholder="Note (optional)"
+                 value="${(firm.manual_complete_note || '').replace(/"/g, '&quot;')}">
+          <button class="btn btn-primary btn-sm"
+                  onclick="_saveOverrideNote('${firm.firm_id}', false)">Save Note</button>
+        ` : ''}
+      </div>
+    </div>`;
+
+  const addPersonHTML = `
+    <div class="add-person-form" style="margin-top:12px;">
+      <strong style="font-size:0.85rem;">Add Person to Roster</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:8px;align-items:end;flex-wrap:wrap;">
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Name *</label>
+          <input type="text" id="ap-name-${firm.firm_id}" class="form-control" placeholder="Full name" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Title *</label>
+          <input type="text" id="ap-title-${firm.firm_id}" class="form-control" placeholder="Title" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">LinkedIn URL</label>
+          <input type="text" id="ap-li-${firm.firm_id}" class="form-control" placeholder="https://linkedin.com/in/…" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Status</label>
+          <select id="ap-status-${firm.firm_id}" class="form-control">
+            ${ROSTER_STATUSES.map(s => `<option value="${s}" ${s === 'Identified' ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;"
+              onclick="_addPersonToFirm('${firm.firm_id}')">Add to Roster</button>
+    </div>`;
+
+  return `
+    <div style="padding:4px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong>${firm.name} Roster</strong>
+        <span class="text-muted text-sm">${(roster.length)} / ${firm.custom_roster_size || firm.expected_roster_size} identified</span>
+      </div>
+      ${rosterHTML}
+      ${addPersonHTML}
+      ${overrideHTML}
+    </div>`;
+}
+
+// ── FIRM ROSTER MUTATIONS ────────────────────────────────────────────────────
+
+async function _addPersonToFirm(firmId) {
+  const name   = document.getElementById(`ap-name-${firmId}`).value.trim();
+  const title  = document.getElementById(`ap-title-${firmId}`).value.trim();
+  const li     = document.getElementById(`ap-li-${firmId}`).value.trim();
+  const status = document.getElementById(`ap-status-${firmId}`).value;
+
+  if (!name || !title) {
+    alert('Name and Title are required.');
+    return;
+  }
+
+  const s = _currentSector;
+  const firm = s.pe_firms.find(f => f.firm_id === firmId);
+  if (!firm) return;
+
+  const candidateId = firmId + '-' + name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+  firm.roster.push({
+    candidate_id: candidateId,
+    name,
+    title,
+    linkedin_url: li,
+    roster_status: status,
+    last_updated: new Date().toISOString().slice(0, 10),
+    searches_appeared_in: []
+  });
+
+  await saveSector(s);
+  _renderPeFirmsTab();
+}
+
+async function _updateCandidateStatus(firmId, idx, newStatus, isCompany) {
+  const s = _currentSector;
+  const arr = isCompany ? s.target_companies : s.pe_firms;
+  const entity = isCompany
+    ? arr.find(c => c.company_id === firmId)
+    : arr.find(f => f.firm_id === firmId);
+  if (!entity) return;
+  entity.roster[idx].roster_status = newStatus;
+  entity.roster[idx].last_updated = new Date().toISOString().slice(0, 10);
+  await saveSector(s);
+  // No full re-render needed — just save; the dropdown already shows the new value
+}
+
+async function _removeCandidate(entityId, idx, isCompany) {
+  if (!confirm('Remove this person from the roster?')) return;
+  const s = _currentSector;
+  const arr = isCompany ? s.target_companies : s.pe_firms;
+  const entity = isCompany
+    ? arr.find(c => c.company_id === entityId)
+    : arr.find(f => f.firm_id === entityId);
+  if (!entity) return;
+  entity.roster.splice(idx, 1);
+  await saveSector(s);
+  isCompany ? _renderCompaniesTab() : _renderPeFirmsTab();
+}
+
+async function _handleCoverageOverride(entityId, value, isCompany) {
+  const s = _currentSector;
+  const arr = isCompany ? s.target_companies : s.pe_firms;
+  const entity = isCompany
+    ? arr.find(c => c.company_id === entityId)
+    : arr.find(f => f.firm_id === entityId);
+  if (!entity) return;
+  entity.roster_completeness = value;
+  if (value === 'auto') entity.manual_complete_note = '';
+  await saveSector(s);
+  isCompany ? _renderCompaniesTab() : _renderPeFirmsTab();
+}
+
+async function _saveOverrideNote(entityId, isCompany) {
+  const noteEl = document.getElementById(`override-note-${entityId}`);
+  if (!noteEl) return;
+  const s = _currentSector;
+  const arr = isCompany ? s.target_companies : s.pe_firms;
+  const entity = isCompany
+    ? arr.find(c => c.company_id === entityId)
+    : arr.find(f => f.firm_id === entityId);
+  if (!entity) return;
+  entity.manual_complete_note = noteEl.value.trim();
+  await saveSector(s);
+  // No re-render needed — note saved silently
+}
+
+// ── ADD FIRM FORM ────────────────────────────────────────────────────────────
+
+function _openAddFirmForm() {
+  _addFirmFormOpen = true;
+  const container = document.getElementById('add-firm-form-container');
+  if (container) container.innerHTML = _buildAddFirmForm();
+}
+
+function _closeAddFirmForm() {
+  _addFirmFormOpen = false;
+  const container = document.getElementById('add-firm-form-container');
+  if (container) container.innerHTML = `
+    <div style="padding:12px 0 0;">
+      <button class="btn btn-secondary btn-sm" onclick="_openAddFirmForm()">+ Add PE Firm</button>
+    </div>`;
+}
+
+function _buildAddFirmForm() {
+  return `
+    <div class="add-firm-form" style="margin-top:16px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:20px;">
+      <h3 style="margin-bottom:16px;font-size:1rem;">Add New PE Firm</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="form-label">Firm Name *</label>
+          <input type="text" id="nf-name" class="form-control" placeholder="Firm name" />
+        </div>
+        <div>
+          <label class="form-label">HQ (City, State) *</label>
+          <input type="text" id="nf-hq" class="form-control" placeholder="New York, NY" />
+        </div>
+        <div>
+          <label class="form-label">Size Tier *</label>
+          <select id="nf-size" class="form-control">
+            <option value="Mega">Mega</option>
+            <option value="Large">Large</option>
+            <option value="Middle Market" selected>Middle Market</option>
+            <option value="Lower Middle Market">Lower Middle Market</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Strategy *</label>
+          <select id="nf-strategy" class="form-control">
+            <option value="Buyout" selected>Buyout</option>
+            <option value="Growth Equity">Growth Equity</option>
+            <option value="Distressed">Distressed</option>
+            <option value="Turnaround">Turnaround</option>
+            <option value="Multi-Strategy">Multi-Strategy</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Sector Focus *</label>
+          <select id="nf-focus" class="form-control">
+            <option value="Primary" selected>Primary</option>
+            <option value="Significant">Significant</option>
+            <option value="Opportunistic">Opportunistic</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Custom Roster Size</label>
+          <input type="number" id="nf-custom-roster" class="form-control" placeholder="Leave blank for tier default" min="1" />
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Why Target</label>
+        <textarea id="nf-why" class="form-control" rows="2" placeholder="Why this firm is relevant…"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary btn-sm" onclick="_submitAddFirm()">Add Firm</button>
+        <button class="btn btn-ghost btn-sm" onclick="_closeAddFirmForm()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function _submitAddFirm() {
+  const name     = document.getElementById('nf-name').value.trim();
+  const hq       = document.getElementById('nf-hq').value.trim();
+  const sizeTier = document.getElementById('nf-size').value;
+  const strategy = document.getElementById('nf-strategy').value;
+  const focus    = document.getElementById('nf-focus').value;
+  const why      = document.getElementById('nf-why').value.trim();
+  const customRaw = document.getElementById('nf-custom-roster').value.trim();
+  const customRoster = customRaw ? parseInt(customRaw, 10) : undefined;
+
+  if (!name || !hq) {
+    alert('Firm Name and HQ are required.');
+    return;
+  }
+
+  const s = _currentSector;
+  const firmId = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const expectedRosterSize = TIER_ROSTER_DEFAULTS[sizeTier] || 6;
+
+  const newFirm = {
+    firm_id: firmId,
+    name,
+    hq,
+    size_tier: sizeTier,
+    strategy,
+    sector_focus: focus,
+    why_target: why,
+    expected_roster_size: expectedRosterSize,
+    roster: [],
+    roster_completeness: 'auto'
+  };
+  if (customRoster && !isNaN(customRoster)) {
+    newFirm.custom_roster_size = customRoster;
+  }
+
+  s.pe_firms.push(newFirm);
+  _addFirmFormOpen = false;
+  await saveSector(s);
+  _renderPeFirmsTab();
+}
+
+// ── TARGET COMPANIES TAB ──────────────────────────────────────────────────────
+
+function _renderCompaniesTab() {
+  const container = document.getElementById('tab-content');
+  const s = _currentSector;
+
+  let companies = (s.target_companies || []).filter(c => {
+    if (_companyFilters.revenueTier !== 'All' && c.revenue_tier !== _companyFilters.revenueTier) return false;
+    if (_companyFilters.ownershipType !== 'All' && c.ownership_type !== _companyFilters.ownershipType) return false;
+    if (_companyFilters.search) {
+      const q = _companyFilters.search.toLowerCase();
+      if (!c.name.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Sort: manual-complete last, then by coverage % ascending
+  companies.sort((a, b) => {
+    const aCov = getCoverageInfo(a, true);
+    const bCov = getCoverageInfo(b, true);
+    const aIsManual = a.roster_completeness === 'manual-complete' ? 1 : 0;
+    const bIsManual = b.roster_completeness === 'manual-complete' ? 1 : 0;
+    if (aIsManual !== bIsManual) return aIsManual - bIsManual;
+    return aCov.pct - bCov.pct;
+  });
+
+  const filterHTML = `
+    <div class="filter-bar" id="company-filter-bar">
+      <span class="filter-label">Filter:</span>
+      <select id="c-revenue" onchange="_companyFilterChanged()">
+        <option value="All">All Revenue Tiers</option>
+        <option value="Large Cap">Large Cap</option>
+        <option value="Upper Middle">Upper Middle</option>
+        <option value="Middle Market">Middle Market</option>
+        <option value="Lower Middle">Lower Middle</option>
+      </select>
+      <select id="c-ownership" onchange="_companyFilterChanged()">
+        <option value="All">All Ownership Types</option>
+        <option value="Public">Public</option>
+        <option value="PE-Backed">PE-Backed</option>
+        <option value="Family-Owned">Family-Owned</option>
+        <option value="Recently Exited">Recently Exited</option>
+      </select>
+      <input type="text" id="c-search" placeholder="Search company name…"
+             oninput="_companyFilterChanged()" style="flex:1;min-width:160px;" />
+    </div>`;
+
+  let tableRows = '';
+  if (companies.length === 0) {
+    tableRows = `<tr><td colspan="6" class="empty-state" style="padding:32px;text-align:center;color:#757575;">No companies match the current filters.</td></tr>`;
+  } else {
+    companies.forEach(c => {
+      const cov = getCoverageInfo(c, true);
+      const isOpen = _openAccordionId === c.company_id;
+      tableRows += `
+        <tr class="company-row ${isOpen ? 'row-open' : ''}"
+            style="cursor:pointer;"
+            onclick="_toggleCompanyAccordion('${c.company_id}')">
+          <td><strong>${c.name}</strong></td>
+          <td>${c.hq}</td>
+          <td>${genericPill(c.revenue_tier)}</td>
+          <td>${genericPill(c.ownership_type)}</td>
+          <td style="font-size:0.82rem;color:#555;">${c.roles_to_target || ''}</td>
+          <td>${coverageBarHTML(cov)}</td>
+        </tr>`;
+      if (isOpen) {
+        tableRows += `<tr class="accordion-tr"><td colspan="6" class="accordion-row" id="accordion-${c.company_id}">${_buildCompanyAccordion(c)}</td></tr>`;
+      }
+    });
+  }
+
+  const addCompanyFormHTML = _addCompanyFormOpen ? _buildAddCompanyForm() : `
+    <div style="padding:12px 0 0;">
+      <button class="btn btn-secondary btn-sm" onclick="_openAddCompanyForm()">+ Add Target Company</button>
+    </div>`;
+
+  container.innerHTML = `
+    ${filterHTML}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Company Name</th>
+            <th>HQ</th>
+            <th>Revenue Tier</th>
+            <th>Ownership</th>
+            <th>Roles to Target</th>
+            <th style="min-width:220px;">Coverage</th>
+          </tr>
+        </thead>
+        <tbody id="companies-tbody">${tableRows}</tbody>
+      </table>
+    </div>
+    <div id="add-company-form-container">${addCompanyFormHTML}</div>`;
+
+  // Restore filter values
+  const rv = document.getElementById('c-revenue');
+  const ow = document.getElementById('c-ownership');
+  const sr = document.getElementById('c-search');
+  if (rv) rv.value = _companyFilters.revenueTier;
+  if (ow) ow.value = _companyFilters.ownershipType;
+  if (sr) sr.value = _companyFilters.search;
+}
+
+function _companyFilterChanged() {
+  _companyFilters.revenueTier    = document.getElementById('c-revenue').value;
+  _companyFilters.ownershipType  = document.getElementById('c-ownership').value;
+  _companyFilters.search         = document.getElementById('c-search').value;
+  _openAccordionId = null;
+  _renderCompaniesTab();
+}
+
+function _toggleCompanyAccordion(companyId) {
+  _openAccordionId = (_openAccordionId === companyId) ? null : companyId;
+  _renderCompaniesTab();
+}
+
+// ── COMPANY ACCORDION ─────────────────────────────────────────────────────────
+
+function _buildCompanyAccordion(company) {
+  const roster = company.roster || [];
+  const isManual = company.roster_completeness === 'manual-complete';
+
+  let rosterHTML = '';
+  if (roster.length === 0) {
+    rosterHTML = `<p class="text-muted text-sm" style="margin:8px 0 12px;">No candidates in roster yet.</p>`;
+  } else {
+    const rows = roster.map((c, idx) => {
+      const nameCell = c.linkedin_url
+        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${c.name}</a>`
+        : c.name;
+      const statusOpts = ROSTER_STATUSES.map(s =>
+        `<option value="${s}" ${c.roster_status === s ? 'selected' : ''}>${s}</option>`
+      ).join('');
+      return `
+        <tr>
+          <td>${nameCell}</td>
+          <td>${c.title}</td>
+          <td>
+            <select class="form-control" style="padding:3px 6px;font-size:0.8rem;"
+                    onchange="_updateCandidateStatus('${company.company_id}', ${idx}, this.value, true)">
+              ${statusOpts}
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
+                    onclick="_removeCandidate('${company.company_id}', ${idx}, true)">&#10005;</button>
+          </td>
+        </tr>`;
+    }).join('');
+    rosterHTML = `
+      <table class="roster-table" style="margin-bottom:12px;">
+        <thead>
+          <tr><th>Name</th><th>Title</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  const overrideHTML = `
+    <div class="override-section" style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;">
+      <strong style="font-size:0.85rem;">Coverage Override</strong>
+      <div style="display:flex;gap:16px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+          <input type="radio" name="override-${company.company_id}" value="auto"
+                 ${!isManual ? 'checked' : ''}
+                 onchange="_handleCoverageOverride('${company.company_id}', 'auto', true)"> Auto
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.875rem;">
+          <input type="radio" name="override-${company.company_id}" value="manual-complete"
+                 ${isManual ? 'checked' : ''}
+                 onchange="_handleCoverageOverride('${company.company_id}', 'manual-complete', true)"> Mark as Complete
+        </label>
+        ${isManual ? `
+          <input type="text" id="override-note-${company.company_id}"
+                 class="form-control" style="max-width:300px;font-size:0.85rem;"
+                 placeholder="Note (optional)"
+                 value="${(company.manual_complete_note || '').replace(/"/g, '&quot;')}">
+          <button class="btn btn-primary btn-sm"
+                  onclick="_saveOverrideNote('${company.company_id}', true)">Save Note</button>
+        ` : ''}
+      </div>
+    </div>`;
+
+  const addPersonHTML = `
+    <div class="add-person-form" style="margin-top:12px;">
+      <strong style="font-size:0.85rem;">Add Person to Roster</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:8px;align-items:end;flex-wrap:wrap;">
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Name *</label>
+          <input type="text" id="apc-name-${company.company_id}" class="form-control" placeholder="Full name" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Title *</label>
+          <input type="text" id="apc-title-${company.company_id}" class="form-control" placeholder="Title" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">LinkedIn URL</label>
+          <input type="text" id="apc-li-${company.company_id}" class="form-control" placeholder="https://linkedin.com/in/…" />
+        </div>
+        <div>
+          <label class="form-label" style="margin-bottom:4px;">Status</label>
+          <select id="apc-status-${company.company_id}" class="form-control">
+            ${ROSTER_STATUSES.map(s => `<option value="${s}" ${s === 'Identified' ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;"
+              onclick="_addPersonToCompany('${company.company_id}')">Add to Roster</button>
+    </div>`;
+
+  return `
+    <div style="padding:4px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <strong>${company.name} Roster</strong>
+        <span class="text-muted text-sm">${roster.length} / ${company.custom_roster_size || company.expected_roster_size} identified</span>
+      </div>
+      ${rosterHTML}
+      ${addPersonHTML}
+      ${overrideHTML}
+    </div>`;
+}
+
+async function _addPersonToCompany(companyId) {
+  const name   = document.getElementById(`apc-name-${companyId}`).value.trim();
+  const title  = document.getElementById(`apc-title-${companyId}`).value.trim();
+  const li     = document.getElementById(`apc-li-${companyId}`).value.trim();
+  const status = document.getElementById(`apc-status-${companyId}`).value;
+
+  if (!name || !title) {
+    alert('Name and Title are required.');
+    return;
+  }
+
+  const s = _currentSector;
+  const company = s.target_companies.find(c => c.company_id === companyId);
+  if (!company) return;
+
+  const candidateId = companyId + '-' + name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+  company.roster.push({
+    candidate_id: candidateId,
+    name,
+    title,
+    linkedin_url: li,
+    roster_status: status,
+    last_updated: new Date().toISOString().slice(0, 10),
+    searches_appeared_in: []
+  });
+
+  await saveSector(s);
+  _renderCompaniesTab();
+}
+
+// ── ADD COMPANY FORM ──────────────────────────────────────────────────────────
+
+function _openAddCompanyForm() {
+  _addCompanyFormOpen = true;
+  const container = document.getElementById('add-company-form-container');
+  if (container) container.innerHTML = _buildAddCompanyForm();
+}
+
+function _closeAddCompanyForm() {
+  _addCompanyFormOpen = false;
+  const container = document.getElementById('add-company-form-container');
+  if (container) container.innerHTML = `
+    <div style="padding:12px 0 0;">
+      <button class="btn btn-secondary btn-sm" onclick="_openAddCompanyForm()">+ Add Target Company</button>
+    </div>`;
+}
+
+function _buildAddCompanyForm() {
+  return `
+    <div class="add-firm-form" style="margin-top:16px;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:20px;">
+      <h3 style="margin-bottom:16px;font-size:1rem;">Add New Target Company</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="form-label">Company Name *</label>
+          <input type="text" id="nc-name" class="form-control" placeholder="Company name" />
+        </div>
+        <div>
+          <label class="form-label">HQ (City, State) *</label>
+          <input type="text" id="nc-hq" class="form-control" placeholder="Cleveland, OH" />
+        </div>
+        <div>
+          <label class="form-label">Revenue Tier *</label>
+          <select id="nc-revenue" class="form-control">
+            <option value="Large Cap">Large Cap</option>
+            <option value="Upper Middle">Upper Middle</option>
+            <option value="Middle Market" selected>Middle Market</option>
+            <option value="Lower Middle">Lower Middle</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Ownership Type *</label>
+          <select id="nc-ownership" class="form-control">
+            <option value="Public">Public</option>
+            <option value="PE-Backed" selected>PE-Backed</option>
+            <option value="Family-Owned">Family-Owned</option>
+            <option value="Recently Exited">Recently Exited</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Roles to Target</label>
+          <input type="text" id="nc-roles" class="form-control" placeholder="CEO, COO, President" />
+        </div>
+        <div>
+          <label class="form-label">Custom Roster Size</label>
+          <input type="number" id="nc-custom-roster" class="form-control" placeholder="Leave blank for tier default" min="1" />
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Why Target</label>
+        <textarea id="nc-why" class="form-control" rows="2" placeholder="Why this company is relevant…"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary btn-sm" onclick="_submitAddCompany()">Add Company</button>
+        <button class="btn btn-ghost btn-sm" onclick="_closeAddCompanyForm()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function _submitAddCompany() {
+  const name          = document.getElementById('nc-name').value.trim();
+  const hq            = document.getElementById('nc-hq').value.trim();
+  const revenueTier   = document.getElementById('nc-revenue').value;
+  const ownershipType = document.getElementById('nc-ownership').value;
+  const roles         = document.getElementById('nc-roles').value.trim();
+  const why           = document.getElementById('nc-why').value.trim();
+  const customRaw     = document.getElementById('nc-custom-roster').value.trim();
+  const customRoster  = customRaw ? parseInt(customRaw, 10) : undefined;
+
+  if (!name || !hq) {
+    alert('Company Name and HQ are required.');
+    return;
+  }
+
+  const s = _currentSector;
+  const companyId = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  const expectedRosterSize = REVENUE_ROSTER_DEFAULTS[revenueTier] || 5;
+
+  const newCompany = {
+    company_id: companyId,
+    name,
+    hq,
+    revenue_tier: revenueTier,
+    ownership_type: ownershipType,
+    roles_to_target: roles,
+    why_target: why,
+    expected_roster_size: expectedRosterSize,
+    roster: [],
+    roster_completeness: 'auto'
+  };
+  if (customRoster && !isNaN(customRoster)) {
+    newCompany.custom_roster_size = customRoster;
+  }
+
+  s.target_companies.push(newCompany);
+  _addCompanyFormOpen = false;
+  await saveSector(s);
+  _renderCompaniesTab();
+}
+
+// ── ALL-STAR TAB ──────────────────────────────────────────────────────────────
+
+async function _renderAllstarTab() {
+  const container = document.getElementById('tab-content');
+  const s = _currentSector;
+  const pool = s.allstar_pool || [];
+
+  if (pool.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:60px 20px;text-align:center;background:#fff;border:1px solid #e0e0e0;border-radius:8px;">
+        <div class="empty-state-icon">&#11088;</div>
+        <p style="margin-top:12px;color:#757575;font-size:0.95rem;">
+          No all-stars added yet. Candidates are promoted here at search close.
+        </p>
+      </div>`;
+    return;
+  }
+
+  // Load candidate details
+  container.innerHTML = `<div class="loading"><div class="spinner"></div> Loading candidates…</div>`;
+
+  let allCandidates = [];
+  try {
+    const data = await api('GET', '/candidates');
+    allCandidates = data.candidates || [];
+  } catch (e) {
+    // Candidate pool may be empty; proceed with IDs only
+  }
+
+  const poolCandidates = pool.map(id => {
+    const match = allCandidates.find(c => c.candidate_id === id);
+    return match || { candidate_id: id, name: id, _missing: true };
+  });
+
+  // Apply filters
+  let filtered = poolCandidates.filter(c => {
+    if (_allstarFilters.archetype !== 'All' && c.archetype !== _allstarFilters.archetype) return false;
+    if (_allstarFilters.rating !== 'All') {
+      const stars = _allstarFilters.rating.replace(/★/g, '').length;
+      if (c.rating !== stars) return false;
+    }
+    if (_allstarFilters.availability !== 'All' && c.availability !== _allstarFilters.availability) return false;
+    if (_allstarFilters.search) {
+      const q = _allstarFilters.search.toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const role = (c.current_role || c.title || '').toLowerCase();
+      if (!name.includes(q) && !role.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const filterHTML = `
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <select id="as-archetype" onchange="_allstarFilterChanged()">
+        <option value="All">All Archetypes</option>
+        <option value="PE Lateral">PE Lateral</option>
+        <option value="Industry Operator">Industry Operator</option>
+        <option value="Functional Expert">Functional Expert</option>
+      </select>
+      <select id="as-rating" onchange="_allstarFilterChanged()">
+        <option value="All">All Ratings</option>
+        <option value="★★★">★★★</option>
+        <option value="★★">★★</option>
+        <option value="★">★</option>
+      </select>
+      <select id="as-avail" onchange="_allstarFilterChanged()">
+        <option value="All">All Availability</option>
+        <option value="Open">Open</option>
+        <option value="Passive">Passive</option>
+        <option value="Unknown">Unknown</option>
+        <option value="Not Interested">Not Interested</option>
+        <option value="Placed">Placed</option>
+      </select>
+      <input type="text" id="as-search" placeholder="Search candidates…"
+             oninput="_allstarFilterChanged()" style="flex:1;min-width:160px;" />
+    </div>`;
+
+  let tableRows = '';
+  if (filtered.length === 0) {
+    tableRows = `<tr><td colspan="7" style="padding:32px;text-align:center;color:#757575;">No candidates match the current filters.</td></tr>`;
+  } else {
+    filtered.forEach(c => {
+      const stars = c.rating ? '★'.repeat(c.rating) + '☆'.repeat(Math.max(0, 3 - c.rating)) : '—';
+      const name = c.linkedin_url
+        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${c.name}</a>`
+        : (c.name || c.candidate_id);
+      const avail = c.availability || '—';
+      const availColor = avail === 'Open' ? '#4caf50' : avail === 'Passive' ? '#ff9800' : '#9e9e9e';
+      tableRows += `
+        <tr style="cursor:pointer;" onclick="_openAllstarDetail('${c.candidate_id}')">
+          <td>${name}</td>
+          <td>${c.location || c.hq || '—'}</td>
+          <td>${c.current_role || c.title || '—'}</td>
+          <td>${c.archetype ? genericPill(c.archetype) : '—'}</td>
+          <td style="font-size:1rem;letter-spacing:1px;">${stars}</td>
+          <td><span style="color:${availColor};font-weight:600;font-size:0.85rem;">${avail}</span></td>
+          <td>${formatDate(c.last_contact || c.last_updated)}</td>
+        </tr>`;
+    });
+  }
+
+  container.innerHTML = `
+    ${filterHTML}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Current Role</th>
+            <th>Archetype</th>
+            <th>Rating</th>
+            <th>Availability</th>
+            <th>Last Contact</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
+
+  // Restore filters
+  const ael = document.getElementById('as-archetype');
+  const rel = document.getElementById('as-rating');
+  const vel = document.getElementById('as-avail');
+  const sel = document.getElementById('as-search');
+  if (ael) ael.value = _allstarFilters.archetype;
+  if (rel) rel.value = _allstarFilters.rating;
+  if (vel) vel.value = _allstarFilters.availability;
+  if (sel) sel.value = _allstarFilters.search;
+}
+
+function _allstarFilterChanged() {
+  _allstarFilters.archetype    = document.getElementById('as-archetype').value;
+  _allstarFilters.rating       = document.getElementById('as-rating').value;
+  _allstarFilters.availability = document.getElementById('as-avail').value;
+  _allstarFilters.search       = document.getElementById('as-search').value;
+  _renderAllstarTab();
+}
+
+function _openAllstarDetail(candidateId) {
+  // Fetch candidate and show modal
+  api('GET', '/candidates').then(data => {
+    const candidates = data.candidates || [];
+    const c = candidates.find(x => x.candidate_id === candidateId);
+    if (!c) {
+      alert('Candidate details not found.');
+      return;
+    }
+    _showCandidateModal(c);
+  }).catch(() => alert('Could not load candidate details.'));
+}
+
+function _showCandidateModal(c) {
+  const existing = document.getElementById('allstar-modal');
+  if (existing) existing.remove();
+
+  const fields = [
+    ['Name', c.name],
+    ['Current Role', c.current_role || c.title],
+    ['Location', c.location || c.hq],
+    ['Archetype', c.archetype],
+    ['Rating', c.rating ? '★'.repeat(c.rating) : '—'],
+    ['Availability', c.availability],
+    ['LinkedIn', c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank">${c.linkedin_url}</a>` : '—'],
+    ['Last Contact', formatDate(c.last_contact || c.last_updated)],
+    ['Notes', c.notes || '—']
+  ].filter(([, v]) => v).map(([label, val]) => `
+    <div style="margin-bottom:12px;">
+      <span class="form-label">${label}</span>
+      <div style="font-size:0.9rem;color:#212121;">${val}</div>
+    </div>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'allstar-modal';
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header">
+        <span class="modal-title">${c.name || 'Candidate Detail'}</span>
+        <button class="modal-close" onclick="document.getElementById('allstar-modal').remove()">&#10005;</button>
+      </div>
+      <div class="modal-body">${fields}</div>
+    </div>`;
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.remove();
+  });
+
+  document.body.appendChild(modal);
 }

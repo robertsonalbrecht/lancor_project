@@ -152,8 +152,8 @@ async function loadHome() {
             <span class="text-sm">Data files loaded</span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="width:10px;height:10px;border-radius:50%;background:#ff9800;display:inline-block;"></span>
-            <span class="text-sm">Session 2&ndash;6 modules pending</span>
+            <span style="width:10px;height:10px;border-radius:50%;background:#4caf50;display:inline-block;"></span>
+            <span class="text-sm">All modules complete &mdash; Session 7+ for iterations</span>
           </div>
         </div>
       </div>

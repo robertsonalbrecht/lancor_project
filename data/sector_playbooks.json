@@ -5,8 +5,117 @@
       "sector_name": "Industrials",
       "build_status": "partial",
       "last_updated": "2026-03-22",
-      "pe_firms": [],
-      "target_companies": [],
+      "pe_firms": [
+        {
+          "firm_id": "kkr",
+          "name": "KKR",
+          "hq": "New York, NY",
+          "size_tier": "Mega",
+          "strategy": "Buyout",
+          "sector_focus": "Significant",
+          "why_target": "One of the largest global PE firms with substantial industrials portfolio including CHC Helicopter and Capsugel.",
+          "expected_roster_size": 22,
+          "roster": [],
+          "roster_completeness": "auto"
+        },
+        {
+          "firm_id": "arsenal-capital",
+          "name": "Arsenal Capital Partners",
+          "hq": "New York, NY",
+          "size_tier": "Large",
+          "strategy": "Buyout",
+          "sector_focus": "Primary",
+          "why_target": "Industrials-focused PE firm with deep specialty chemicals and industrial products concentration.",
+          "expected_roster_size": 11,
+          "roster": [
+            {
+              "candidate_id": "john-smith-arsenal",
+              "name": "John Smith",
+              "title": "Operating Partner",
+              "linkedin_url": "",
+              "roster_status": "Identified",
+              "last_updated": "2026-03-22",
+              "searches_appeared_in": []
+            }
+          ],
+          "roster_completeness": "auto"
+        },
+        {
+          "firm_id": "monomoy-capital",
+          "name": "Monomoy Capital Partners",
+          "hq": "New York, NY",
+          "size_tier": "Middle Market",
+          "strategy": "Buyout",
+          "sector_focus": "Primary",
+          "why_target": "Operationally intensive middle-market industrials focus; known for ops-heavy value creation.",
+          "expected_roster_size": 6,
+          "roster": [],
+          "roster_completeness": "manual-complete",
+          "manual_complete_note": "Small team — confirmed complete via LinkedIn"
+        },
+        {
+          "firm_id": "middleground-capital",
+          "name": "MiddleGround Capital",
+          "hq": "Lexington, KY",
+          "size_tier": "Middle Market",
+          "strategy": "Buyout",
+          "sector_focus": "Primary",
+          "why_target": "B2B industrials specialist; strong automotive and specialty manufacturing portfolio.",
+          "expected_roster_size": 6,
+          "roster": [],
+          "roster_completeness": "auto"
+        },
+        {
+          "firm_id": "center-rock",
+          "name": "Center Rock Capital Partners",
+          "hq": "Pittsburgh, PA",
+          "size_tier": "Lower Middle Market",
+          "strategy": "Buyout",
+          "sector_focus": "Primary",
+          "why_target": "Lower middle market industrials specialist in Midwest/Mid-Atlantic.",
+          "expected_roster_size": 3,
+          "roster": [],
+          "roster_completeness": "auto"
+        }
+      ],
+      "target_companies": [
+        {
+          "company_id": "parker-hannifin",
+          "name": "Parker Hannifin",
+          "hq": "Cleveland, OH",
+          "revenue_tier": "Large Cap",
+          "ownership_type": "Public",
+          "roles_to_target": "Division President, Group VP, COO",
+          "why_target": "Motion and control technologies leader; strong operating exec talent pool.",
+          "expected_roster_size": 18,
+          "roster": [],
+          "roster_completeness": "auto"
+        },
+        {
+          "company_id": "roper-technologies",
+          "name": "Roper Technologies",
+          "hq": "Sarasota, FL",
+          "revenue_tier": "Large Cap",
+          "ownership_type": "Public",
+          "roles_to_target": "Segment CEO, Business Unit President",
+          "why_target": "Diversified industrials/software; strong M&A culture and decentralized operating model.",
+          "expected_roster_size": 18,
+          "roster": [],
+          "roster_completeness": "auto"
+        },
+        {
+          "company_id": "jason-industries",
+          "name": "Jason Industries",
+          "hq": "Nashville, TN",
+          "revenue_tier": "Middle Market",
+          "ownership_type": "PE-Backed",
+          "roles_to_target": "CEO, COO, President",
+          "why_target": "PE-backed diversified industrials; operational turnaround experience.",
+          "expected_roster_size": 5,
+          "roster": [],
+          "roster_completeness": "auto"
+        }
+      ],
       "allstar_pool": []
     },
     {
