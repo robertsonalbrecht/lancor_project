@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lancor Search OS</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+  <!-- ── Top Navigation Bar ──────────────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-left">
+      <span class="wordmark">LANCOR</span>
+      <span class="nav-subtitle">Search OS</span>
+    </div>
+
+    <ul class="nav-links" role="menubar">
+      <li role="none">
+        <a href="#" class="nav-link" role="menuitem" data-module="playbooks"
+           onclick="navigateTo('playbooks'); return false;">
+          Sector Playbooks
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-link" role="menuitem" data-module="searches"
+           onclick="navigateTo('searches'); return false;">
+          Active Searches
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-link" role="menuitem" data-module="pool"
+           onclick="navigateTo('pool'); return false;">
+          Candidate Pool
+        </a>
+      </li>
+      <li role="none">
+        <a href="#" class="nav-link" role="menuitem" data-module="templates"
+           onclick="navigateTo('templates'); return false;">
+          Search Templates
+        </a>
+      </li>
+    </ul>
+
+    <div class="navbar-right">
+      <button class="icon-btn" title="Settings" aria-label="Settings"
+              onclick="navigateTo('settings')">&#9881;</button>
+    </div>
+  </nav>
+
+  <!-- ── Main Content Area ───────────────────────────────────────────────── -->
+  <main id="app-content" role="main">
+    <!-- Populated by app.js on load -->
+  </main>
+
+  <!-- ── JavaScript Modules ──────────────────────────────────────────────── -->
+  <script src="/js/app.js"></script>
+  <script src="/js/playbooks.js"></script>
+  <script src="/js/searches.js"></script>
+  <script src="/js/coverage.js"></script>
+  <script src="/js/pool.js"></script>
+  <script src="/js/templates.js"></script>
+  <script src="/js/dashboard.js"></script>
+
+</body>
+</html>

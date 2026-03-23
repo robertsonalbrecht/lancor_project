@@ -1,0 +1,112 @@
+{
+  "sectors": [
+    {
+      "sector_id": "industrials",
+      "sector_name": "Industrials",
+      "build_status": "partial",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "technology-software",
+      "sector_name": "Technology / Software",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "tech-enabled-services",
+      "sector_name": "Tech-Enabled Services",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "healthcare",
+      "sector_name": "Healthcare",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "financial-services",
+      "sector_name": "Financial Services",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "consumer",
+      "sector_name": "Consumer",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "business-services",
+      "sector_name": "Business Services",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "infrastructure-energy",
+      "sector_name": "Infrastructure / Energy",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "life-sciences",
+      "sector_name": "Life Sciences",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "media-entertainment",
+      "sector_name": "Media / Entertainment",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "real-estate-proptech",
+      "sector_name": "Real Estate / PropTech",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    },
+    {
+      "sector_id": "agriculture-fb",
+      "sector_name": "Agriculture / Food & Beverage",
+      "build_status": "pending",
+      "last_updated": "2026-03-22",
+      "pe_firms": [],
+      "target_companies": [],
+      "allstar_pool": []
+    }
+  ]
+}
