@@ -39,6 +39,18 @@ router.get('/:id', (req, res) => {
   }
 });
 
+// PATCH /api/playbooks — update top-level config fields (e.g. roster_titles)
+router.patch('/', (req, res) => {
+  try {
+    const data = readData();
+    Object.assign(data, req.body);
+    writeData(data);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/playbooks/:id — update sector (full replacement)
 router.put('/:id', (req, res) => {
   try {

@@ -218,13 +218,19 @@ function renderPoolTable(candidates) {
     return `
       <tr onclick="openCandidateDetail('${poolEscape(c.candidate_id)}')">
         <td>
-          <div class="candidate-name-link">${poolEscape(c.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="candidate-name-link">${poolEscape(c.name)}</span>
+            ${c.linkedin_url ? `<a href="${poolEscape(c.linkedin_url)}" target="_blank" rel="noopener"
+                onclick="event.stopPropagation()"
+                title="Open LinkedIn profile"
+                style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#0A66C2;border-radius:4px;color:#fff;text-decoration:none;font-size:11px;font-weight:800;flex-shrink:0;">in</a>` : ''}
+          </div>
           <div style="font-size:11px;color:#888;margin-top:2px">${poolEscape(c.current_title || '')}${c.current_firm ? ' @ ' + poolEscape(c.current_firm) : ''}</div>
         </td>
         <td style="color:#666;font-size:12px">${poolEscape(c.home_location || '—')}</td>
         <td>${sectorPills || '<span style="color:#ccc">—</span>'}</td>
         <td>${archetypePill(c.archetype)}</td>
-        <td style="font-size:12px;color:#555">${poolEscape(c.operator_background || '—')}</td>
+        <td style="font-size:12px;color:#555">${Array.isArray(c.operator_background) ? (c.operator_background.length ? poolEscape(c.operator_background.join(', ')) : '—') : poolEscape(c.operator_background || '—')}</td>
         <td style="font-size:12px;color:#555">${poolEscape(sizeTier)}</td>
         <td>${ratingStars(c.quality_rating)}</td>
         <td>${availabilityPill(c.availability)}</td>
@@ -275,7 +281,11 @@ function applyPoolFilters(candidates) {
   return candidates.filter(c => {
     if (poolFilters.sector !== 'all' && !(Array.isArray(c.sector_tags) && c.sector_tags.includes(poolFilters.sector))) return false;
     if (poolFilters.archetype !== 'all' && c.archetype !== poolFilters.archetype) return false;
-    if (poolFilters.operator_background !== 'all' && c.operator_background !== poolFilters.operator_background) return false;
+    if (poolFilters.operator_background !== 'all') {
+      const bg = c.operator_background;
+      const match = Array.isArray(bg) ? bg.includes(poolFilters.operator_background) : bg === poolFilters.operator_background;
+      if (!match) return false;
+    }
     if (poolFilters.firm_size_tier !== 'all' && c.firm_size_tier !== poolFilters.firm_size_tier) return false;
     if (poolFilters.company_revenue_tier !== 'all' && c.company_revenue_tier !== poolFilters.company_revenue_tier) return false;
     if (poolFilters.availability !== 'all' && c.availability !== poolFilters.availability) return false;
@@ -415,7 +425,12 @@ function renderCandidateDetailPanel(candidate) {
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
           ${sectorPills}
           ${archetypePill(candidate.archetype)}
-          ${candidate.operator_background ? `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${poolEscape(candidate.operator_background)}</span>` : ''}
+          ${(() => {
+            const bg = candidate.operator_background;
+            const list = Array.isArray(bg) ? bg : (bg ? [bg] : []);
+            return list.map(b => `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${poolEscape(b)}</span>`).join('');
+          })()}
+          ${candidate.owned_pl ? `<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">P&amp;L Owner</span>` : ''}
         </div>
       </div>
 
@@ -461,6 +476,30 @@ function renderCandidateDetailPanel(candidate) {
         <div class="detail-label">Notes</div>
         <textarea id="detail-notes-ta" style="width:100%;min-height:70px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box" onblur="saveDetailField('${poolEscape(candidate.candidate_id)}', 'notes', this.value)">${poolEscape(candidate.notes || '')}</textarea>
       </div>
+
+      <!-- Work History -->
+      ${(candidate.work_history && candidate.work_history.length) ? `
+      <div class="detail-section">
+        <div class="detail-label" style="margin-bottom:4px">Work History</div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">Click an entry to set it as the primary experience</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${candidate.work_history.map((j, idx) => {
+            const isPrimary = candidate.primary_experience_index === idx;
+            return `<div
+              onclick="setPrimaryExperience('${poolEscape(candidate.candidate_id)}', ${idx})"
+              style="border-left:3px solid ${isPrimary ? '#5C2D91' : '#e0d4f5'};padding:6px 10px;background:${isPrimary ? '#f3ebff' : '#faf8ff'};border-radius:0 6px 6px 0;cursor:pointer;transition:background 0.15s"
+              onmouseover="this.style.background='${isPrimary ? '#ecdeff' : '#f0ebff'}'"
+              onmouseout="this.style.background='${isPrimary ? '#f3ebff' : '#faf8ff'}'">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <div style="font-weight:600;font-size:13px;color:#1a1a1a">${poolEscape(j.title||'')}</div>
+                ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#5C2D91;background:#e8d5ff;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
+              </div>
+              <div style="font-size:12px;color:#555;margin-top:1px">${poolEscape(j.company||'')}</div>
+              ${(j.dates||j.dateRange) ? `<div style="font-size:11px;color:#999;margin-top:2px">${poolEscape(j.dates||j.dateRange)}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
 
       <!-- Search History -->
       <div class="detail-section">
@@ -521,6 +560,40 @@ async function saveDetailField(candidateId, field, value) {
   }
 }
 
+async function setPrimaryExperience(candidateId, idx) {
+  try {
+    const candidate = poolAllCandidates.find(c => c.candidate_id === candidateId);
+    if (!candidate || !candidate.work_history) return;
+    const job = candidate.work_history[idx];
+    if (!job) return;
+
+    // Clean title: first segment before | or ·
+    const cleanTitle = (job.title || '').split(/\s*[|·]\s*/)[0].trim();
+    const cleanFirm  = (job.company || '').replace(/\s*[·•]\s*(full[- ]time|part[- ]time|contract|freelance|self[- ]employed).*$/i, '').trim();
+
+    const updates = {
+      current_title:            cleanTitle,
+      current_firm:             cleanFirm,
+      primary_experience_index: idx
+    };
+
+    const updated = await api('PUT', '/candidates/' + candidateId, updates);
+
+    // Update local cache
+    const cacheIdx = poolAllCandidates.findIndex(c => c.candidate_id === candidateId);
+    if (cacheIdx !== -1) poolAllCandidates[cacheIdx] = Object.assign({}, poolAllCandidates[cacheIdx], updates);
+
+    // Refresh detail panel
+    closeCandidateDetail();
+    renderCandidateDetailPanel(updated);
+
+    // Refresh pool table row subtitle
+    renderPoolView();
+  } catch (err) {
+    alert('Error setting primary experience: ' + err.message);
+  }
+}
+
 // ── Edit Candidate Form ───────────────────────────────────────────────────────
 
 async function openEditCandidateForm(candidateId) {
@@ -540,6 +613,17 @@ async function openEditCandidateForm(candidateId) {
     <label style="display:inline-flex;align-items:center;gap:5px;margin:4px 8px 4px 0;font-size:13px;cursor:pointer">
       <input type="checkbox" name="edit-sector" value="${s.id}" ${(candidate.sector_tags || []).includes(s.id) ? 'checked' : ''}>
       ${poolEscape(s.label)}
+    </label>
+  `).join('');
+
+  const OP_BG_OPTIONS = ['Traditional Buyout', 'Growth Scaling', 'Distressed Turnaround', 'Functional Expert'];
+  const opBgSelected = Array.isArray(candidate.operator_background)
+    ? candidate.operator_background
+    : (candidate.operator_background ? [candidate.operator_background] : []);
+  const opBgCheckboxes = OP_BG_OPTIONS.map(opt => `
+    <label style="display:inline-flex;align-items:center;gap:5px;margin:4px 12px 4px 0;font-size:13px;cursor:pointer">
+      <input type="checkbox" name="edit-op-bg" value="${opt}" ${opBgSelected.includes(opt) ? 'checked' : ''}>
+      ${poolEscape(opt)}
     </label>
   `).join('');
 
@@ -583,14 +667,17 @@ async function openEditCandidateForm(candidateId) {
             <option value="Functional Expert" ${candidate.archetype === 'Functional Expert' ? 'selected' : ''}>Functional Expert</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Operator Background</label>
-          <select class="form-control" id="ec-op-bg">
-            <option value="Traditional Buyout" ${candidate.operator_background === 'Traditional Buyout' ? 'selected' : ''}>Traditional Buyout</option>
-            <option value="Growth Scaling" ${candidate.operator_background === 'Growth Scaling' ? 'selected' : ''}>Growth Scaling</option>
-            <option value="Distressed Turnaround" ${candidate.operator_background === 'Distressed Turnaround' ? 'selected' : ''}>Distressed Turnaround</option>
-            <option value="Functional Expert" ${candidate.operator_background === 'Functional Expert' ? 'selected' : ''}>Functional Expert</option>
-          </select>
+        <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end">
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0 2px">
+            <input type="checkbox" id="ec-owned-pl" ${candidate.owned_pl ? 'checked' : ''} style="width:15px;height:15px;accent-color:#5C2D91">
+            <span class="form-label" style="margin:0;text-transform:none;font-size:13px;font-weight:600;letter-spacing:0">Has Owned a P&amp;L</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Operator Background</label>
+        <div style="border:1px solid #ddd;border-radius:4px;padding:10px 14px">
+          ${opBgCheckboxes}
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -643,6 +730,7 @@ function closeEditCandidateForm() {
 
 async function saveEditCandidate(candidateId) {
   const selectedSectors = Array.from(document.querySelectorAll('input[name="edit-sector"]:checked')).map(cb => cb.value);
+  const selectedOpBg    = Array.from(document.querySelectorAll('input[name="edit-op-bg"]:checked')).map(cb => cb.value);
 
   const updates = {
     name:                 document.getElementById('ec-name').value.trim(),
@@ -651,7 +739,8 @@ async function saveEditCandidate(candidateId) {
     home_location:        document.getElementById('ec-location').value.trim(),
     linkedin_url:         document.getElementById('ec-linkedin').value.trim(),
     archetype:            document.getElementById('ec-archetype').value,
-    operator_background:  document.getElementById('ec-op-bg').value,
+    operator_background:  selectedOpBg,
+    owned_pl:             document.getElementById('ec-owned-pl').checked,
     firm_size_tier:       document.getElementById('ec-firm-size').value || null,
     company_revenue_tier: document.getElementById('ec-rev-tier').value || null,
     sector_tags:          selectedSectors,

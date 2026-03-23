@@ -1,0 +1,204 @@
+═══════════════════════════════════════════════════
+  PITCHBOOK IMPORT SUMMARY
+═══════════════════════════════════════════════════
+
+Total rows in PitchBook file:          3559
+
+ROWS SKIPPED:
+  Inactive / not seeking investments:  289
+  Filtered investor type:              223
+  No AUM and no investment activity:   0
+
+NEW FIRMS ADDED:                       10119
+
+Added per sector:
+  financial-services             1310
+  industrials                    1288
+  technology-software            1210
+  consumer                       1184
+  healthcare                     1109
+  infrastructure-energy          1053
+  real-estate-proptech           711
+  business-services              587
+  media-entertainment            486
+  life-sciences                  476
+  tech-enabled-services          413
+  agriculture-fb                 292
+
+EXISTING FIRMS UPDATED:                169
+
+FIRMS WITH NO SECTOR ASSIGNED:         154
+  - BAM Elevate
+  - Counterpoint Global
+  - Select Equity Group
+  - Luther King Capital Management
+  - THREE FIFTY EIGHT INVESTMENT
+  - Beach Point Capital Management
+  - AMG Wealth
+  - Outer Banks Capital
+  - Abbott Capital Management
+  - Meritage Group
+  - Brandywine Managers
+  - STEADFAST Capital Ventures
+  - Bridges Investment Management
+  - Darsana Capital Partners
+  - Mill Creek Capital Advisors
+  - First Trust Capital Management
+  - Galvanize Climate Solutions
+  - Arbour Lane Capital Management
+  - Dextra Partners
+  - Aetos Alternatives Management
+  - Msr Capital Partners
+  - Hill Path Capital
+  - E Capital Management
+  - Angeles Investment Advisors
+  - Ocean Avenue Capital Partners
+  - Fry's Path Capital
+  - Point Olema Capital Partners
+  - Timberland Investment Resources
+  - Caballero Verde
+  - Emerald Lake Capital Management
+  - C III Capital Management
+  - Montauk TriGuard
+  - Nebrodi Partners
+  - Irenic Capital Management
+  - Ariel Alternatives
+  - Cohesive Capital Partners
+  - Long Path Partners
+  - Lynx Investment Advisory
+  - P2 Capital Partners
+  - Nassau Private Credit
+  - S&J Private Equity
+  - Godwin Capital Group
+  - Granite State Capital Management
+  - OakRidge Management Group
+  - ZS Fund
+  - 01 Advisors
+  - SSW Partners
+  - Briaud Financial Advisors
+  - Adams Wealth Advisors
+  - Sahana Capital
+  - Bow Street
+  - Standard General
+  - Chicago Atlantic
+  - Levco Capital
+  - Painted Porch
+  - Quattro Advisors
+  - Painswick Capital Management
+  - Cap91 Partners Management
+  - Bicycle Capital
+  - Pleasant Land
+  - Altera Investments
+  - Endicott Capital
+  - Carson Management Company
+  - Cantaris
+  - Clarity Capital Partners (Wealth Management)
+  - 327 Capital Partners
+  - Manikay Partners
+  - Landseer Advisors
+  - Concorde Investment Management
+  - Mayne Capital
+  - Octahedron Capital
+  - McDonald Capital Management
+  - Privet Fund Management
+  - AIGH Capital Management
+  - Northern Lakes Capital
+  - CC Capital
+  - Selby Lane Capital
+  - Old Hickory Partners Management
+  - Storr Group
+  - Pergament Advisors
+  - Resilient Capital Partners
+  - Strawberry Tree Management Company
+  - Indago Capital
+  - Equitable Prosperity Manager
+  - Adalta Capital Management
+  - Fuller Investment Management
+  - Goldiron
+  - The Visualize Group
+  - Three Zero Three Capital Partners
+  - Emblem Investments (US)
+  - Cooper Investment Partners
+  - Sea Cliff Partners
+  - Lonsdale Investment Management
+  - Crescat Capital
+  - Ninth Eternity Asset Management
+  - Sky Alpha Asset Advisors
+  - Caprice Capital Partners
+  - 3B1 Partners
+  - 1819 Partners
+  - Equitas Capital Advisors
+  - Lionel Partners
+  - Navigate Capital Partners
+  - Norada Capital Management
+  - Round2 Investment Partners
+  - Artist Capital Management
+  - Maven Equity Partners
+  - Ivy Lane Capital Management
+  - Skylark Private Equity Partners
+  - Brentview Investment Management
+  - Chapel Bridge Wealth Advisors
+  - L3 Capital Advisors
+  - Winthrop Square Capital
+  - Alan B. Lancz & Associates
+  - Invictus Global Management
+  - Generative Investment Partners
+  - Assurance Capital (Florida)
+  - Chung Wu Investment Group
+  - Overland Capital Partners
+  - Everest Financial
+  - YS Capital Partners
+  - Pan Resources Management
+  - Marquee Capital Advisors
+  - Heirloom Investment Management
+  - Charlotte Growth Partners
+  - The Pay It Forward Company
+  - Barrett Upton Capital Partners
+  - Law Finance Group Management Company
+  - Adnate Capital
+  - Cashmere Capital
+  - HLV Ventures
+  - Overseas Investor Services
+  - Windcrest Partners
+  - Red Oak Partners
+  - Elpis Capital Group
+  - Ortelius Alternative Investment Management
+  - Pandion Mine Finance
+  - Starkel Capital
+  - Pearl Lane Advisors
+  - SM Investors
+  - Origin Equity Partners
+  - Sentry Financial
+  - PR Equity Fund Management
+  - International Capital Management Corporation
+  - Clerisy Global Capital Management
+  - Quantum Technology Investors
+  - Seraphim Capital Management
+  - REDDING GREEN
+  - BPBI
+  - s20 Capital
+  - TLG Capital Management
+  - Boulder Investment Group Reprise
+  - Hillson Financial Management
+  - Amateras AEA Capital
+  - Legacy Two Advisors
+
+ERRORS (0):
+
+─── FINAL FIRM COUNTS PER SECTOR ───────────────
+  industrials                    1352
+  technology-software            1288
+  tech-enabled-services          448
+  healthcare                     1165
+  financial-services             1354
+  consumer                       1237
+  business-services              635
+  infrastructure-energy          1071
+  life-sciences                  480
+  media-entertainment            495
+  real-estate-proptech           720
+  agriculture-fb                 295
+
+Total unique firms across all sectors: 2581
+
+Generated: 2026-03-23T16:49:52.696Z

@@ -134,88 +134,81 @@ router.post('/', (req, res) => {
   }
 });
 
-// POST /api/candidates/prefill — create candidate from Chrome extension scraper data
+// POST /api/candidates/prefill — upsert candidate from Chrome extension scraper data
 router.post('/prefill', (req, res) => {
   try {
     const pool = readPool();
-    const { fullName, currentTitle, currentCompany, location, linkedinUrl, workHistory, searchId } = req.body;
+    const { fullName, currentTitle, currentCompany, location, linkedinUrl, workHistory } = req.body;
 
-    // Deduplicate by linkedinUrl if provided
-    if (linkedinUrl) {
-      const existing = pool.candidates.find(c => c.linkedin_url === linkedinUrl);
-      if (existing) {
-        return res.status(409).json({ error: 'Candidate with this LinkedIn URL already exists', id: existing.candidate_id });
-      }
+    const normName = s => (s || '').toLowerCase().trim();
+    // Normalize LinkedIn URL: strip trailing slash and query params for comparison
+    const normUrl  = s => (s || '').replace(/\?.*$/, '').replace(/\/$/, '').toLowerCase();
+    // Normalize firm: strip LinkedIn suffixes like "· Full-time", "· Part-time", "· Contract"
+    const normFirm = s => (s || '').replace(/\s*[·•]\s*(full[- ]time|part[- ]time|contract|freelance|self[- ]employed).*$/i, '').toLowerCase().trim();
+
+    // 1. Match by LinkedIn URL (normalized, trailing-slash-insensitive)
+    // 2. Fallback: match by name + firm (for candidates imported without a URL)
+    let existing = linkedinUrl
+      ? pool.candidates.find(c => normUrl(c.linkedin_url) === normUrl(linkedinUrl))
+      : null;
+
+    if (!existing && fullName && currentCompany) {
+      existing = pool.candidates.find(c =>
+        normName(c.name) === normName(fullName) &&
+        normFirm(c.current_firm) === normFirm(currentCompany)
+      );
     }
 
+    if (existing) {
+      // UPDATE existing candidate — enrich blank fields, always refresh work history
+      if (linkedinUrl && !existing.linkedin_url) existing.linkedin_url = linkedinUrl;
+      if (currentTitle  && !existing.current_title)  existing.current_title  = currentTitle;
+      if (currentCompany && !existing.current_firm)  existing.current_firm   = currentCompany;
+      if (location      && !existing.home_location)  existing.home_location  = location;
+      if (Array.isArray(workHistory) && workHistory.length) existing.work_history = workHistory;
+      existing.last_scraped = new Date().toISOString().slice(0, 10);
+
+      writePool(pool);
+      return res.json({ action: 'updated', id: existing.candidate_id });
+    }
+
+    // CREATE new candidate
     const slugify = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
     const candidate_id = `cand-${slugify(fullName || 'unknown')}-${Date.now()}`;
 
     const newCandidate = {
       candidate_id,
-      name: fullName || '',
-      current_title: currentTitle || '',
-      current_firm: currentCompany || '',
-      home_location: location || '',
-      linkedin_url: linkedinUrl || '',
-      work_history: Array.isArray(workHistory) ? workHistory : [],
-      sector_tags: [],
-      archetype: 'PE Lateral',
+      name:           fullName      || '',
+      current_title:  currentTitle  || '',
+      current_firm:   currentCompany|| '',
+      home_location:  location      || '',
+      linkedin_url:   linkedinUrl   || '',
+      work_history:   Array.isArray(workHistory) ? workHistory : [],
+      sector_tags:    [],
+      archetype:      '',
+      operator_background: [],
+      owned_pl:       false,
+      firm_size_tier: null,
+      company_revenue_tier: null,
       quality_rating: null,
-      availability: 'Unknown',
+      rating_set_by:  null,
+      rating_date:    null,
+      availability:   'Unknown',
+      availability_updated: null,
       search_history: [],
-      dq_reasons: [],
+      dq_reasons:     [],
       last_contact_date: null,
-      notes: '',
-      date_added: new Date().toISOString().slice(0, 10),
-      source: 'LinkedIn (Chrome Extension)'
+      notes:          '',
+      date_added:     new Date().toISOString().slice(0, 10),
+      added_from_search: '',
+      last_scraped:   new Date().toISOString().slice(0, 10),
+      source:         'LinkedIn (Chrome Extension)'
     };
 
     pool.candidates.push(newCandidate);
     writePool(pool);
 
-    // Add to search pipeline if searchId provided
-    if (searchId) {
-      try {
-        const searchData = JSON.parse(fs.readFileSync(searchesFile(), 'utf8'));
-        const searchIdx = searchData.searches.findIndex(s => s.search_id === searchId);
-        if (searchIdx !== -1) {
-          const search = searchData.searches[searchIdx];
-          const pipelineEntry = {
-            candidate_id,
-            name: newCandidate.name,
-            current_title: newCandidate.current_title,
-            current_firm: newCandidate.current_firm,
-            location: newCandidate.home_location,
-            linkedin_url: newCandidate.linkedin_url,
-            archetype: 'PE Lateral',
-            source: 'LinkedIn (Chrome Extension)',
-            stage: 'Pursuing',
-            lancor_screener: '',
-            screen_date: null,
-            lancor_assessment: '',
-            resume_attached: false,
-            client_meetings: (search.client_contacts || []).map(c => ({
-              contact_name: c.name, status: '—', date: null
-            })),
-            client_feedback: '',
-            next_step: '',
-            next_step_owner: '',
-            next_step_date: null,
-            dq_reason: '',
-            last_touchpoint: null,
-            notes: '',
-            date_added: new Date().toISOString().slice(0, 10)
-          };
-          search.pipeline.push(pipelineEntry);
-          fs.writeFileSync(searchesFile(), JSON.stringify(searchData, null, 2), 'utf8');
-        }
-      } catch (e) {
-        // Non-fatal — candidate was saved to pool successfully
-      }
-    }
-
-    res.status(201).json({ id: candidate_id });
+    res.status(201).json({ action: 'created', id: candidate_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

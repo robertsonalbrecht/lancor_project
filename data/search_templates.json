@@ -2,7 +2,18 @@
   "templates": {
     "boolean_strings": [],
     "pitchbook_params": [],
-    "outreach_messages": [],
+    "outreach_messages": [
+      {
+        "id": "outreach_messages-1774272715499",
+        "created_date": "2026-03-23",
+        "name": "Berkshire Industrial OP Initial Reach Out",
+        "archetype": "Operating Partner",
+        "channel": "LinkedIn",
+        "subject": "",
+        "body": "{firstName},\nHope all is well. I know we have not connected before, but I was hoping to chat if you can make the time. Lancor's headhunting practice is focused specifically on building out portfolio operations teams for PE firms. To that effect, I may have something interesting to run by you. I’d love your thoughts on it.\n\nWe are working on an Operating Partner project for Berkshire Partners. They are looking for a seasoned operating partner to join the Portfolio Support Group and work specifically with investments arising out of its Industrials sector. I would love to run it by you. Let me know if we can chat. Thanks!",
+        "notes": ""
+      }
+    ],
     "ideal_candidate_profiles": [],
     "screen_question_guides": []
   }

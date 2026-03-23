@@ -10,6 +10,7 @@
 
 let templateSubTab = 'boolean'; // 'boolean' | 'pitchbook' | 'outreach' | 'profile' | 'screen'
 let allTemplatesData = null;    // cached from last fetch
+let allSearchesForIdeas = null; // cached searches data for the ideas panel
 
 // ── Escape helper ─────────────────────────────────────────────────────────────
 
@@ -72,7 +73,12 @@ async function renderTemplates() {
   content.innerHTML = '<div class="loading"><div class="spinner"></div> Loading templates...</div>';
 
   try {
-    allTemplatesData = await api('GET', '/templates');
+    const [tplRes, srchRes] = await Promise.all([
+      api('GET', '/templates'),
+      api('GET', '/searches')
+    ]);
+    allTemplatesData = tplRes;
+    allSearchesForIdeas = srchRes.searches || [];
     renderTemplatesPage(content);
   } catch (err) {
     content.innerHTML = `<div class="error-banner">Failed to load templates: ${escTpl(err.message)}</div>`;
@@ -122,6 +128,9 @@ function renderTemplatesPage(container) {
       <div id="template-list-container">
         ${renderTemplateList(templateSubTab, templates)}
       </div>
+
+      <!-- New Search Ideas panel -->
+      ${renderNewSearchIdeasPanel(templateSubTab, allSearchesForIdeas || [])}
     </div>
   `;
 }
@@ -230,7 +239,7 @@ function renderPitchbookTable(templates) {
             ${t.deal_size_min ? `<div><strong>Deal Size Min:</strong> ${escTpl(t.deal_size_min)}</div>` : ''}
             ${t.revenue_range ? `<div><strong>Revenue Range:</strong> ${escTpl(t.revenue_range)}</div>` : ''}
             ${t.date_range ? `<div><strong>Date Range:</strong> ${escTpl(t.date_range)}</div>` : ''}
-            ${t.ownership_types ? `<div><strong>Ownership Types:</strong> ${escTpl(t.ownership_types)}</div>` : ''}
+            ${t.ownership_types && (Array.isArray(t.ownership_types) ? t.ownership_types.length : t.ownership_types) ? `<div><strong>Ownership Types:</strong> ${escTpl(Array.isArray(t.ownership_types) ? t.ownership_types.join(', ') : t.ownership_types)}</div>` : ''}
           </div>
           ${t.notes ? `<p style="font-size:12px;color:#666;margin-top:10px">${escTpl(t.notes)}</p>` : ''}
         </div>
@@ -368,6 +377,173 @@ function renderScreenTable(templates) {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+}
+
+// ── New Search Ideas Panel ────────────────────────────────────────────────────
+
+function buildNewSearchIdeas(tab, searches) {
+  const ideas = [];
+
+  // Aggregate pipeline activity across all searches
+  const sectorData = {};   // sector -> { qualifying, total, clients, archetypes }
+  const archetypeData = {}; // archetype -> { qualifying, total, sectors }
+
+  (searches || []).forEach(s => {
+    const client = s.client_name || 'Unknown';
+    (s.sectors || []).forEach(rawSec => {
+      const sec = rawSec.charAt(0).toUpperCase() + rawSec.slice(1);
+      if (!sectorData[sec]) sectorData[sec] = { qualifying: 0, total: 0, clients: [], archetypes: [] };
+      sectorData[sec].total++;
+      if (!sectorData[sec].clients.includes(client)) sectorData[sec].clients.push(client);
+    });
+
+    (s.pipeline || []).forEach(c => {
+      const arch = c.archetype || 'PE Lateral';
+      const ok = ['Qualifying', 'Scheduling'].includes(c.stage);
+      if (!archetypeData[arch]) archetypeData[arch] = { qualifying: 0, total: 0, sectors: [] };
+      archetypeData[arch].total++;
+      if (ok) archetypeData[arch].qualifying++;
+
+      (s.sectors || []).forEach(rawSec => {
+        const sec = rawSec.charAt(0).toUpperCase() + rawSec.slice(1);
+        if (!sectorData[sec]) sectorData[sec] = { qualifying: 0, total: 0, clients: [], archetypes: [] };
+        if (ok) sectorData[sec].qualifying++;
+        if (!sectorData[sec].archetypes.includes(arch)) sectorData[sec].archetypes.push(arch);
+        if (!archetypeData[arch].sectors.includes(sec)) archetypeData[arch].sectors.push(sec);
+      });
+    });
+  });
+
+  const topSectors = Object.entries(sectorData)
+    .sort((a, b) => (b[1].qualifying * 3 + b[1].total) - (a[1].qualifying * 3 + a[1].total));
+  const topArchetypes = Object.entries(archetypeData)
+    .sort((a, b) => (b[1].qualifying * 3 + b[1].total) - (a[1].qualifying * 3 + a[1].total));
+
+  const existingBoolean  = (allTemplatesData?.templates?.boolean_strings || []).map(t => `${(t.sector||'').toLowerCase()}|${(t.archetype||'').toLowerCase()}`);
+  const existingPB       = (allTemplatesData?.templates?.pitchbook_params || []).map(t => (t.sector||'').toLowerCase());
+  const existingOutreach = (allTemplatesData?.templates?.outreach_messages || []).map(t => (t.archetype||'').toLowerCase());
+  const existingProfile  = (allTemplatesData?.templates?.ideal_candidate_profiles || []).map(t => `${(t.sector||'').toLowerCase()}|${(t.archetype||'').toLowerCase()}`);
+  const existingScreen   = (allTemplatesData?.templates?.screen_question_guides || []).map(t => (t.archetype||'').toLowerCase());
+
+  // ── Boolean tab ideas ──
+  if (tab === 'boolean') {
+    topSectors.slice(0, 4).forEach(([sec, d]) => {
+      const archs = d.archetypes.length > 0 ? d.archetypes : ['PE Lateral'];
+      archs.slice(0, 2).forEach(arch => {
+        const key = `${sec.toLowerCase()}|${arch.toLowerCase()}`;
+        if (!existingBoolean.includes(key) && ideas.length < 4) {
+          const why = d.qualifying > 0
+            ? `${d.qualifying} qualifying candidate${d.qualifying > 1 ? 's' : ''} found in ${sec} pipeline — proven demand`
+            : `Active ${sec} search open — build the boolean string now to accelerate sourcing`;
+          ideas.push({ title: `${sec} ${arch} — LinkedIn Boolean`, reason: why, action: '+ Add Boolean String', onclick: `openTemplateModal('boolean', null)` });
+        }
+      });
+    });
+    if (topSectors.length >= 2 && ideas.length < 5) {
+      ideas.push({ title: 'Cross-Sector Operating Partner — LinkedIn Boolean', reason: `${topSectors.length} sectors active in pipeline — a cross-sector boolean surfaces candidates who fit multiple mandates`, action: '+ Add Boolean String', onclick: `openTemplateModal('boolean', null)` });
+    }
+    if (ideas.length === 0) {
+      ideas.push({ title: 'Industrials Operating Partner — LinkedIn Boolean', reason: 'Operating Partner roles at PE-backed industrials companies are a core Lancor mandate — build a reusable boolean string', action: '+ Add Boolean String', onclick: `openTemplateModal('boolean', null)` });
+      ideas.push({ title: 'Business Services PE Lateral — LinkedIn Boolean', reason: 'Business Services is a high-volume PE sector — a targeted boolean string speeds future sourcing', action: '+ Add Boolean String', onclick: `openTemplateModal('boolean', null)` });
+    }
+  }
+
+  // ── PitchBook tab ideas ──
+  if (tab === 'pitchbook') {
+    topSectors.slice(0, 4).forEach(([sec, d]) => {
+      if (!existingPB.includes(sec.toLowerCase()) && ideas.length < 4) {
+        const why = d.qualifying > 0
+          ? `${d.qualifying} qualifying candidate${d.qualifying > 1 ? 's' : ''} from ${sec} — build a PitchBook pull to find executives at similar portfolio companies`
+          : `Active ${sec} search — a PitchBook parameters template will accelerate future mandates in this sector`;
+        ideas.push({ title: `${sec} — PE-Backed Exit Pull`, reason: why, action: '+ Add PitchBook Parameters', onclick: `openTemplateModal('pitchbook', null)` });
+      }
+    });
+    if (ideas.length < 5) {
+      ideas.push({ title: 'Recent Deal Exits (2020–Present) — All Sectors', reason: 'Executives exiting PE-backed deals in the last 5 years are prime Operating Partner candidates — a broad exit pull builds prospective pipeline', action: '+ Add PitchBook Parameters', onclick: `openTemplateModal('pitchbook', null)` });
+    }
+    if (ideas.length === 0) {
+      ideas.push({ title: 'Industrials — PE-Backed Exit Pull', reason: 'Industrials is a core Lancor sector — save a standard PitchBook parameter set for fast reuse', action: '+ Add PitchBook Parameters', onclick: `openTemplateModal('pitchbook', null)` });
+    }
+  }
+
+  // ── Outreach tab ideas ──
+  if (tab === 'outreach') {
+    topArchetypes.slice(0, 3).forEach(([arch, d]) => {
+      if (!existingOutreach.includes(arch.toLowerCase()) && ideas.length < 3) {
+        const why = d.qualifying > 0
+          ? `${arch} archetype has ${d.qualifying} qualifying candidate${d.qualifying > 1 ? 's' : ''} — lock in what's working as a reusable template`
+          : `${arch} is an active archetype in current pipeline — standardize the first-touch message now`;
+        ideas.push({ title: `${arch} — InMail Template`, reason: why, action: '+ Add Outreach Message', onclick: `openTemplateModal('outreach', null)` });
+      }
+    });
+    if (!existingOutreach.includes('pe lateral') && ideas.length < 5) {
+      ideas.push({ title: 'PE Lateral — InMail Template', reason: 'PE Laterals are the most common archetype across Lancor mandates — a crisp, reusable InMail will cut sourcing time', action: '+ Add Outreach Message', onclick: `openTemplateModal('outreach', null)` });
+    }
+    ideas.push({ title: 'Follow-Up InMail — No Response (7 Days)', reason: 'Pipeline candidates sitting in "Outreach Sent" need a standard follow-up cadence — a template reduces candidate drop-off', action: '+ Add Outreach Message', onclick: `openTemplateModal('outreach', null)` });
+  }
+
+  // ── Profile tab ideas ──
+  if (tab === 'profile') {
+    topSectors.slice(0, 3).forEach(([sec, d]) => {
+      const archs = d.archetypes.length > 0 ? d.archetypes : ['PE Lateral'];
+      archs.slice(0, 2).forEach(arch => {
+        const key = `${sec.toLowerCase()}|${arch.toLowerCase()}`;
+        if (!existingProfile.includes(key) && ideas.length < 4) {
+          const why = d.qualifying > 0
+            ? `${d.qualifying} qualifying ${sec} candidate${d.qualifying > 1 ? 's' : ''} found — document the winning profile before the next search starts`
+            : `Active ${sec} search — an ICP sharpens screening and aligns the client faster`;
+          ideas.push({ title: `${sec} ${arch} — Ideal Candidate Profile`, reason: why, action: '+ Add Profile', onclick: `openTemplateModal('profile', null)` });
+        }
+      });
+    });
+    if (ideas.length === 0) {
+      ideas.push({ title: 'Industrials Operating Partner — ICP', reason: 'Document must-haves, nice-to-haves, and red flags from your current Berkshire search to reuse on the next mandate', action: '+ Add Profile', onclick: `openTemplateModal('profile', null)` });
+      ideas.push({ title: 'PE Lateral — ICP', reason: 'A general PE Lateral profile accelerates alignment with new PE clients and cuts first-round screening time', action: '+ Add Profile', onclick: `openTemplateModal('profile', null)` });
+    }
+  }
+
+  // ── Screen tab ideas ──
+  if (tab === 'screen') {
+    topArchetypes.filter(([, d]) => d.qualifying > 0 || d.total > 0).slice(0, 3).forEach(([arch, d]) => {
+      if (!existingScreen.includes(arch.toLowerCase()) && ideas.length < 3) {
+        const why = d.qualifying > 0
+          ? `${d.qualifying} qualifying ${arch} candidate${d.qualifying > 1 ? 's' : ''} in pipeline — standardize the screen before the next one comes through`
+          : `${arch} is active in current pipeline — a question guide ensures consistent, comparable evaluations`;
+        ideas.push({ title: `${arch} — Screen Question Guide`, reason: why, action: '+ Add Question Guide', onclick: `openTemplateModal('screen', null)` });
+      }
+    });
+    if (!existingScreen.includes('pe lateral') && ideas.length < 5) {
+      ideas.push({ title: 'PE Lateral — Screen Question Guide', reason: 'PE Laterals are the highest-volume archetype — a reusable screen guide reduces recruiter ramp time on new searches', action: '+ Add Question Guide', onclick: `openTemplateModal('screen', null)` });
+    }
+    if (!existingScreen.includes('industry operator') && ideas.length < 5) {
+      ideas.push({ title: 'Industry Operator — Screen Question Guide', reason: 'Industry Operators are consistently in demand across PE mandates — document the key evaluation criteria now', action: '+ Add Question Guide', onclick: `openTemplateModal('screen', null)` });
+    }
+  }
+
+  return ideas.slice(0, 5);
+}
+
+function renderNewSearchIdeasPanel(tab, searches) {
+  const ideas = buildNewSearchIdeas(tab, searches);
+  if (ideas.length === 0) return '';
+
+  const cards = ideas.map(idea => `
+    <div style="background:#faf7ff;border:1px solid #d8c8f5;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:200px;max-width:280px;flex:1">
+      <div style="font-size:13px;font-weight:700;color:#1a1a1a;line-height:1.3">${escTpl(idea.title)}</div>
+      <div style="font-size:11px;color:#666;line-height:1.5;flex:1">${escTpl(idea.reason)}</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;align-self:flex-start;color:#5C2D91;border-color:#c8a8f0" onclick="${idea.onclick}">${escTpl(idea.action)}</button>
+    </div>`).join('');
+
+  return `
+    <div style="margin-top:36px;padding-top:24px;border-top:2px solid #e0e0e0">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:16px">
+        <h3 style="font-size:14px;font-weight:700;color:#5C2D91;margin:0">&#128161; New Search Ideas</h3>
+        <span style="font-size:12px;color:#999">Based on your current pipeline and search activity</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        ${cards}
+      </div>
+    </div>`;
 }
 
 // ── Toggle detail row ─────────────────────────────────────────────────────────
@@ -515,23 +691,83 @@ function renderBooleanForm(t) {
 // PitchBook Parameters form
 function renderPitchbookForm(t) {
   t = t || {};
-  const pullTypes = ['', 'active-portfolio', 'exits', 'transactions'];
-  const pullOptions = pullTypes.map(v => `<option value="${v}" ${v === (t.pull_type || '') ? 'selected' : ''}>${v || '-- Select Pull Type --'}</option>`).join('');
+
+  const PULL_TYPES = [
+    { value: '',                     label: '-- Select Pull Type --' },
+    { value: 'active-portfolio',     label: 'Active Portfolio' },
+    { value: 'exits',                label: 'Exits' },
+    { value: 'transactions',         label: 'Transactions' },
+    { value: 'public-company-leaders', label: 'Public Company Leaders' },
+    { value: 'private-non-pe',       label: 'Private (Non-PE)' }
+  ];
+  const pullOptions = PULL_TYPES.map(({ value, label }) =>
+    `<option value="${value}" ${value === (t.pull_type || '') ? 'selected' : ''}>${label}</option>`
+  ).join('');
+
+  const GEOGRAPHIES = ['', 'North America', 'United States', 'Europe', 'EMEA', 'Asia-Pacific', 'Global'];
+  const geoOptions = GEOGRAPHIES.map(g =>
+    `<option value="${g}" ${g === (t.geography || '') ? 'selected' : ''}>${g || '-- Select Geography --'}</option>`
+  ).join('');
+
+  const DEAL_SIZES = ['', '$10M EBITDA', '$25M EBITDA', '$50M EBITDA', '$100M EBITDA', '$250M EBITDA', '$500M+ EBITDA'];
+  const dealOptions = DEAL_SIZES.map(d =>
+    `<option value="${d}" ${d === (t.deal_size_min || '') ? 'selected' : ''}>${d || '-- No Minimum --'}</option>`
+  ).join('');
+
+  const REVENUE_RANGES = ['', '< $50M', '$50M – $250M', '$250M – $1B', '$1B – $5B', '$5B+'];
+  const revenueOptions = REVENUE_RANGES.map(r =>
+    `<option value="${r}" ${r === (t.revenue_range || '') ? 'selected' : ''}>${r || '-- Any Revenue --'}</option>`
+  ).join('');
+
+  // Parse existing date_range "YYYY–YYYY" or "YYYY-YYYY"
+  const dateMatch = (t.date_range || '').match(/(\d{4})\s*[–\-]\s*(\d{4})/);
+  const savedFrom = dateMatch ? dateMatch[1] : '';
+  const savedTo   = dateMatch ? dateMatch[2] : '';
+  const currentYear = new Date().getFullYear();
+  const years = [''];
+  for (let y = 2010; y <= currentYear + 1; y++) years.push(String(y));
+  const fromOptions = years.map(y => `<option value="${y}" ${y === savedFrom ? 'selected' : ''}>${y || 'From Year'}</option>`).join('');
+  const toOptions   = years.map(y => `<option value="${y}" ${y === savedTo   ? 'selected' : ''}>${y || 'To Year'}</option>`).join('');
+
+  const OWNERSHIP_OPTS = [
+    'Buyout', 'Growth Equity', 'Venture', 'Secondary',
+    'Debt / Mezzanine', 'Public Company', 'Founder / Family-Owned', 'Corporate Carve-Out'
+  ];
+  const ownershipSelected = Array.isArray(t.ownership_types)
+    ? t.ownership_types
+    : (t.ownership_types ? t.ownership_types.split(/,\s*/) : []);
+  const ownershipCheckboxes = OWNERSHIP_OPTS.map(opt => `
+    <label style="display:inline-flex;align-items:center;gap:5px;margin:4px 12px 4px 0;font-size:13px;cursor:pointer">
+      <input type="checkbox" name="tf-ownership-cb" value="${opt}" ${ownershipSelected.includes(opt) ? 'checked' : ''}>
+      ${escTpl(opt)}
+    </label>`).join('');
+
   return `
-    ${formGroup('Template Name', `<input class="form-control" id="tf-name" value="${escTpl(t.name || '')}" placeholder="e.g. Industrial PE Mid-Market">`, true)}
+    ${formGroup('Template Name', `<input class="form-control" id="tf-name" value="${escTpl(t.name || '')}" placeholder="e.g. Industrials PE Mid-Market Exits">`, true)}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       ${formGroup('Sector', `<select class="form-control" id="tf-sector">${sectorOptions(t.sector)}</select>`)}
       ${formGroup('Pull Type', `<select class="form-control" id="tf-pull-type">${pullOptions}</select>`)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      ${formGroup('Geography', `<input class="form-control" id="tf-geography" value="${escTpl(t.geography || '')}" placeholder="e.g. North America">`)}
-      ${formGroup('Deal Size Min', `<input class="form-control" id="tf-deal-size" value="${escTpl(t.deal_size_min || '')}" placeholder="e.g. $50M EBITDA">`)}
+      ${formGroup('Geography', `<select class="form-control" id="tf-geography">${geoOptions}</select>`)}
+      ${formGroup('Deal Size Min', `<select class="form-control" id="tf-deal-size">${dealOptions}</select>`)}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      ${formGroup('Revenue Range', `<input class="form-control" id="tf-revenue" value="${escTpl(t.revenue_range || '')}" placeholder="e.g. $100M-$500M">`)}
-      ${formGroup('Date Range', `<input class="form-control" id="tf-date-range" value="${escTpl(t.date_range || '')}" placeholder="e.g. 2018-2024">`)}
+      ${formGroup('Revenue Range', `<select class="form-control" id="tf-revenue">${revenueOptions}</select>`)}
+      <div class="form-group">
+        <label class="form-label">Date Range</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <select class="form-control" id="tf-date-from">${fromOptions}</select>
+          <select class="form-control" id="tf-date-to">${toOptions}</select>
+        </div>
+      </div>
     </div>
-    ${formGroup('Ownership Types', `<input class="form-control" id="tf-ownership" value="${escTpl(t.ownership_types || '')}" placeholder="e.g. Buyout, Growth">`)}
+    <div class="form-group">
+      <label class="form-label">Ownership Types</label>
+      <div style="border:1px solid #ddd;border-radius:4px;padding:10px 14px">
+        ${ownershipCheckboxes}
+      </div>
+    </div>
     ${formGroup('Notes', `<textarea class="form-control" id="tf-notes" rows="2" placeholder="Optional notes...">${escTpl(t.notes || '')}</textarea>`)}
   `;
 }
@@ -668,16 +904,19 @@ async function saveTemplate(tabType, id) {
       if (!payload.boolean_string.trim()) { alert('Boolean string is required.'); return; }
       break;
 
-    case 'pitchbook':
-      payload.sector = (document.getElementById('tf-sector') || {}).value || '';
-      payload.pull_type = (document.getElementById('tf-pull-type') || {}).value || '';
-      payload.geography = (document.getElementById('tf-geography') || {}).value || '';
+    case 'pitchbook': {
+      payload.sector        = (document.getElementById('tf-sector')    || {}).value || '';
+      payload.pull_type     = (document.getElementById('tf-pull-type') || {}).value || '';
+      payload.geography     = (document.getElementById('tf-geography') || {}).value || '';
       payload.deal_size_min = (document.getElementById('tf-deal-size') || {}).value || '';
-      payload.revenue_range = (document.getElementById('tf-revenue') || {}).value || '';
-      payload.date_range = (document.getElementById('tf-date-range') || {}).value || '';
-      payload.ownership_types = (document.getElementById('tf-ownership') || {}).value || '';
+      payload.revenue_range = (document.getElementById('tf-revenue')   || {}).value || '';
+      const dateFrom = (document.getElementById('tf-date-from') || {}).value || '';
+      const dateTo   = (document.getElementById('tf-date-to')   || {}).value || '';
+      payload.date_range = (dateFrom && dateTo) ? `${dateFrom}–${dateTo}` : (dateFrom || dateTo || '');
+      payload.ownership_types = Array.from(document.querySelectorAll('input[name="tf-ownership-cb"]:checked')).map(cb => cb.value);
       payload.notes = (document.getElementById('tf-notes') || {}).value || '';
       break;
+    }
 
     case 'outreach':
       payload.archetype = (document.getElementById('tf-archetype') || {}).value || '';

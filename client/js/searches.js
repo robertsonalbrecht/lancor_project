@@ -430,14 +430,22 @@ function renderSearchDetailView(search, tab) {
   }).join('');
 
   let tabContent = '';
-  if (tab === 'pipeline') {
-    tabContent = renderPipelineTabHTML(search);
-  } else if (tab === 'sourcing-coverage') {
-    tabContent = renderCoverageTabHTML(search);
-  } else if (tab === 'weekly-updates') {
-    tabContent = renderWeeklyUpdatesHTML(search);
-  } else if (tab === 'search-kit') {
-    tabContent = `<div id="search-kit-content"><div class="loading"><div class="spinner"></div> Loading...</div></div>`;
+  try {
+    if (tab === 'pipeline') {
+      tabContent = renderPipelineTabHTML(search);
+    } else if (tab === 'sourcing-coverage') {
+      if (typeof renderCoverageTabHTML !== 'function') throw new Error('renderCoverageTabHTML not loaded — check coverage.js');
+      tabContent = renderCoverageTabHTML(search);
+    } else if (tab === 'weekly-updates') {
+      tabContent = renderWeeklyUpdatesHTML(search);
+    } else if (tab === 'search-kit') {
+      tabContent = `<div id="search-kit-content"><div class="loading"><div class="spinner"></div> Loading...</div></div>`;
+    }
+  } catch (err) {
+    console.error('renderSearchDetailView tab error [' + tab + ']:', err);
+    tabContent = `<div class="error-banner" style="margin-top:16px">
+      Error loading ${escapeHtml(tab)} tab: ${escapeHtml(err.message)}
+    </div>`;
   }
 
   content.innerHTML = `
@@ -482,10 +490,32 @@ function renderSearchDetailView(search, tab) {
   }
 }
 
-function switchSearchTab(tab) {
+async function switchSearchTab(tab) {
   currentTab = tab;
-  if (currentSearchData) {
+
+  // Ensure we have search data — re-fetch if somehow missing
+  if (!currentSearchData && currentSearchId) {
+    try {
+      currentSearchData = await api('GET', '/searches/' + currentSearchId);
+    } catch (err) {
+      document.getElementById('app-content').innerHTML =
+        `<div class="error-banner">Failed to load search: ${escapeHtml(err.message)}</div>`;
+      return;
+    }
+  }
+
+  if (!currentSearchData) return;
+
+  try {
     renderSearchDetailView(currentSearchData, tab);
+  } catch (err) {
+    console.error('switchSearchTab render error:', err);
+    const tabContent = document.getElementById('tab-content');
+    if (tabContent) {
+      tabContent.innerHTML = `<div class="error-banner" style="margin-top:16px">
+        Error loading ${escapeHtml(tab)} tab: ${escapeHtml(err.message)}
+      </div>`;
+    }
   }
 }
 
@@ -1135,7 +1165,7 @@ async function submitQuickAdd() {
     linkedin_url:     document.getElementById('qa-linkedin').value.trim(),
     archetype:        document.getElementById('qa-archetype').value,
     sector_tags:      (currentSearchData || {}).sectors || [],
-    operator_background: 'Traditional Buyout',
+    operator_background: [],
     quality_rating:   null,
     availability:     'Unknown',
     search_history:   [],

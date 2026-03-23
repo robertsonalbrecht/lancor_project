@@ -41,8 +41,14 @@ const COVERAGE_BANDS = [
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let _currentSector = null;        // full sector object in memory
+let _currentFirmId = null;        // firm_id when viewing firm detail page
+let _rosterTitles  = [             // persisted title options for the roster add forms
+  'Operating Partner','Managing Partner','Managing Advisor','Managing Director',
+  'Operating Executive','Partner','Principal','Senior Director','Director',
+  'Senior Vice President','Manager','Vice President','Senior Associate','Associate','Analyst'
+];
 let _activeTab = 'pe-firms';      // 'pe-firms' | 'target-companies' | 'allstar'
-let _openAccordionId = null;      // firm_id or company_id currently expanded
+let _openAccordionId = null;      // company_id currently expanded (companies tab only)
 let _addFirmFormOpen = false;
 let _addCompanyFormOpen = false;
 
@@ -109,6 +115,29 @@ function genericPill(text, colorClass) {
   return `<span class="pill ${colorClass || ''}" style="background:#EDE7F6;color:#5C2D91;border:1px solid #ce93d8;">${text}</span>`;
 }
 
+// ── Entity type badge ─────────────────────────────────────────────────────────
+
+function entityTypeBadge(entityType) {
+  const cfg = {
+    'Growth Equity Firm':         { label: 'Growth Equity',    bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
+    'Venture Capital Firm':       { label: 'Venture',          bg: '#EDE7F6', color: '#5C2D91', border: '#ce93d8' },
+    'Credit / Distressed Firm':   { label: 'Credit / Distressed', bg: '#ffebee', color: '#c62828', border: '#ef9a9a' },
+    'Asset Manager with PE Wing': { label: 'Multi-Strategy',   bg: '#fff8e1', color: '#e65100', border: '#ffcc80' },
+    'PE Division of Larger Firm': { label: 'PE Division',      bg: '#e3f2fd', color: '#1565c0', border: '#90caf9' },
+    'Infrastructure Fund':        { label: 'Infrastructure',   bg: '#e0f2f1', color: '#00695c', border: '#80cbc4' },
+    'Impact / ESG Fund':          { label: 'Impact / ESG',     bg: '#f1f8e9', color: '#33691e', border: '#aed581' },
+    'Family Office':              { label: 'Family Office',    bg: '#f5f5f5', color: '#616161', border: '#bdbdbd' },
+    'Secondary Fund':             { label: 'Secondary',        bg: '#f5f5f5', color: '#616161', border: '#bdbdbd' },
+    'Real Estate Fund':           { label: 'Real Estate',      bg: '#f5f5f5', color: '#616161', border: '#bdbdbd' },
+    'Fund of Funds':              { label: 'Fund of Funds',    bg: '#f5f5f5', color: '#616161', border: '#bdbdbd' },
+  };
+  // "Dedicated PE Firm" gets no badge (majority case)
+  if (!entityType || entityType === 'Dedicated PE Firm') return '';
+  const c = cfg[entityType];
+  if (!c) return '';
+  return `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:${c.bg};color:${c.color};border:1px solid ${c.border};margin-left:5px;vertical-align:middle;">${c.label}</span>`;
+}
+
 function truncate(str, len) {
   if (!str) return '';
   return str.length > len ? str.slice(0, len) + '…' : str;
@@ -135,6 +164,7 @@ async function renderPlaybooks() {
 
   try {
     const data = await api('GET', '/playbooks');
+    _rosterTitles = data.roster_titles || [];
     const sectors = data.sectors || [];
     renderSectorGrid(sectors);
   } catch (err) {
@@ -305,23 +335,22 @@ function _renderPeFirmsTab() {
   } else {
     firms.forEach(f => {
       const cov = getCoverageInfo(f, false);
-      const isOpen = _openAccordionId === f.firm_id;
       const whyTrunc = truncate(f.why_target, 80);
+      const websiteIcon = f.website_url
+        ? ` <a href="${f.website_url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener"
+               onclick="event.stopPropagation()"
+               title="Visit website" style="color:#5C2D91;font-size:11px;margin-left:4px;text-decoration:none;">&#127760;</a>`
+        : '';
       tableRows += `
-        <tr class="firm-row ${isOpen ? 'row-open' : ''}"
-            style="cursor:pointer;"
-            onclick="_toggleFirmAccordion('${f.firm_id}')">
-          <td><strong>${f.name}</strong></td>
-          <td>${f.hq}</td>
+        <tr class="firm-row" style="cursor:pointer;" onclick="_renderFirmDetail('${f.firm_id}')">
+          <td><strong>${f.name}</strong>${entityTypeBadge(f.entity_type)}${websiteIcon}</td>
+          <td>${f.hq || '—'}</td>
           <td>${sizeTierPill(f.size_tier)}</td>
-          <td>${genericPill(f.strategy)}</td>
-          <td>${genericPill(f.sector_focus)}</td>
+          <td>${f.strategy ? genericPill(f.strategy) : '—'}</td>
+          <td>${f.sector_focus ? genericPill(f.sector_focus) : '—'}</td>
           <td>${coverageBarHTML(cov)}</td>
           <td title="${(f.why_target || '').replace(/"/g, '&quot;')}" style="max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${whyTrunc}</td>
         </tr>`;
-      if (isOpen) {
-        tableRows += `<tr class="accordion-tr"><td colspan="7" class="accordion-row" id="accordion-${f.firm_id}">${_buildFirmAccordion(f)}</td></tr>`;
-      }
     });
   }
 
@@ -377,6 +406,212 @@ function _firmFilterChanged() {
 function _toggleFirmAccordion(firmId) {
   _openAccordionId = (_openAccordionId === firmId) ? null : firmId;
   _renderPeFirmsTab();
+}
+
+// ── FIRM DETAIL PAGE ──────────────────────────────────────────────────────────
+
+function _renderFirmDetail(firmId) {
+  _currentFirmId = firmId;
+  const firm = (_currentSector.pe_firms || []).find(f => f.firm_id === firmId);
+  if (!firm) return;
+  const s = _currentSector;
+  const content = document.getElementById('app-content');
+  const cov = getCoverageInfo(firm, false);
+  const roster = firm.roster || [];
+
+  // Roster table rows
+  let rosterHTML;
+  if (roster.length === 0) {
+    rosterHTML = `<p style="color:#888;font-size:13px;padding:8px 0 16px;">No candidates on roster yet.</p>`;
+  } else {
+    const rows = roster.map((c, idx) => {
+      const nameCell = c.linkedin_url
+        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener" style="color:#5C2D91">${c.name}</a>`
+        : c.name;
+      const statusOpts = ROSTER_STATUSES.map(st =>
+        `<option value="${st}" ${c.roster_status === st ? 'selected' : ''}>${st}</option>`
+      ).join('');
+      return `<tr>
+        <td>${nameCell}</td>
+        <td style="color:#555">${c.title || ''}</td>
+        <td><select class="form-control" style="padding:3px 6px;font-size:12px;"
+              onchange="_updateCandidateStatus('${firmId}',${idx},this.value,false)">${statusOpts}</select></td>
+        <td><button class="btn btn-ghost btn-sm" style="color:#c62828;padding:2px 6px;"
+              onclick="_removeCandidate('${firmId}',${idx},false)">&#10005;</button></td>
+      </tr>`;
+    }).join('');
+    rosterHTML = `<table class="roster-table" style="margin-bottom:16px;">
+      <thead><tr><th>Name</th><th>Title</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  const isManual = firm.roster_completeness === 'manual-complete';
+  const expectedSize = firm.custom_roster_size || firm.expected_roster_size || TIER_ROSTER_DEFAULTS[firm.size_tier] || 6;
+
+  content.innerHTML = `
+    <div style="max-width:1100px;margin:0 auto">
+
+      <!-- Breadcrumb -->
+      <div style="margin-bottom:20px">
+        <button class="btn btn-ghost btn-sm" onclick="renderSectorDetail('${s.sector_id}')" style="margin-bottom:12px">
+          &#8592; ${s.sector_name} Playbook
+        </button>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h1 style="font-size:1.7rem;font-weight:800;margin:0 0 8px">${firm.name}</h1>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="color:#666;font-size:14px">&#128205; ${firm.hq || '—'}</span>
+              ${sizeTierPill(firm.size_tier)}
+              ${firm.strategy ? genericPill(firm.strategy) : ''}
+              ${firm.sector_focus ? genericPill(firm.sector_focus) : ''}
+              ${entityTypeBadge(firm.entity_type)}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            ${firm.website_url
+              ? `<a href="${firm.website_url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener"
+                    class="btn btn-secondary btn-sm" style="text-decoration:none">&#127760; Visit Website</a>`
+              : ''}
+            <button class="btn btn-ghost btn-sm" onclick="_toggleFirmEditPanel('${firmId}')">&#9998; Edit Firm</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit panel (hidden by default) -->
+      <div id="firm-edit-panel" style="display:none;background:#f9f9f9;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:20px">
+        <h3 style="margin:0 0 16px;font-size:14px;font-weight:700">Edit Firm Info</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label class="form-label">Firm Name</label>
+            <input class="form-control" id="ef-name" value="${(firm.name||'').replace(/"/g,'&quot;')}">
+          </div>
+          <div>
+            <label class="form-label">HQ</label>
+            <input class="form-control" id="ef-hq" value="${(firm.hq||'').replace(/"/g,'&quot;')}">
+          </div>
+          <div>
+            <label class="form-label">Website URL</label>
+            <input class="form-control" id="ef-website" placeholder="https://www.example.com" value="${(firm.website_url||'').replace(/"/g,'&quot;')}">
+          </div>
+          <div>
+            <label class="form-label">Size Tier</label>
+            <select class="form-control" id="ef-size">
+              ${['Mega','Large','Middle Market','Lower Middle Market'].map(t =>
+                `<option value="${t}" ${firm.size_tier===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Strategy</label>
+            <select class="form-control" id="ef-strategy">
+              ${['Buyout','Growth Equity','Distressed','Turnaround','Multi-Strategy'].map(t =>
+                `<option value="${t}" ${firm.strategy===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Sector Focus</label>
+            <select class="form-control" id="ef-focus">
+              ${['Primary','Significant','Opportunistic'].map(t =>
+                `<option value="${t}" ${firm.sector_focus===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="form-label">Why Target</label>
+          <textarea class="form-control" id="ef-why" rows="3">${firm.why_target||''}</textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="_saveFirmEdits('${firmId}')">Save Changes</button>
+          <button class="btn btn-ghost btn-sm" onclick="_toggleFirmEditPanel('${firmId}')">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Why Target -->
+      ${firm.why_target ? `
+      <div style="background:#f9f7ff;border-left:3px solid #5C2D91;border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:24px">
+        <div style="font-size:11px;font-weight:700;color:#5C2D91;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Why Target</div>
+        <p style="font-size:13px;color:#333;margin:0;line-height:1.6">${firm.why_target}</p>
+      </div>` : ''}
+
+      <!-- Roster card -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:20px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div>
+            <h2 style="font-size:15px;font-weight:700;margin:0">${firm.name} Roster</h2>
+            <span style="font-size:12px;color:#888">${roster.length} / ${expectedSize} identified</span>
+          </div>
+          <div>${coverageBarHTML(cov)}</div>
+        </div>
+
+        ${rosterHTML}
+
+        <!-- Add person form -->
+        <div style="border-top:1px solid #f0f0f0;padding-top:16px;margin-top:4px">
+          <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Add Person to Roster</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+            <div>
+              <label class="form-label">Name *</label>
+              <input type="text" id="ap-name-${firmId}" class="form-control" placeholder="Full name">
+            </div>
+            <div>
+              <label class="form-label">Title *</label>
+              ${_buildTitleSelect('ap-', firmId)}
+            </div>
+            <div>
+              <label class="form-label">LinkedIn URL</label>
+              <input type="text" id="ap-li-${firmId}" class="form-control" placeholder="https://linkedin.com/in/…">
+            </div>
+            <div>
+              <label class="form-label">Status</label>
+              <select id="ap-status-${firmId}" class="form-control">
+                ${ROSTER_STATUSES.map(st => `<option value="${st}" ${st==='Identified'?'selected':''}>${st}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="_addPersonToFirm('${firmId}')">Add to Roster</button>
+        </div>
+      </div>
+
+      <!-- Coverage Override -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
+        <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Coverage Override</div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="radio" name="override-${firmId}" value="auto" ${!isManual?'checked':''}
+                   onchange="_handleCoverageOverride('${firmId}','auto',false)"> Auto (calculated)
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="radio" name="override-${firmId}" value="manual-complete" ${isManual?'checked':''}
+                   onchange="_handleCoverageOverride('${firmId}','manual-complete',false)"> Mark as Complete
+          </label>
+          ${isManual ? `
+          <input type="text" id="override-note-${firmId}" class="form-control"
+                 style="max-width:260px;font-size:12px" placeholder="Note (optional)"
+                 value="${(firm.manual_complete_note||'').replace(/"/g,'&quot;')}">
+          <button class="btn btn-secondary btn-sm" onclick="_saveOverrideNote('${firmId}',false)">Save Note</button>` : ''}
+        </div>
+      </div>
+
+    </div>`;
+}
+
+function _toggleFirmEditPanel(firmId) {
+  const panel = document.getElementById('firm-edit-panel');
+  if (panel) panel.style.display = panel.style.display === 'none' ? '' : 'none';
+}
+
+async function _saveFirmEdits(firmId) {
+  const firm = (_currentSector.pe_firms || []).find(f => f.firm_id === firmId);
+  if (!firm) return;
+  firm.name        = document.getElementById('ef-name').value.trim() || firm.name;
+  firm.hq          = document.getElementById('ef-hq').value.trim();
+  firm.website_url = document.getElementById('ef-website').value.trim();
+  firm.size_tier   = document.getElementById('ef-size').value;
+  firm.strategy    = document.getElementById('ef-strategy').value;
+  firm.sector_focus = document.getElementById('ef-focus').value;
+  firm.why_target  = document.getElementById('ef-why').value.trim();
+  await saveSector(_currentSector);
+  _renderFirmDetail(firmId);
 }
 
 // ── FIRM ACCORDION ────────────────────────────────────────────────────────────
@@ -488,9 +723,56 @@ function _buildFirmAccordion(firm) {
 
 // ── FIRM ROSTER MUTATIONS ────────────────────────────────────────────────────
 
+function _buildTitleSelect(idPrefix, entityId) {
+  const opts = _rosterTitles.map(t =>
+    `<option value="${t.replace(/"/g,'&quot;')}">${t}</option>`
+  ).join('');
+  return `
+    <select id="${idPrefix}title-sel-${entityId}" class="form-control"
+            onchange="_onTitleSelectChange('${idPrefix}','${entityId}')">
+      <option value="">— Select Title —</option>
+      ${opts}
+      <option value="__new__">+ Add new title…</option>
+    </select>
+    <input type="text" id="${idPrefix}title-new-${entityId}" class="form-control"
+           placeholder="Enter new title" style="display:none;margin-top:4px;">`;
+}
+
+function _onTitleSelectChange(idPrefix, entityId) {
+  const sel = document.getElementById(`${idPrefix}title-sel-${entityId}`);
+  const inp = document.getElementById(`${idPrefix}title-new-${entityId}`);
+  if (!sel || !inp) return;
+  inp.style.display = sel.value === '__new__' ? '' : 'none';
+  if (sel.value === '__new__') inp.focus();
+}
+
+function _getTitleValue(idPrefix, entityId) {
+  const sel = document.getElementById(`${idPrefix}title-sel-${entityId}`);
+  if (!sel) return '';
+  if (sel.value === '__new__') {
+    const inp = document.getElementById(`${idPrefix}title-new-${entityId}`);
+    return inp ? inp.value.trim() : '';
+  }
+  return sel.value;
+}
+
+async function _saveNewTitleIfNeeded(idPrefix, entityId) {
+  const sel = document.getElementById(`${idPrefix}title-sel-${entityId}`);
+  if (!sel || sel.value !== '__new__') return;
+  const inp = document.getElementById(`${idPrefix}title-new-${entityId}`);
+  const newTitle = inp ? inp.value.trim() : '';
+  if (!newTitle || _rosterTitles.includes(newTitle)) return;
+  _rosterTitles.push(newTitle);
+  try {
+    await api('PATCH', '/playbooks', { roster_titles: _rosterTitles });
+  } catch (e) {
+    console.warn('Could not save new title to database:', e.message);
+  }
+}
+
 async function _addPersonToFirm(firmId) {
   const name   = document.getElementById(`ap-name-${firmId}`).value.trim();
-  const title  = document.getElementById(`ap-title-${firmId}`).value.trim();
+  const title  = _getTitleValue('ap-', firmId);
   const li     = document.getElementById(`ap-li-${firmId}`).value.trim();
   const status = document.getElementById(`ap-status-${firmId}`).value;
 
@@ -498,6 +780,8 @@ async function _addPersonToFirm(firmId) {
     alert('Name and Title are required.');
     return;
   }
+
+  await _saveNewTitleIfNeeded('ap-', firmId);
 
   const s = _currentSector;
   const firm = s.pe_firms.find(f => f.firm_id === firmId);
@@ -515,7 +799,7 @@ async function _addPersonToFirm(firmId) {
   });
 
   await saveSector(s);
-  _renderPeFirmsTab();
+  _renderFirmDetail(firmId);
 }
 
 async function _updateCandidateStatus(firmId, idx, newStatus, isCompany) {
@@ -634,6 +918,10 @@ function _buildAddFirmForm() {
         </div>
       </div>
       <div style="margin-bottom:12px;">
+        <label class="form-label">Website URL</label>
+        <input type="text" id="nf-website" class="form-control" placeholder="https://www.example.com" />
+      </div>
+      <div style="margin-bottom:12px;">
         <label class="form-label">Why Target</label>
         <textarea id="nf-why" class="form-control" rows="2" placeholder="Why this firm is relevant…"></textarea>
       </div>
@@ -650,8 +938,9 @@ async function _submitAddFirm() {
   const sizeTier = document.getElementById('nf-size').value;
   const strategy = document.getElementById('nf-strategy').value;
   const focus    = document.getElementById('nf-focus').value;
-  const why      = document.getElementById('nf-why').value.trim();
-  const customRaw = document.getElementById('nf-custom-roster').value.trim();
+  const why        = document.getElementById('nf-why').value.trim();
+  const website    = document.getElementById('nf-website').value.trim();
+  const customRaw  = document.getElementById('nf-custom-roster').value.trim();
   const customRoster = customRaw ? parseInt(customRaw, 10) : undefined;
 
   if (!name || !hq) {
@@ -671,6 +960,7 @@ async function _submitAddFirm() {
     strategy,
     sector_focus: focus,
     why_target: why,
+    website_url: website,
     expected_roster_size: expectedRosterSize,
     roster: [],
     roster_completeness: 'auto'
@@ -879,7 +1169,7 @@ function _buildCompanyAccordion(company) {
         </div>
         <div>
           <label class="form-label" style="margin-bottom:4px;">Title *</label>
-          <input type="text" id="apc-title-${company.company_id}" class="form-control" placeholder="Title" />
+          ${_buildTitleSelect('apc-', company.company_id)}
         </div>
         <div>
           <label class="form-label" style="margin-bottom:4px;">LinkedIn URL</label>
@@ -910,7 +1200,7 @@ function _buildCompanyAccordion(company) {
 
 async function _addPersonToCompany(companyId) {
   const name   = document.getElementById(`apc-name-${companyId}`).value.trim();
-  const title  = document.getElementById(`apc-title-${companyId}`).value.trim();
+  const title  = _getTitleValue('apc-', companyId);
   const li     = document.getElementById(`apc-li-${companyId}`).value.trim();
   const status = document.getElementById(`apc-status-${companyId}`).value;
 
@@ -918,6 +1208,8 @@ async function _addPersonToCompany(companyId) {
     alert('Name and Title are required.');
     return;
   }
+
+  await _saveNewTitleIfNeeded('apc-', companyId);
 
   const s = _currentSector;
   const company = s.target_companies.find(c => c.company_id === companyId);
