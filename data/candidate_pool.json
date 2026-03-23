@@ -1,3 +1,72 @@
 {
-  "candidates": []
+  "candidates": [
+    {
+      "candidate_id": "cand-rob-sayre-1774236032204",
+      "name": "Rob Sayre",
+      "current_title": "CEO",
+      "current_firm": "Sayre Ventures",
+      "home_location": "United States",
+      "linkedin_url": "https://www.linkedin.com/in/rwsayrejr/",
+      "work_history": [
+        {
+          "title": "CEO | Interim CEO | Operating Partner | Capital-Aligned Value Creation & Transformation",
+          "company": "Sayre Ventures",
+          "dates": "Oct 2024 - Present · 1 yr 6 mos",
+          "description": null
+        },
+        {
+          "title": "Travel",
+          "company": "Career Break",
+          "dates": "Apr 2024 - Oct 2024 · 7 mos",
+          "description": null
+        },
+        {
+          "title": "1888 Mills",
+          "company": "11 yrs 4 mos",
+          "dates": "Jan 2021 - Apr 2024 · 3 yrs 4 mos",
+          "description": null
+        },
+        {
+          "title": "Executive VP | Managing Director",
+          "company": "CNC Strategy Cloud Solutions, Inc",
+          "dates": "2011 - 2013 · 2 yrs",
+          "description": null
+        },
+        {
+          "title": "Managing Director | VP",
+          "company": "Turnberry Advisors",
+          "dates": "2010 - 2011 · 1 yr",
+          "description": null
+        },
+        {
+          "title": "Life Fitness",
+          "company": "4 yrs 1 mo",
+          "dates": "Greater Chicago Area",
+          "description": null
+        },
+        {
+          "title": "Philips",
+          "company": "5 yrs 1 mo",
+          "dates": "2003 - 2005 · 2 yrs",
+          "description": null
+        },
+        {
+          "title": "C.H. Robinson",
+          "company": "Full-time · 3 yrs 1 mo",
+          "dates": "1999 - 2000 · 1 yr",
+          "description": null
+        }
+      ],
+      "sector_tags": [],
+      "archetype": "PE Lateral",
+      "quality_rating": null,
+      "availability": "Unknown",
+      "search_history": [],
+      "dq_reasons": [],
+      "last_contact_date": null,
+      "notes": "",
+      "date_added": "2026-03-23",
+      "source": "LinkedIn (Chrome Extension)"
+    }
+  ]
 }

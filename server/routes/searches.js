@@ -36,6 +36,19 @@ router.get('/', (req, res) => {
   }
 });
 
+// GET /api/searches/active — return active searches as [{id, name}]
+router.get('/active', (req, res) => {
+  try {
+    const data = readSearches();
+    const active = data.searches
+      .filter(s => s.status === 'active' || s.status === 'open')
+      .map(s => ({ id: s.search_id, name: `${s.client_name} \u2014 ${s.role_title}` }));
+    res.json(active);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/searches/:id — return single search
 router.get('/:id', (req, res) => {
   try {

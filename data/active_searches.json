@@ -80,7 +80,58 @@
           "role": "Consultant"
         }
       ],
-      "pipeline": [],
+      "pipeline": [
+        {
+          "candidate_id": "cand-rob-sayre-1774236032204",
+          "name": "Rob Sayre",
+          "current_title": "CEO",
+          "current_firm": "Sayre Ventures",
+          "location": "United States",
+          "linkedin_url": "https://www.linkedin.com/in/rwsayrejr/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn (Chrome Extension)",
+          "stage": "DQ",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "Wrong Fit",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-23"
+        }
+      ],
       "sourcing_coverage": {
         "pe_firms": [],
         "companies": []

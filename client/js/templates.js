@@ -32,25 +32,25 @@ function highlightPlaceholders(text) {
 
 // ── Sector + Archetype options ────────────────────────────────────────────────
 
-const SECTORS = [
+const TPL_SECTORS = [
   'Industrials', 'Healthcare', 'Business Services', 'Consumer',
   'Technology', 'Financial Services', 'Energy', 'Real Estate',
   'Media & Communications', 'Infrastructure', 'Education', 'Government / Defense'
 ];
 
-const ARCHETYPES = [
+const TPL_ARCHETYPES = [
   'PE Lateral', 'Operating Partner', 'CFO', 'CEO', 'COO',
   'VP Operations', 'Plant Manager', 'Functional Lead', 'Board Member', 'Other'
 ];
 
 function sectorOptions(selected) {
-  return ['', ...SECTORS].map(s =>
+  return ['', ...TPL_SECTORS].map(s =>
     `<option value="${escTpl(s)}" ${s === selected ? 'selected' : ''}>${s || '-- Select Sector --'}</option>`
   ).join('');
 }
 
 function archetypeOptions(selected) {
-  return ['', ...ARCHETYPES].map(a =>
+  return ['', ...TPL_ARCHETYPES].map(a =>
     `<option value="${escTpl(a)}" ${a === selected ? 'selected' : ''}>${a || '-- Select Archetype --'}</option>`
   ).join('');
 }

@@ -424,7 +424,7 @@ function renderSearchDetailView(search, tab) {
     ? `<span class="pill pill-active">Active</span>`
     : `<span class="pill pill-closed">Closed</span>`;
 
-  const tabsHTML = ['Pipeline', 'Sourcing Coverage', 'Weekly Updates'].map(t => {
+  const tabsHTML = ['Pipeline', 'Sourcing Coverage', 'Weekly Updates', 'Search Kit'].map(t => {
     const key = t.toLowerCase().replace(/ /g, '-');
     return `<div class="tab ${tab === key ? 'active' : ''}" onclick="switchSearchTab('${key}')">${t}</div>`;
   }).join('');
@@ -436,6 +436,8 @@ function renderSearchDetailView(search, tab) {
     tabContent = renderCoverageTabHTML(search);
   } else if (tab === 'weekly-updates') {
     tabContent = renderWeeklyUpdatesHTML(search);
+  } else if (tab === 'search-kit') {
+    tabContent = `<div id="search-kit-content"><div class="loading"><div class="spinner"></div> Loading...</div></div>`;
   }
 
   content.innerHTML = `
@@ -474,6 +476,9 @@ function renderSearchDetailView(search, tab) {
   // Attach filter listeners after render
   if (tab === 'pipeline') {
     attachPipelineFilterListeners();
+  }
+  if (tab === 'search-kit') {
+    loadSearchKitTab(search);
   }
 }
 
@@ -1324,5 +1329,432 @@ async function initiateCloseSearch(searchId) {
     }
   } catch (e) {
     alert('Error closing search: ' + e.message);
+  }
+}
+
+// ── Search Kit Tab ────────────────────────────────────────────────────────────
+
+const SECTOR_NAME_MAP = {
+  'industrials':           'Industrials',
+  'technology-software':   'Technology',
+  'tech-enabled-services': 'Tech-Enabled Services',
+  'healthcare':            'Healthcare',
+  'financial-services':    'Financial Services',
+  'consumer':              'Consumer',
+  'business-services':     'Business Services',
+  'infrastructure-energy': 'Infrastructure',
+  'life-sciences':         'Life Sciences',
+  'media-entertainment':   'Media',
+  'real-estate-proptech':  'Real Estate',
+  'agriculture-fb':        'Agriculture'
+};
+
+async function loadSearchKitTab(search) {
+  const container = document.getElementById('search-kit-content');
+  if (!container) return;
+  try {
+    const data = await api('GET', '/templates');
+    container.innerHTML = renderSearchKitContent(search, data);
+  } catch (err) {
+    container.innerHTML = `<div class="error-banner">Failed to load templates: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function filterTemplatesForSearch(templates, search) {
+  const searchSectorNames = (search.sectors || []).map(id => (SECTOR_NAME_MAP[id] || id).toLowerCase());
+  const searchArchetypes  = (search.archetypes_requested || []).map(a => a.toLowerCase());
+
+  return templates.filter(tpl => {
+    const tplSector    = (tpl.sector    || '').trim().toLowerCase();
+    const tplArchetype = (tpl.archetype || '').trim().toLowerCase();
+
+    const sectorMatch    = !tplSector    || searchSectorNames.some(s => s.includes(tplSector) || tplSector.includes(s));
+    const archetypeMatch = !tplArchetype || searchArchetypes.some(a => a.includes(tplArchetype) || tplArchetype.includes(a));
+
+    return sectorMatch && archetypeMatch;
+  });
+}
+
+function renderSearchKitContent(search, allTemplates) {
+  const sectorLabels   = (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id).join(' · ');
+  const archetypeLabel = (search.archetypes_requested || []).join(' · ');
+  const contextLabel   = [sectorLabels, archetypeLabel].filter(Boolean).join(' · ') || 'All Templates';
+
+  const SECTIONS = [
+    { key: 'boolean_strings',         label: 'Boolean Strings',         typeKey: 'boolean'   },
+    { key: 'outreach_messages',       label: 'Outreach Messages',       typeKey: 'outreach'  },
+    { key: 'ideal_candidate_profiles',label: 'Ideal Candidate Profiles',typeKey: 'profile'   },
+    { key: 'screen_question_guides',  label: 'Screen Question Guides',  typeKey: 'screen'    },
+    { key: 'pitchbook_params',        label: 'PitchBook Parameters',    typeKey: 'pitchbook' }
+  ];
+
+  let sectionsHTML = '';
+  SECTIONS.forEach(section => {
+    const raw     = allTemplates[section.key] || [];
+    const matched = filterTemplatesForSearch(raw, search);
+
+    let bodyHTML;
+    if (matched.length === 0) {
+      bodyHTML = `<div class="search-kit-empty">No ${section.label.toLowerCase()} match this search's sector or archetype. <a href="#" onclick="navigateTo('templates');return false;">Open Templates Library →</a></div>`;
+    } else {
+      const rows = matched.map(tpl => {
+        const safeId   = escapeHtml(tpl.id);
+        const safeName = escapeHtml(tpl.name || '(Untitled)');
+        const safeSector    = escapeHtml(tpl.sector    || '—');
+        const safeArchetype = escapeHtml(tpl.archetype || '—');
+        return `
+          <tr>
+            <td style="font-weight:600">${safeName}</td>
+            <td style="color:#888">${safeSector}</td>
+            <td style="color:#888">${safeArchetype}</td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-ghost btn-sm" onclick="openTemplateUseModal(${JSON.stringify(tpl).replace(/"/g, '&quot;')}, '${section.typeKey}', ${JSON.stringify(search).replace(/"/g, '&quot;')})">Use</button>
+            </td>
+          </tr>`;
+      }).join('');
+      bodyHTML = `
+        <table class="search-kit-table">
+          <thead><tr>
+            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Name</th>
+            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Sector</th>
+            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Archetype</th>
+            <th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    sectionsHTML += `
+      <div class="search-kit-section">
+        <div class="search-kit-section-header">${section.label} (${matched.length})</div>
+        ${bodyHTML}
+      </div>`;
+  });
+
+  const searchJson = JSON.stringify(search).replace(/"/g, '&quot;');
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+      <div class="search-kit-context-banner" style="margin-bottom:0;flex:1">Showing templates for: ${escapeHtml(contextLabel)}</div>
+      <button class="btn btn-primary btn-sm" onclick="openBooleanBuilder(${searchJson})">&#128269; Build Boolean String</button>
+    </div>
+    ${sectionsHTML}
+    <div style="margin-top:16px;font-size:13px;color:#888">
+      <a href="#" onclick="navigateTo('templates');return false;" style="color:#5C2D91;font-weight:600">→ Open Templates Library</a>
+    </div>`;
+}
+
+function openTemplateUseModal(template, templateType, search) {
+  const role = search.role_title  || '{{role}}';
+  const firm = search.client_name || '{{firm}}';
+
+  function applyPlaceholders(str) {
+    if (!str) return '';
+    return str.replace(/\{\{role\}\}/gi, role).replace(/\{\{firm\}\}/gi, firm);
+  }
+
+  let previewHTML = '';
+  let copyText    = '';
+
+  if (templateType === 'boolean') {
+    const filled = applyPlaceholders(template.query || '');
+    copyText    = filled;
+    previewHTML = `<pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;background:#f5f5f5;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(filled)}</pre>`;
+
+  } else if (templateType === 'outreach') {
+    const subject = applyPlaceholders(template.subject || '');
+    const body    = applyPlaceholders(template.body    || '');
+    copyText = (subject ? 'Subject: ' + subject + '\n\n' : '') + body;
+    previewHTML = `
+      ${subject ? `<div style="margin-bottom:12px"><strong>Subject:</strong> ${escapeHtml(subject)}</div>` : ''}
+      <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;background:#f5f5f5;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(body)}</pre>`;
+
+  } else if (templateType === 'profile') {
+    const mustHaves    = (template.must_haves    || []).map(x => applyPlaceholders(x));
+    const niceToHaves  = (template.nice_to_haves || []).map(x => applyPlaceholders(x));
+    const redFlags     = (template.red_flags     || []).map(x => applyPlaceholders(x));
+    copyText = 'Must-Haves:\n' + mustHaves.map(x => '• ' + x).join('\n')
+             + '\n\nNice-to-Haves:\n' + niceToHaves.map(x => '• ' + x).join('\n')
+             + '\n\nRed Flags:\n' + redFlags.map(x => '• ' + x).join('\n');
+    const listHtml = (label, items) => `
+      <div style="margin-bottom:14px">
+        <strong>${label}</strong>
+        <ul style="margin:6px 0 0 18px;line-height:1.7;font-size:13px">${items.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
+      </div>`;
+    previewHTML = listHtml('Must-Haves', mustHaves) + listHtml('Nice-to-Haves', niceToHaves) + listHtml('Red Flags', redFlags);
+
+  } else if (templateType === 'screen') {
+    const questions = (template.questions || []).map(x => applyPlaceholders(x));
+    copyText    = questions.map((q, i) => (i + 1) + '. ' + q).join('\n');
+    previewHTML = `<ol style="margin:0 0 0 18px;line-height:1.9;font-size:13px">${questions.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol>`;
+
+  } else if (templateType === 'pitchbook') {
+    const fields = Object.entries(template).filter(([k]) => !['id','name','sector','archetype','created_at','updated_at'].includes(k));
+    copyText    = fields.map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : v)).join('\n');
+    previewHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">` +
+      fields.map(([k, v]) => `
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#666;white-space:nowrap;vertical-align:top;font-weight:600">${escapeHtml(k.replace(/_/g,' '))}</td>
+          <td style="padding:6px 0">${escapeHtml(Array.isArray(v) ? v.join(', ') : String(v || '—'))}</td>
+        </tr>`).join('') +
+      `</table>`;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'search-kit-modal';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:640px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0;font-size:1.1rem">${escapeHtml(template.name || '(Untitled)')}</h2>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('search-kit-modal').remove()">&#10005;</button>
+      </div>
+      <div style="margin-bottom:16px">
+        <button class="btn btn-primary btn-sm" id="kit-copy-btn" onclick="copySearchKitContent(${JSON.stringify(copyText).replace(/"/g, '&quot;')}, this)">&#128203; Copy</button>
+        <span style="font-size:12px;color:#999;margin-left:10px">{{name}} placeholders left for you to fill in</span>
+      </div>
+      <div>${previewHTML}</div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function copySearchKitContent(text, btnEl) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btnEl.textContent;
+    btnEl.textContent = 'Copied!';
+    setTimeout(() => { btnEl.textContent = orig; }, 1800);
+  }).catch(() => alert('Copy failed — please copy manually.'));
+}
+
+// ── Boolean String Builder ────────────────────────────────────────────────────
+
+let _boolState = null;
+
+const SECTOR_KW = {
+  'industrials':           ['manufacturing', 'industrial services', 'distribution', 'supply chain', 'engineered products', 'PE-backed', 'portfolio company'],
+  'technology-software':   ['SaaS', 'B2B software', 'enterprise software', 'cloud platform', 'PE-backed', 'portfolio company'],
+  'tech-enabled-services': ['tech-enabled', 'technology services', 'managed services', 'PE-backed', 'portfolio company'],
+  'healthcare':            ['healthcare services', 'healthcare IT', 'physician practice', 'PE-backed', 'portfolio company'],
+  'financial-services':    ['financial services', 'asset management', 'wealth management', 'PE-backed'],
+  'consumer':              ['consumer brands', 'omnichannel', 'DTC', 'retail', 'PE-backed', 'portfolio company'],
+  'business-services':     ['business services', 'outsourcing', 'BPO', 'PE-backed', 'portfolio company'],
+  'infrastructure-energy': ['infrastructure', 'energy', 'utilities', 'renewable energy', 'PE-backed'],
+  'life-sciences':         ['life sciences', 'medical devices', 'diagnostics', 'biopharma', 'PE-backed'],
+  'media-entertainment':   ['media', 'entertainment', 'digital media', 'content', 'PE-backed'],
+  'real-estate-proptech':  ['real estate', 'proptech', 'commercial real estate', 'PE-backed'],
+  'agriculture-fb':        ['agriculture', 'agribusiness', 'food and beverage', 'F&B', 'PE-backed']
+};
+
+function suggestTitleVariants(roleTitle) {
+  if (!roleTitle) return [];
+  const t = roleTitle.toLowerCase();
+  const set = new Set([roleTitle]);
+
+  if (/operating partner|portfolio operating/.test(t)) {
+    ['Operating Partner', 'Portfolio Operating Partner', 'Operating Executive', 'Executive in Residence',
+     'CEO', 'COO', 'President', 'Division President', 'Group President'].forEach(v => set.add(v));
+  }
+  if (/\bcoo\b|chief operating officer/.test(t)) {
+    ['COO', 'Chief Operating Officer', 'VP Operations', 'SVP Operations', 'Head of Operations'].forEach(v => set.add(v));
+  }
+  if (/\bcfo\b|chief financial officer/.test(t)) {
+    ['CFO', 'Chief Financial Officer', 'VP Finance', 'SVP Finance', 'Head of Finance'].forEach(v => set.add(v));
+  }
+  if (/\bceo\b|chief executive officer/.test(t)) {
+    ['CEO', 'Chief Executive Officer', 'President', 'Managing Director', 'Executive Director'].forEach(v => set.add(v));
+  }
+  if (/\bcto\b|chief technology|chief technical/.test(t)) {
+    ['CTO', 'Chief Technology Officer', 'VP Engineering', 'SVP Engineering', 'Head of Engineering'].forEach(v => set.add(v));
+  }
+  if (/\bcmo\b|chief marketing/.test(t)) {
+    ['CMO', 'Chief Marketing Officer', 'VP Marketing', 'SVP Marketing', 'Head of Marketing'].forEach(v => set.add(v));
+  }
+  if (/\bchro\b|chief human resources|chief people/.test(t)) {
+    ['CHRO', 'Chief People Officer', 'VP Human Resources', 'SVP Human Resources', 'Head of HR'].forEach(v => set.add(v));
+  }
+  if (/\bpresident\b/.test(t) && !/vice president/.test(t)) {
+    ['President', 'CEO', 'Chief Executive Officer', 'Managing Director', 'Division President', 'Group President'].forEach(v => set.add(v));
+  }
+  if (/(vp|vice president).*(operations|operating)/.test(t)) {
+    ['VP Operations', 'VP of Operations', 'SVP Operations', 'EVP Operations', 'COO'].forEach(v => set.add(v));
+  }
+  if (/(vp|vice president).*(financ|cfo)/.test(t)) {
+    ['VP Finance', 'VP of Finance', 'SVP Finance', 'CFO'].forEach(v => set.add(v));
+  }
+
+  // If only the exact title matched (no pattern hit), add generic seniority variants
+  if (set.size === 1) {
+    const words = roleTitle.split(' ');
+    const fn = words.slice(-1)[0]; // last word as function hint
+    ['VP', 'SVP', 'EVP'].forEach(pre => set.add(`${pre} ${fn}`));
+  }
+
+  return [...set].slice(0, 8);
+}
+
+function openBooleanBuilder(search) {
+  const titles    = suggestTitleVariants(search.role_title || '');
+  const companies = [
+    ...(search.sourcing_coverage?.pe_firms        || []).map(f => f.name).filter(Boolean),
+    ...(search.sourcing_coverage?.target_companies || []).map(c => c.name).filter(Boolean)
+  ].slice(0, 12);
+  const keywords   = (search.sectors || []).flatMap(id => SECTOR_KW[id] || []).slice(0, 8);
+  const exclusions = ['analyst', 'associate', 'intern', 'junior', 'coordinator', 'assistant'];
+
+  _boolState = { titles, companies, keywords, exclusions };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'bool-builder-modal';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:820px;max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
+      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:20px 24px 18px;border-radius:14px 14px 0 0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h2 style="margin:0;font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-0.2px">&#128269; Boolean String Builder</h2>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">
+              ${escapeHtml(search.client_name)} &mdash; ${escapeHtml(search.role_title || '')}
+            </div>
+          </div>
+          <button onclick="document.getElementById('bool-builder-modal').remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">&#10005;</button>
+        </div>
+      </div>
+      <div style="padding:20px 24px 24px">
+      <div style="font-size:12px;color:#888;margin-bottom:16px;padding:10px 14px;background:#f9f6fd;border-radius:7px;border:1px solid #ede7f6">
+        Click &#10005; on a tag to remove it &nbsp;&middot;&nbsp; Type + <kbd style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid #ddd">Enter</kbd> to add your own &nbsp;&middot;&nbsp; Drag between sections coming soon
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        ${renderBoolBlock('titles',     'block-titles',     'Job Titles',  'OR &mdash; any of these titles will match')}
+        ${renderBoolBlock('companies',  'block-companies',  'Companies',   'OR &mdash; candidates at any of these firms')}
+        ${renderBoolBlock('keywords',   'block-keywords',   'Keywords',    'OR &mdash; background / industry keywords')}
+        ${renderBoolBlock('exclusions', 'block-exclusions', 'Exclude',     'NOT &mdash; filter these terms out')}
+      </div>
+
+      <div style="margin:20px 0 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:0.8px">Generated Boolean String</div>
+          <button class="btn btn-ghost btn-sm" id="bool-copy-btn" onclick="copyBooleanString(this)" style="font-size:12px">&#128203; Copy</button>
+        </div>
+        <pre id="bool-preview" style="white-space:pre-wrap;font-family:'Courier New',monospace;font-size:12.5px;background:#1e1e2e;color:#cdd6f4;padding:18px 20px;border-radius:10px;line-height:1.8;min-height:70px;margin:0;border:1.5px solid #2a2a3d"></pre>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding-top:12px;border-top:1px solid #f0f0f0">
+        <span style="font-size:12px;color:#bbb;flex:1">Paste directly into LinkedIn Recruiter, LinkedIn Search, or PitchBook</span>
+        <button class="btn btn-ghost" onclick="document.getElementById('bool-builder-modal').remove()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveBooleanToTemplates(${JSON.stringify(search).replace(/"/g, '&quot;')})">&#128190; Save to Templates</button>
+      </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  updateBooleanPreview();
+}
+
+function renderBoolBlock(blockId, modClass, label, hint) {
+  return `
+    <div class="bool-block ${modClass}">
+      <div class="bool-block-label">${label}</div>
+      <div class="bool-block-hint">${hint}</div>
+      <div class="bool-tag-input" id="tags-${blockId}" onclick="focusBoolInput('${blockId}')">
+        <input class="bool-tag-raw" id="input-${blockId}" type="text" placeholder="Type &amp; press Enter..."
+          onkeydown="handleBoolTagKey(event,'${blockId}')" />
+      </div>
+    </div>`;
+}
+
+function refreshBoolTags(blockId) {
+  const container = document.getElementById('tags-' + blockId);
+  if (!container) return;
+  const input = container.querySelector('input');
+  container.querySelectorAll('.bool-tag').forEach(el => el.remove());
+  (_boolState[blockId] || []).forEach((tag, i) => {
+    const pill = document.createElement('span');
+    pill.className = 'bool-tag';
+    pill.innerHTML = `${escapeHtml(tag)}<button type="button" onclick="removeBoolTag('${blockId}',${i})" title="Remove">&#10005;</button>`;
+    container.insertBefore(pill, input);
+  });
+}
+
+function handleBoolTagKey(e, blockId) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim().replace(/,$/, '');
+    if (val) {
+      _boolState[blockId].push(val);
+      e.target.value = '';
+      updateBooleanPreview();
+    }
+  }
+}
+
+function removeBoolTag(blockId, index) {
+  _boolState[blockId].splice(index, 1);
+  updateBooleanPreview();
+}
+
+function focusBoolInput(blockId) {
+  document.getElementById('input-' + blockId)?.focus();
+}
+
+function updateBooleanPreview() {
+  ['titles', 'companies', 'keywords', 'exclusions'].forEach(id => refreshBoolTags(id));
+  const preview = document.getElementById('bool-preview');
+  if (preview) preview.textContent = generateBooleanString(_boolState);
+}
+
+function generateBooleanString(state) {
+  function quote(term) { return term.includes(' ') ? `"${term}"` : term; }
+  function orGroup(arr) {
+    const f = arr.map(quote);
+    return f.length === 1 ? f[0] : `(${f.join(' OR ')})`;
+  }
+
+  const parts = [];
+  if (state.titles.length)    parts.push(orGroup(state.titles));
+  if (state.companies.length) parts.push(orGroup(state.companies));
+  if (state.keywords.length)  parts.push(orGroup(state.keywords));
+
+  let result = parts.join('\nAND ');
+
+  if (state.exclusions.length) {
+    const excStr = state.exclusions.map(quote).join(' OR ');
+    const excGroup = state.exclusions.length > 1 ? `(${excStr})` : excStr;
+    result += (result ? '\nNOT ' : 'NOT ') + excGroup;
+  }
+
+  return result || '(add tags above to build your string)';
+}
+
+function copyBooleanString(btnEl) {
+  const text = document.getElementById('bool-preview')?.textContent || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btnEl.innerHTML;
+    btnEl.innerHTML = 'Copied!';
+    setTimeout(() => { btnEl.innerHTML = orig; }, 1800);
+  }).catch(() => alert('Copy failed — please copy manually.'));
+}
+
+async function saveBooleanToTemplates(search) {
+  const query = document.getElementById('bool-preview')?.textContent || '';
+  if (!query || query.startsWith('(add tags')) {
+    alert('Please add some tags before saving.');
+    return;
+  }
+  const name      = `${search.role_title || 'Role'} — Boolean String`;
+  const sector    = (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id)[0] || '';
+  const archetype = (search.archetypes_requested || [])[0] || '';
+  try {
+    await api('POST', '/templates/boolean', { name, query, sector, archetype });
+    const btn = document.querySelector('#bool-builder-modal .btn-primary');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Saved!';
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+  } catch (err) {
+    alert('Error saving: ' + err.message);
   }
 }

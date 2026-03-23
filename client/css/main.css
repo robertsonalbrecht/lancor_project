@@ -1267,3 +1267,39 @@ tr.row-open > td {
 
 /* ── Dashboard generated banner ─────────────────────────────── */
 .dashboard-section { margin-top: 28px; padding-top: 20px; border-top: 2px solid #e0e0e0; }
+
+/* ── Search Kit tab ──────────────────────────────────────────── */
+.search-kit-context-banner { background: #EDE7F6; border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #5C2D91; font-weight: 600; margin-bottom: 24px; }
+.search-kit-section { margin-bottom: 28px; }
+.search-kit-section-header { font-size: 13px; font-weight: 700; color: #5C2D91; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #EDE7F6; }
+.search-kit-empty { font-size: 13px; color: #aaa; padding: 12px 0; }
+.search-kit-table { width: 100%; border-collapse: collapse; }
+.search-kit-table td { padding: 8px 10px; border-bottom: 1px solid #f5f5f5; font-size: 13px; vertical-align: middle; }
+.search-kit-table tr:hover td { background: #fafafa; }
+
+/* ── Boolean String Builder ──────────────────────────────────── */
+.bool-block { background: #fff; border: 1.5px solid #e4e4e4; border-radius: 10px; padding: 14px 16px 12px; display: flex; flex-direction: column; }
+.bool-block.block-titles    { border-top: 3px solid #5C2D91; }
+.bool-block.block-companies { border-top: 3px solid #1565C0; }
+.bool-block.block-keywords  { border-top: 3px solid #2E7D32; }
+.bool-block.block-exclusions{ border-top: 3px solid #B71C1C; }
+.bool-block-label { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 2px; }
+.block-titles    .bool-block-label { color: #5C2D91; }
+.block-companies .bool-block-label { color: #1565C0; }
+.block-keywords  .bool-block-label { color: #2E7D32; }
+.block-exclusions .bool-block-label { color: #B71C1C; }
+.bool-block-hint { font-size: 11px; color: #bbb; margin-bottom: 10px; }
+.bool-tag-input { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 8px 10px; border: 1.5px solid #e8e8e8; border-radius: 7px; min-height: 46px; cursor: text; background: #fafafa; transition: border-color 0.15s, box-shadow 0.15s; flex: 1; }
+.bool-tag-input:focus-within { background: #fff; border-color: #5C2D91; box-shadow: 0 0 0 3px #EDE7F6; }
+.block-companies .bool-tag-input:focus-within { border-color: #1565C0; box-shadow: 0 0 0 3px #E3F2FD; }
+.block-keywords  .bool-tag-input:focus-within { border-color: #2E7D32; box-shadow: 0 0 0 3px #E8F5E9; }
+.block-exclusions .bool-tag-input:focus-within { border-color: #B71C1C; box-shadow: 0 0 0 3px #FFEBEE; }
+.bool-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 8px 4px 10px; border-radius: 5px; white-space: nowrap; }
+.block-titles    .bool-tag { background: #EDE7F6; color: #5C2D91; }
+.block-companies .bool-tag { background: #E3F2FD; color: #1565C0; }
+.block-keywords  .bool-tag { background: #E8F5E9; color: #2E7D32; }
+.block-exclusions .bool-tag { background: #FFEBEE; color: #B71C1C; }
+.bool-tag button { background: none; border: none; cursor: pointer; font-size: 10px; padding: 0; line-height: 1; opacity: 0.5; color: inherit; }
+.bool-tag button:hover { opacity: 1; }
+.bool-tag-raw { border: none; outline: none; font-size: 12px; flex: 1; min-width: 90px; background: transparent; color: #555; }
+.bool-tag-raw::placeholder { color: #ccc; }
