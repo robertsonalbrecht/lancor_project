@@ -611,7 +611,7 @@ function renderPipelineTabHTML(search) {
            <tbody>
              ${holdCandidates.map(c => `
                <tr>
-                 <td><div class="candidate-name">${escapeHtml(c.name)}</div><div class="candidate-subtitle">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div></td>
+                 <td><div class="candidate-name"><span class="cand-name-link" onclick="openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span></div><div class="candidate-subtitle">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div></td>
                  <td>${stagePillHTML(c.stage)}</td>
                  <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="dq_reason">${escapeHtml(c.dq_reason || '—')}</td>
                  <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="next_step">${escapeHtml(c.next_step || '—')}</td>
@@ -630,7 +630,7 @@ function renderPipelineTabHTML(search) {
       : `<div class="pursuing-grid">
            ${pursuingCandidates.map(c => `
              <div class="pursuing-card">
-               <div class="pursuing-card-name">${escapeHtml(c.name)}</div>
+               <div class="pursuing-card-name"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span></div>
                <div class="pursuing-card-sub">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div>
                <div class="pursuing-card-sub" style="margin-top:4px">${escapeHtml(c.location || '')}</div>
                <div style="margin-top:8px">${stagePillHTML(c.archetype || 'PE Lateral')}</div>
@@ -652,7 +652,7 @@ function renderPipelineTabHTML(search) {
       : `<div>${dqNiCandidates.map(c => `
            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
              <div style="flex:1">
-               <span class="candidate-name">${escapeHtml(c.name)}</span>
+               <span class="candidate-name cand-name-link" onclick="openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span>
                <span style="color:#aaa;margin-left:6px">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</span>
              </div>
              ${stagePillHTML(c.stage)}
@@ -729,7 +729,7 @@ function pipelineRowHTML(c, search) {
   return `
     <tr data-cid="${escapeHtml(c.candidate_id)}">
       <td>
-        <div class="candidate-name">${escapeHtml(c.name)}${linkedinLink}</div>
+        <div class="candidate-name"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span>${linkedinLink}</div>
         <div class="candidate-subtitle">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div>
         ${c.location ? `<div class="candidate-subtitle">${escapeHtml(c.location)}</div>` : ''}
       </td>
@@ -1379,182 +1379,504 @@ const SECTOR_NAME_MAP = {
   'agriculture-fb':        'Agriculture'
 };
 
+// ── Kit state ──
+let _kitSearch = null; // current search reference for kit operations
+
 async function loadSearchKitTab(search) {
+  _kitSearch = search;
   const container = document.getElementById('search-kit-content');
   if (!container) return;
-  try {
-    const data = await api('GET', '/templates');
-    container.innerHTML = renderSearchKitContent(search, data);
-  } catch (err) {
-    container.innerHTML = `<div class="error-banner">Failed to load templates: ${escapeHtml(err.message)}</div>`;
-  }
+  const kit = search.search_kit || {};
+  container.innerHTML = renderSearchKitWorkspace(search, kit);
 }
 
-function filterTemplatesForSearch(templates, search) {
-  const searchSectorNames = (search.sectors || []).map(id => (SECTOR_NAME_MAP[id] || id).toLowerCase());
-  const searchArchetypes  = (search.archetypes_requested || []).map(a => a.toLowerCase());
-
-  return templates.filter(tpl => {
-    const tplSector    = (tpl.sector    || '').trim().toLowerCase();
-    const tplArchetype = (tpl.archetype || '').trim().toLowerCase();
-
-    const sectorMatch    = !tplSector    || searchSectorNames.some(s => s.includes(tplSector) || tplSector.includes(s));
-    const archetypeMatch = !tplArchetype || searchArchetypes.some(a => a.includes(tplArchetype) || tplArchetype.includes(a));
-
-    return sectorMatch && archetypeMatch;
-  });
+async function saveKitEntry(type, entry) {
+  if (!_kitSearch) return;
+  if (!_kitSearch.search_kit) _kitSearch.search_kit = { boolean_strings:[], outreach_messages:[], ideal_candidate_profiles:[], screen_question_guides:[], pitchbook_params:[] };
+  if (!_kitSearch.search_kit[type]) _kitSearch.search_kit[type] = [];
+  _kitSearch.search_kit[type].push(entry);
+  await api('PUT', '/searches/' + _kitSearch.search_id, { search_kit: _kitSearch.search_kit });
+  currentSearchData = _kitSearch;
+  loadSearchKitTab(_kitSearch);
 }
 
-function renderSearchKitContent(search, allTemplates) {
-  const sectorLabels   = (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id).join(' · ');
-  const archetypeLabel = (search.archetypes_requested || []).join(' · ');
-  const contextLabel   = [sectorLabels, archetypeLabel].filter(Boolean).join(' · ') || 'All Templates';
-
-  const SECTIONS = [
-    { key: 'boolean_strings',         label: 'Boolean Strings',         typeKey: 'boolean'   },
-    { key: 'outreach_messages',       label: 'Outreach Messages',       typeKey: 'outreach'  },
-    { key: 'ideal_candidate_profiles',label: 'Ideal Candidate Profiles',typeKey: 'profile'   },
-    { key: 'screen_question_guides',  label: 'Screen Question Guides',  typeKey: 'screen'    },
-    { key: 'pitchbook_params',        label: 'PitchBook Parameters',    typeKey: 'pitchbook' }
-  ];
-
-  let sectionsHTML = '';
-  SECTIONS.forEach(section => {
-    const raw     = allTemplates[section.key] || [];
-    const matched = filterTemplatesForSearch(raw, search);
-
-    let bodyHTML;
-    if (matched.length === 0) {
-      bodyHTML = `<div class="search-kit-empty">No ${section.label.toLowerCase()} match this search's sector or archetype. <a href="#" onclick="navigateTo('templates');return false;">Open Templates Library →</a></div>`;
-    } else {
-      const rows = matched.map(tpl => {
-        const safeId   = escapeHtml(tpl.id);
-        const safeName = escapeHtml(tpl.name || '(Untitled)');
-        const safeSector    = escapeHtml(tpl.sector    || '—');
-        const safeArchetype = escapeHtml(tpl.archetype || '—');
-        return `
-          <tr>
-            <td style="font-weight:600">${safeName}</td>
-            <td style="color:#888">${safeSector}</td>
-            <td style="color:#888">${safeArchetype}</td>
-            <td style="white-space:nowrap">
-              <button class="btn btn-ghost btn-sm" onclick="openTemplateUseModal(${JSON.stringify(tpl).replace(/"/g, '&quot;')}, '${section.typeKey}', ${JSON.stringify(search).replace(/"/g, '&quot;')})">Use</button>
-            </td>
-          </tr>`;
-      }).join('');
-      bodyHTML = `
-        <table class="search-kit-table">
-          <thead><tr>
-            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Name</th>
-            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Sector</th>
-            <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Archetype</th>
-            <th></th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-    }
-
-    sectionsHTML += `
-      <div class="search-kit-section">
-        <div class="search-kit-section-header">${section.label} (${matched.length})</div>
-        ${bodyHTML}
-      </div>`;
-  });
-
-  const searchJson = JSON.stringify(search).replace(/"/g, '&quot;');
-  return `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
-      <div class="search-kit-context-banner" style="margin-bottom:0;flex:1">Showing templates for: ${escapeHtml(contextLabel)}</div>
-      <button class="btn btn-primary btn-sm" onclick="openBooleanBuilder(${searchJson})">&#128269; Build Boolean String</button>
-    </div>
-    ${sectionsHTML}
-    <div style="margin-top:16px;font-size:13px;color:#888">
-      <a href="#" onclick="navigateTo('templates');return false;" style="color:#5C2D91;font-weight:600">→ Open Templates Library</a>
-    </div>`;
+async function deleteKitEntry(type, id) {
+  if (!_kitSearch?.search_kit?.[type]) return;
+  _kitSearch.search_kit[type] = _kitSearch.search_kit[type].filter(e => e.id !== id);
+  await api('PUT', '/searches/' + _kitSearch.search_id, { search_kit: _kitSearch.search_kit });
+  currentSearchData = _kitSearch;
+  loadSearchKitTab(_kitSearch);
 }
 
-function openTemplateUseModal(template, templateType, search) {
-  const role = search.role_title  || '{{role}}';
-  const firm = search.client_name || '{{firm}}';
+async function updateKitEntry(type, id, updates) {
+  if (!_kitSearch?.search_kit?.[type]) return;
+  const idx = _kitSearch.search_kit[type].findIndex(e => e.id === id);
+  if (idx === -1) return;
+  Object.assign(_kitSearch.search_kit[type][idx], updates);
+  await api('PUT', '/searches/' + _kitSearch.search_id, { search_kit: _kitSearch.search_kit });
+  currentSearchData = _kitSearch;
+  loadSearchKitTab(_kitSearch);
+}
 
-  function applyPlaceholders(str) {
-    if (!str) return '';
-    return str.replace(/\{\{role\}\}/gi, role).replace(/\{\{firm\}\}/gi, firm);
-  }
+function closeKitModal() {
+  document.getElementById('kit-modal-overlay')?.remove();
+}
 
-  let previewHTML = '';
-  let copyText    = '';
-
-  if (templateType === 'boolean') {
-    const filled = applyPlaceholders(template.query || '');
-    copyText    = filled;
-    previewHTML = `<pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;background:#f5f5f5;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(filled)}</pre>`;
-
-  } else if (templateType === 'outreach') {
-    const subject = applyPlaceholders(template.subject || '');
-    const body    = applyPlaceholders(template.body    || '');
-    copyText = (subject ? 'Subject: ' + subject + '\n\n' : '') + body;
-    previewHTML = `
-      ${subject ? `<div style="margin-bottom:12px"><strong>Subject:</strong> ${escapeHtml(subject)}</div>` : ''}
-      <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;background:#f5f5f5;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(body)}</pre>`;
-
-  } else if (templateType === 'profile') {
-    const mustHaves    = (template.must_haves    || []).map(x => applyPlaceholders(x));
-    const niceToHaves  = (template.nice_to_haves || []).map(x => applyPlaceholders(x));
-    const redFlags     = (template.red_flags     || []).map(x => applyPlaceholders(x));
-    copyText = 'Must-Haves:\n' + mustHaves.map(x => '• ' + x).join('\n')
-             + '\n\nNice-to-Haves:\n' + niceToHaves.map(x => '• ' + x).join('\n')
-             + '\n\nRed Flags:\n' + redFlags.map(x => '• ' + x).join('\n');
-    const listHtml = (label, items) => `
-      <div style="margin-bottom:14px">
-        <strong>${label}</strong>
-        <ul style="margin:6px 0 0 18px;line-height:1.7;font-size:13px">${items.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>
-      </div>`;
-    previewHTML = listHtml('Must-Haves', mustHaves) + listHtml('Nice-to-Haves', niceToHaves) + listHtml('Red Flags', redFlags);
-
-  } else if (templateType === 'screen') {
-    const questions = (template.questions || []).map(x => applyPlaceholders(x));
-    copyText    = questions.map((q, i) => (i + 1) + '. ' + q).join('\n');
-    previewHTML = `<ol style="margin:0 0 0 18px;line-height:1.9;font-size:13px">${questions.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol>`;
-
-  } else if (templateType === 'pitchbook') {
-    const fields = Object.entries(template).filter(([k]) => !['id','name','sector','archetype','created_at','updated_at'].includes(k));
-    copyText    = fields.map(([k, v]) => k + ': ' + (Array.isArray(v) ? v.join(', ') : v)).join('\n');
-    previewHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">` +
-      fields.map(([k, v]) => `
-        <tr>
-          <td style="padding:6px 12px 6px 0;color:#666;white-space:nowrap;vertical-align:top;font-weight:600">${escapeHtml(k.replace(/_/g,' '))}</td>
-          <td style="padding:6px 0">${escapeHtml(Array.isArray(v) ? v.join(', ') : String(v || '—'))}</td>
-        </tr>`).join('') +
-      `</table>`;
-  }
-
+function kitModal(title, subtitle, bodyHTML, footerHTML, opts = {}) {
+  closeKitModal();
+  const maxW = opts.maxWidth || '720px';
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.id = 'search-kit-modal';
+  overlay.id = 'kit-modal-overlay';
   overlay.innerHTML = `
-    <div class="modal" style="max-width:640px;max-height:80vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0;font-size:1.1rem">${escapeHtml(template.name || '(Untitled)')}</h2>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('search-kit-modal').remove()">&#10005;</button>
+    <div class="modal" style="max-width:${maxW};max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
+      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:20px 24px 18px;border-radius:14px 14px 0 0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h2 style="margin:0;font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-0.2px">${title}</h2>
+            ${subtitle ? `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">${subtitle}</div>` : ''}
+          </div>
+          <button onclick="closeKitModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center">&#10005;</button>
+        </div>
       </div>
-      <div style="margin-bottom:16px">
-        <button class="btn btn-primary btn-sm" id="kit-copy-btn" onclick="copySearchKitContent(${JSON.stringify(copyText).replace(/"/g, '&quot;')}, this)">&#128203; Copy</button>
-        <span style="font-size:12px;color:#999;margin-left:10px">{{name}} placeholders left for you to fill in</span>
+      <div style="padding:20px 24px 24px" id="kit-modal-body">
+        ${bodyHTML}
       </div>
-      <div>${previewHTML}</div>
+      ${footerHTML ? `<div style="padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap" id="kit-modal-footer">${footerHTML}</div>` : ''}
     </div>`;
-
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeKitModal(); });
+  return overlay;
 }
 
-function copySearchKitContent(text, btnEl) {
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btnEl.textContent;
-    btnEl.textContent = 'Copied!';
-    setTimeout(() => { btnEl.textContent = orig; }, 1800);
-  }).catch(() => alert('Copy failed — please copy manually.'));
+// ── Workspace Renderer ────────────────────────────────────────────────────────
+
+function renderSearchKitWorkspace(search, kit) {
+  const sj = JSON.stringify(search).replace(/"/g, '&quot;');
+
+  const SECTIONS = [
+    { key: 'ideal_candidate_profiles', label: 'Ideal Candidate Profiles', icon: '&#128100;', ai: false, buildFn: 'openICPBuilder' },
+    { key: 'boolean_strings',          label: 'Boolean Strings',          icon: '&#128269;', ai: false, buildFn: 'openBooleanBuilder' },
+    { key: 'outreach_messages',        label: 'Outreach Messages',        icon: '&#9993;',   ai: false, buildFn: 'openOutreachBuilder' },
+    { key: 'screen_question_guides',   label: 'Screen Question Guides',   icon: '&#128172;', ai: true,  buildFn: 'openScreenQBuilder' },
+    { key: 'pitchbook_params',         label: 'PitchBook Parameters',     icon: '&#128200;', ai: true,  buildFn: 'openPitchbookBuilder' }
+  ];
+
+  let html = '';
+  SECTIONS.forEach(sec => {
+    const items = kit[sec.key] || [];
+    const buildLabel = sec.ai ? '+ Generate with AI' : '+ Build New';
+    const itemsHTML = items.length === 0
+      ? `<div class="search-kit-empty">No ${sec.label.toLowerCase()} yet. Click "${buildLabel}" to create one.</div>`
+      : items.map(item => renderKitItem(sec.key, item, search)).join('');
+
+    html += `
+      <div class="search-kit-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="search-kit-section-header" style="margin-bottom:0;border-bottom:none;flex:1">
+            ${sec.icon} ${sec.label} (${items.length})
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="${sec.buildFn}(${sj})">${buildLabel}</button>
+            <button class="btn btn-ghost btn-sm" onclick="openImportFromLibrary('${sec.key}', ${sj})">Import from Library</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-bottom:8px;border-bottom:1px solid #EDE7F6">
+          ${itemsHTML}
+        </div>
+      </div>`;
+  });
+
+  html += `
+    <div style="margin-top:16px;font-size:13px;color:#888">
+      <a href="#" onclick="navigateTo('templates');return false;" style="color:#5C2D91;font-weight:600">&#8594; Open Templates Library</a>
+    </div>`;
+
+  return html;
+}
+
+function renderKitItem(type, item, search) {
+  const name = escapeHtml(item.name || '(Untitled)');
+  const date = item.created_at ? `<span style="color:#bbb;font-size:11px;margin-left:8px">${item.created_at}</span>` : '';
+  const aiTag = item.ai_generated ? `<span style="background:#EDE7F6;color:#5C2D91;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">AI</span>` : '';
+  const sj = JSON.stringify(search).replace(/"/g, '&quot;');
+  const ij = JSON.stringify(item).replace(/"/g, '&quot;');
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+      <div>
+        <span style="font-weight:600;font-size:13px">${name}</span>${aiTag}${date}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="viewKitItem('${type}', ${ij}, ${sj})">View</button>
+        <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="if(confirm('Delete this entry?')) deleteKitEntry('${type}','${item.id}')">Delete</button>
+        <button class="btn btn-ghost btn-sm" onclick="saveKitToLibrary('${type}', ${ij}, ${sj})">Save to Library</button>
+      </div>
+    </div>`;
+}
+
+// ── View Kit Item ─────────────────────────────────────────────────────────────
+
+function viewKitItem(type, item, search) {
+  let bodyHTML = '';
+  let copyText = '';
+
+  if (type === 'ideal_candidate_profiles') {
+    const listHtml = (label, items) => items?.length ? `<div style="margin-bottom:12px"><strong>${label}</strong><ul style="margin:4px 0 0 18px;line-height:1.7;font-size:13px">${items.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul></div>` : '';
+    bodyHTML = `
+      ${item.archetypes?.length ? `<div style="margin-bottom:10px"><strong>Archetypes:</strong> ${item.archetypes.map(escapeHtml).join(', ')}</div>` : ''}
+      ${item.years_experience ? `<div style="margin-bottom:10px"><strong>Experience:</strong> ${item.years_experience.min}-${item.years_experience.max} years</div>` : ''}
+      ${item.sector_preferences?.length ? `<div style="margin-bottom:10px"><strong>Sectors:</strong> ${item.sector_preferences.map(escapeHtml).join(', ')}</div>` : ''}
+      ${item.target_companies?.length ? `<div style="margin-bottom:10px"><strong>Target Companies:</strong> ${item.target_companies.map(escapeHtml).join(', ')}</div>` : ''}
+      ${item.target_pe_firms?.length ? `<div style="margin-bottom:10px"><strong>Target PE Firms:</strong> ${item.target_pe_firms.map(escapeHtml).join(', ')}</div>` : ''}
+      ${listHtml('Must-Haves', item.must_haves)}
+      ${listHtml('Nice-to-Haves', item.nice_to_haves)}
+      ${listHtml('Red Flags', item.red_flags)}`;
+    copyText = [
+      item.archetypes?.length ? 'Archetypes: ' + item.archetypes.join(', ') : '',
+      item.years_experience ? `Experience: ${item.years_experience.min}-${item.years_experience.max} years` : '',
+      item.must_haves?.length ? 'Must-Haves:\n' + item.must_haves.map(x => '  - ' + x).join('\n') : '',
+      item.nice_to_haves?.length ? 'Nice-to-Haves:\n' + item.nice_to_haves.map(x => '  - ' + x).join('\n') : '',
+      item.red_flags?.length ? 'Red Flags:\n' + item.red_flags.map(x => '  - ' + x).join('\n') : ''
+    ].filter(Boolean).join('\n\n');
+
+  } else if (type === 'boolean_strings') {
+    bodyHTML = `<pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;background:#1e1e2e;color:#cdd6f4;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(item.query || '')}</pre>`;
+    copyText = item.query || '';
+
+  } else if (type === 'outreach_messages') {
+    bodyHTML = `
+      ${item.channel ? `<div style="margin-bottom:8px"><strong>Channel:</strong> ${escapeHtml(item.channel)}</div>` : ''}
+      ${item.subject ? `<div style="margin-bottom:8px"><strong>Subject:</strong> ${escapeHtml(item.subject)}</div>` : ''}
+      <pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;background:#f5f5f5;padding:16px;border-radius:8px;line-height:1.6">${escapeHtml(item.body || '')}</pre>`;
+    copyText = (item.subject ? 'Subject: ' + item.subject + '\n\n' : '') + (item.body || '');
+
+  } else if (type === 'screen_question_guides') {
+    const cats = item.categories || [];
+    bodyHTML = cats.map(cat => `
+      <div style="margin-bottom:16px">
+        <strong style="color:#5C2D91">${escapeHtml(cat.category)}</strong>
+        <ol style="margin:6px 0 0 18px;line-height:1.8;font-size:13px">${cat.questions.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol>
+      </div>`).join('');
+    copyText = cats.map(cat => cat.category + '\n' + cat.questions.map((q, i) => `  ${i + 1}. ${q}`).join('\n')).join('\n\n');
+
+  } else if (type === 'pitchbook_params') {
+    const field = (label, val) => val ? `<tr><td style="padding:6px 12px 6px 0;color:#666;font-weight:600;white-space:nowrap;vertical-align:top">${label}</td><td style="padding:6px 0">${escapeHtml(Array.isArray(val) ? val.join(', ') : String(val))}</td></tr>` : '';
+    bodyHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      ${field('Similar PE Firms', item.similar_pe_firms)}
+      ${field('Similar Companies', item.similar_companies)}
+      ${field('Revenue Range', item.revenue_range ? item.revenue_range.min + ' - ' + item.revenue_range.max : null)}
+      ${field('Geographies', item.geographies)}
+      ${field('Ownership Types', item.ownership_types)}
+      ${field('Industries', item.industries)}
+      ${field('Notes', item.notes)}
+    </table>`;
+    copyText = ['Similar PE Firms: ' + (item.similar_pe_firms||[]).join(', '), 'Similar Companies: ' + (item.similar_companies||[]).join(', ')].join('\n');
+  }
+
+  kitModal(escapeHtml(item.name || '(Untitled)'), '', `
+    <div style="margin-bottom:12px">
+      <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText(${JSON.stringify(copyText).replace(/"/g, '&quot;')}).then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Copy'},1500)})">Copy</button>
+    </div>
+    ${bodyHTML}`);
+}
+
+// ── Save to Library ───────────────────────────────────────────────────────────
+
+async function saveKitToLibrary(type, item, search) {
+  const typeMap = { boolean_strings:'boolean', outreach_messages:'outreach', ideal_candidate_profiles:'profile', screen_question_guides:'screen', pitchbook_params:'pitchbook' };
+  const apiType = typeMap[type];
+  if (!apiType) return;
+  const sector = (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id)[0] || '';
+  const archetype = (search.archetypes_requested || [])[0] || '';
+  const payload = Object.assign({}, item, { sector, archetype });
+  delete payload.id;
+  delete payload.created_at;
+  try {
+    await api('POST', '/templates/' + apiType, payload);
+    alert('Saved to Templates Library!');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+// ── Import from Library ───────────────────────────────────────────────────────
+
+async function openImportFromLibrary(type, search) {
+  try {
+    const data = await api('GET', '/templates');
+    const items = data[type] || [];
+    if (items.length === 0) {
+      alert('No items in the Templates Library for this category.');
+      return;
+    }
+    const rows = items.map(tpl => {
+      const tj = JSON.stringify(tpl).replace(/"/g, '&quot;');
+      return `<tr>
+        <td style="font-weight:600;padding:8px 10px;font-size:13px">${escapeHtml(tpl.name || '(Untitled)')}</td>
+        <td style="padding:8px 10px;color:#888;font-size:13px">${escapeHtml(tpl.sector || '—')}</td>
+        <td style="padding:8px 10px"><button class="btn btn-primary btn-sm" onclick="importLibraryItem('${type}', ${tj})">Import</button></td>
+      </tr>`;
+    }).join('');
+
+    kitModal('Import from Library', '', `
+      <table class="search-kit-table" style="width:100%">
+        <thead><tr>
+          <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Name</th>
+          <th style="text-align:left;font-size:11px;color:#999;padding:4px 10px">Sector</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
+  } catch (err) {
+    alert('Error loading library: ' + err.message);
+  }
+}
+
+async function importLibraryItem(type, tpl) {
+  const entry = Object.assign({}, tpl, {
+    id: type.replace(/_/g,'').slice(0,6) + '-' + Date.now(),
+    created_at: new Date().toISOString().slice(0,10),
+    source: 'library'
+  });
+  delete entry.sector;
+  delete entry.archetype;
+  try {
+    await saveKitEntry(type, entry);
+    closeKitModal();
+  } catch (err) {
+    alert('Error importing: ' + err.message);
+  }
+}
+
+// ── Ideal Candidate Profile Builder ───────────────────────────────────────────
+
+let _icpState = null;
+let _icpStep  = 0;
+
+function openICPBuilder(search) {
+  _kitSearch = search;
+  _icpStep = 0;
+  _icpState = {
+    name: '',
+    archetypes: [...(search.archetypes_requested || [])],
+    years_experience: { min: 10, max: 25 },
+    sector_preferences: (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id),
+    target_companies: [],
+    target_pe_firms: [],
+    must_haves: [],
+    nice_to_haves: [],
+    red_flags: []
+  };
+  renderICPStep(search);
+}
+
+async function handleICPFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const textarea = document.getElementById('icp-jd');
+  if (file.name.endsWith('.txt')) {
+    textarea.value = await file.text();
+  } else {
+    try {
+      const text = await file.text();
+      const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{3,}/g, '\n').trim();
+      textarea.value = cleaned.length > 50 ? cleaned : '[File uploaded: ' + file.name + ' — could not extract text. Please paste the content manually.]';
+    } catch (e) {
+      textarea.value = '[Error reading file. Please paste the content manually.]';
+    }
+  }
+}
+
+async function generateICPWithAI() {
+  const jd = document.getElementById('icp-jd')?.value?.trim() || '';
+  const btn = document.getElementById('icp-ai-btn');
+  const status = document.getElementById('icp-ai-status');
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+  if (status) status.innerHTML = '<div style="text-align:center;padding:16px;color:#888"><div class="spinner" style="display:inline-block;margin-bottom:8px"></div><br>AI is analyzing the search context and building a candidate profile...</div>';
+
+  try {
+    const resp = await api('POST', '/searches/' + _kitSearch.search_id + '/ai/generate-icp', {
+      job_description: jd
+    });
+    // Merge AI results into state
+    if (resp.archetypes?.length) _icpState.archetypes = resp.archetypes;
+    if (resp.years_experience) _icpState.years_experience = resp.years_experience;
+    if (resp.sector_preferences?.length) _icpState.sector_preferences = resp.sector_preferences;
+    if (resp.target_companies?.length) _icpState.target_companies = resp.target_companies;
+    if (resp.target_pe_firms?.length) _icpState.target_pe_firms = resp.target_pe_firms;
+    if (resp.must_haves?.length) _icpState.must_haves = resp.must_haves;
+    if (resp.nice_to_haves?.length) _icpState.nice_to_haves = resp.nice_to_haves;
+    if (resp.red_flags?.length) _icpState.red_flags = resp.red_flags;
+    // Jump to step 1 so user can review/edit starting from archetypes
+    _icpStep = 1;
+    renderICPStep(_kitSearch);
+  } catch (err) {
+    if (status) status.innerHTML = `<div class="error-banner">Error: ${escapeHtml(err.message)}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry Generate with AI'; }
+  }
+}
+
+function renderICPStep(search) {
+  const steps = ['Start', 'Archetypes & Experience', 'Sectors & Targets', 'Qualifications', 'Review & Save'];
+  const stepDots = steps.map((s, i) => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:${i === _icpStep ? 700 : 400};color:${i === _icpStep ? '#5C2D91' : '#bbb'}"><span style="width:22px;height:22px;border-radius:50%;background:${i <= _icpStep ? '#5C2D91' : '#e0e0e0'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i + 1}</span>${s}</span>`).join('<span style="color:#ddd;margin:0 6px">&#8594;</span>');
+
+  let body = `<div style="margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${stepDots}</div>`;
+
+  if (_icpStep === 0) {
+    // Start — choose AI or manual
+    const weeklyCount = (search.weekly_updates || []).length;
+    body += `
+      <div style="background:#f9f6fd;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:1.6">
+        <strong style="color:#5C2D91">Build your ideal candidate profile</strong><br>
+        You can let AI analyze the job description and meeting notes to pre-fill the profile, then refine each section manually. Or skip straight to building it yourself.
+      </div>
+      <div class="form-group">
+        <label class="form-label">Job Description (optional)</label>
+        <div style="font-size:11px;color:#999;margin-bottom:6px">Upload a file or paste the text — AI will use this along with ${weeklyCount} meeting note${weeklyCount !== 1 ? 's' : ''} from this search</div>
+        <div style="margin-bottom:8px">
+          <input type="file" id="icp-file" accept=".pdf,.doc,.docx,.txt" onchange="handleICPFile(this)" style="font-size:12px">
+        </div>
+        <textarea class="form-control" id="icp-jd" rows="6" placeholder="Or paste job description text here..."></textarea>
+      </div>
+      <div id="icp-ai-status"></div>
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-primary" id="icp-ai-btn" onclick="generateICPWithAI()">Generate with AI</button>
+        <button class="btn btn-ghost" onclick="_icpStep=1;renderICPStep(_kitSearch)">Skip — Build Manually</button>
+      </div>`;
+  } else if (_icpStep === 1) {
+    // Archetypes & Experience
+    const allArchetypes = ['PE Lateral', 'Industry Operator', 'Functional Expert', 'Founder/Entrepreneur', 'Consultant'];
+    const archChecks = allArchetypes.map(a => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" ${_icpState.archetypes.includes(a) ? 'checked' : ''} onchange="toggleICPArchetype('${a}', this.checked)"> ${a}</label>`).join('');
+    body += `
+      <div class="form-group">
+        <label class="form-label">Archetypes</label>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">${archChecks}</div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <input class="form-control" id="icp-custom-arch" placeholder="Add custom archetype..." style="flex:1;max-width:250px">
+          <button class="btn btn-ghost btn-sm" onclick="addICPCustomArchetype()">Add</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Years of Experience</label>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:6px">
+          <input type="number" class="form-control" id="icp-yoe-min" value="${_icpState.years_experience.min}" min="0" max="50" style="width:80px" onchange="_icpState.years_experience.min=+this.value">
+          <span style="color:#888">to</span>
+          <input type="number" class="form-control" id="icp-yoe-max" value="${_icpState.years_experience.max}" min="0" max="50" style="width:80px" onchange="_icpState.years_experience.max=+this.value">
+          <span style="font-size:12px;color:#888">years</span>
+        </div>
+      </div>`;
+  } else if (_icpStep === 2) {
+    // Sectors & Targets
+    const allSectors = Object.values(SECTOR_NAME_MAP);
+    const secChecks = allSectors.map(s => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" ${_icpState.sector_preferences.includes(s) ? 'checked' : ''} onchange="toggleICPSector('${s}', this.checked)"> ${s}</label>`).join('');
+
+    const coTags = _icpState.target_companies.map((c, i) => `<span class="bool-tag" style="background:#E3F2FD;color:#1565C0">${escapeHtml(c)}<button type="button" onclick="_icpState.target_companies.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
+    const peTags = _icpState.target_pe_firms.map((f, i) => `<span class="bool-tag" style="background:#EDE7F6;color:#5C2D91">${escapeHtml(f)}<button type="button" onclick="_icpState.target_pe_firms.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
+
+    body += `
+      <div class="form-group">
+        <label class="form-label">Industry / Sector Preferences</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">${secChecks}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Companies</label>
+        <div style="font-size:11px;color:#999;margin-bottom:6px">Companies whose alumni would be good candidate fits</div>
+        <div class="bool-tag-input" style="min-height:42px" onclick="document.getElementById('icp-co-input').focus()">
+          ${coTags}
+          <input class="bool-tag-raw" id="icp-co-input" placeholder="Type company name & press Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){_icpState.target_companies.push(v);this.value='';renderICPStep(_kitSearch)}}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target PE Firms</label>
+        <div style="font-size:11px;color:#999;margin-bottom:6px">PE firms with similar strategies or portfolio to the hiring client</div>
+        <div class="bool-tag-input" style="min-height:42px" onclick="document.getElementById('icp-pe-input').focus()">
+          ${peTags}
+          <input class="bool-tag-raw" id="icp-pe-input" placeholder="Type PE firm name & press Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){_icpState.target_pe_firms.push(v);this.value='';renderICPStep(_kitSearch)}}">
+        </div>
+      </div>`;
+  } else if (_icpStep === 3) {
+    // Qualifications
+    const tagSection = (label, hint, key, color) => {
+      const tags = (_icpState[key] || []).map((t, i) => `<span class="bool-tag" style="background:${color.bg};color:${color.text}">${escapeHtml(t)}<button type="button" onclick="_icpState.${key}.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
+      return `
+        <div class="form-group">
+          <label class="form-label">${label}</label>
+          <div style="font-size:11px;color:#999;margin-bottom:6px">${hint}</div>
+          <div class="bool-tag-input" style="min-height:42px" onclick="document.getElementById('icp-${key}-input').focus()">
+            ${tags}
+            <input class="bool-tag-raw" id="icp-${key}-input" placeholder="Type & press Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){_icpState.${key}.push(v);this.value='';renderICPStep(_kitSearch)}}">
+          </div>
+        </div>`;
+    };
+    body += tagSection('Must-Haves', 'Non-negotiable qualifications', 'must_haves', { bg:'#E8F5E9', text:'#2E7D32' });
+    body += tagSection('Nice-to-Haves', 'Preferred but not required', 'nice_to_haves', { bg:'#E3F2FD', text:'#1565C0' });
+    body += tagSection('Red Flags', 'Disqualifying or concerning traits', 'red_flags', { bg:'#FFEBEE', text:'#B71C1C' });
+  } else if (_icpStep === 4) {
+    // Review & Save
+    const listPreview = (label, arr) => arr?.length ? `<div style="margin-bottom:10px"><strong>${label}:</strong> ${arr.map(escapeHtml).join(', ')}</div>` : '';
+    body += `
+      <div class="form-group">
+        <label class="form-label">Profile Name</label>
+        <input class="form-control" id="icp-name" value="${escapeHtml(_icpState.name || (_icpState.archetypes[0] || 'Profile') + ' — ' + (_kitSearch.role_title || 'Role'))}" placeholder="Name this profile...">
+      </div>
+      <div style="background:#f9f6fd;border-radius:8px;padding:16px;font-size:13px;line-height:1.7">
+        <strong style="color:#5C2D91">Summary</strong>
+        ${listPreview('Archetypes', _icpState.archetypes)}
+        ${_icpState.years_experience ? `<div style="margin-bottom:10px"><strong>Experience:</strong> ${_icpState.years_experience.min}-${_icpState.years_experience.max} years</div>` : ''}
+        ${listPreview('Sectors', _icpState.sector_preferences)}
+        ${listPreview('Target Companies', _icpState.target_companies)}
+        ${listPreview('Target PE Firms', _icpState.target_pe_firms)}
+        ${listPreview('Must-Haves', _icpState.must_haves)}
+        ${listPreview('Nice-to-Haves', _icpState.nice_to_haves)}
+        ${listPreview('Red Flags', _icpState.red_flags)}
+      </div>`;
+  }
+
+  const backBtn = _icpStep > 0 ? `<button class="btn btn-ghost" onclick="_icpStep--;renderICPStep(_kitSearch)">&#8592; Back</button>` : '';
+  const nextBtn = _icpStep < 4
+    ? `<button class="btn btn-primary" onclick="_icpStep++;renderICPStep(_kitSearch)">Next &#8594;</button>`
+    : `<button class="btn btn-primary" onclick="saveICPProfile()">Save Profile</button>`;
+
+  kitModal('&#128100; Ideal Candidate Profile', `${escapeHtml(_kitSearch.client_name)} — ${escapeHtml(_kitSearch.role_title || '')}`,
+    body,
+    `<span style="flex:1"></span>${backBtn}${nextBtn}`,
+    { maxWidth: '760px' });
+}
+
+function toggleICPArchetype(a, checked) {
+  if (checked && !_icpState.archetypes.includes(a)) _icpState.archetypes.push(a);
+  if (!checked) _icpState.archetypes = _icpState.archetypes.filter(x => x !== a);
+}
+function addICPCustomArchetype() {
+  const inp = document.getElementById('icp-custom-arch');
+  const val = inp?.value?.trim();
+  if (val && !_icpState.archetypes.includes(val)) {
+    _icpState.archetypes.push(val);
+    inp.value = '';
+    renderICPStep(_kitSearch);
+  }
+}
+function toggleICPSector(s, checked) {
+  if (checked && !_icpState.sector_preferences.includes(s)) _icpState.sector_preferences.push(s);
+  if (!checked) _icpState.sector_preferences = _icpState.sector_preferences.filter(x => x !== s);
+}
+
+async function saveICPProfile() {
+  const name = document.getElementById('icp-name')?.value?.trim();
+  if (!name) { alert('Please enter a profile name.'); return; }
+  const entry = Object.assign({}, _icpState, {
+    id: 'icp-' + Date.now(),
+    name,
+    created_at: new Date().toISOString().slice(0, 10)
+  });
+  try {
+    await saveKitEntry('ideal_candidate_profiles', entry);
+    closeKitModal();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
 }
 
 // ── Boolean String Builder ────────────────────────────────────────────────────
@@ -1613,10 +1935,9 @@ function suggestTitleVariants(roleTitle) {
     ['VP Finance', 'VP of Finance', 'SVP Finance', 'CFO'].forEach(v => set.add(v));
   }
 
-  // If only the exact title matched (no pattern hit), add generic seniority variants
   if (set.size === 1) {
     const words = roleTitle.split(' ');
-    const fn = words.slice(-1)[0]; // last word as function hint
+    const fn = words.slice(-1)[0];
     ['VP', 'SVP', 'EVP'].forEach(pre => set.add(`${pre} ${fn}`));
   }
 
@@ -1624,6 +1945,7 @@ function suggestTitleVariants(roleTitle) {
 }
 
 function openBooleanBuilder(search) {
+  _kitSearch = search;
   const titles    = suggestTitleVariants(search.role_title || '');
   const companies = [
     ...(search.sourcing_coverage?.pe_firms        || []).map(f => f.name).filter(Boolean),
@@ -1652,7 +1974,7 @@ function openBooleanBuilder(search) {
       </div>
       <div style="padding:20px 24px 24px">
       <div style="font-size:12px;color:#888;margin-bottom:16px;padding:10px 14px;background:#f9f6fd;border-radius:7px;border:1px solid #ede7f6">
-        Click &#10005; on a tag to remove it &nbsp;&middot;&nbsp; Type + <kbd style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid #ddd">Enter</kbd> to add your own &nbsp;&middot;&nbsp; Drag between sections coming soon
+        Click &#10005; on a tag to remove it &nbsp;&middot;&nbsp; Type + <kbd style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid #ddd">Enter</kbd> to add your own
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
@@ -1673,7 +1995,7 @@ function openBooleanBuilder(search) {
       <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding-top:12px;border-top:1px solid #f0f0f0">
         <span style="font-size:12px;color:#bbb;flex:1">Paste directly into LinkedIn Recruiter, LinkedIn Search, or PitchBook</span>
         <button class="btn btn-ghost" onclick="document.getElementById('bool-builder-modal').remove()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveBooleanToTemplates(${JSON.stringify(search).replace(/"/g, '&quot;')})">&#128190; Save to Templates</button>
+        <button class="btn btn-primary" onclick="saveBooleanToSearch()">Save to Search Kit</button>
       </div>
       </div>
     </div>`;
@@ -1767,23 +2089,360 @@ function copyBooleanString(btnEl) {
   }).catch(() => alert('Copy failed — please copy manually.'));
 }
 
-async function saveBooleanToTemplates(search) {
+async function saveBooleanToSearch() {
   const query = document.getElementById('bool-preview')?.textContent || '';
   if (!query || query.startsWith('(add tags')) {
     alert('Please add some tags before saving.');
     return;
   }
-  const name      = `${search.role_title || 'Role'} — Boolean String`;
-  const sector    = (search.sectors || []).map(id => SECTOR_NAME_MAP[id] || id)[0] || '';
-  const archetype = (search.archetypes_requested || [])[0] || '';
+  const entry = {
+    id: 'bool-' + Date.now(),
+    name: `${_kitSearch.role_title || 'Role'} — Boolean String`,
+    query,
+    tags: JSON.parse(JSON.stringify(_boolState)),
+    created_at: new Date().toISOString().slice(0, 10),
+    source: 'builder'
+  };
   try {
-    await api('POST', '/templates/boolean', { name, query, sector, archetype });
-    const btn = document.querySelector('#bool-builder-modal .btn-primary');
-    if (btn) {
-      const orig = btn.textContent;
-      btn.textContent = 'Saved!';
-      setTimeout(() => { btn.textContent = orig; }, 2000);
+    await saveKitEntry('boolean_strings', entry);
+    document.getElementById('bool-builder-modal')?.remove();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
+}
+
+// ── Outreach Message Builder ──────────────────────────────────────────────────
+
+function openOutreachBuilder(search) {
+  _kitSearch = search;
+  const body = `
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input class="form-control" id="om-name" placeholder="e.g., Initial LinkedIn InMail" value="${escapeHtml(search.role_title || '')} — Outreach">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Channel</label>
+      <select class="form-control" id="om-channel" onchange="toggleOutreachSubject()">
+        <option value="LinkedIn">LinkedIn</option>
+        <option value="Email">Email</option>
+        <option value="Phone Script">Phone Script</option>
+      </select>
+    </div>
+    <div class="form-group" id="om-subject-group">
+      <label class="form-label">Subject Line</label>
+      <input class="form-control" id="om-subject" placeholder="Subject...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Message Body</label>
+      <div style="font-size:11px;color:#999;margin-bottom:6px">Use {firstName} for candidate name, {role} for role title, {firm} for client name</div>
+      <textarea class="form-control" id="om-body" rows="10" placeholder="Write your outreach message...">{firstName},\n\nHope all is well. I wanted to reach out regarding an interesting opportunity. Lancor Partners is working on a ${escapeHtml(search.role_title || 'senior leadership')} search for ${escapeHtml(search.client_name || 'our client')}. I would love to share more details and get your thoughts.\n\nWould you have 15 minutes for a quick call this week?\n\nBest regards</textarea>
+    </div>`;
+
+  kitModal('&#9993; Outreach Message', `${escapeHtml(search.client_name)} — ${escapeHtml(search.role_title || '')}`,
+    body,
+    `<button class="btn btn-ghost" onclick="closeKitModal()">Cancel</button><button class="btn btn-primary" onclick="saveOutreachMessage()">Save Message</button>`);
+}
+
+function toggleOutreachSubject() {
+  const channel = document.getElementById('om-channel')?.value;
+  const group = document.getElementById('om-subject-group');
+  if (group) group.style.display = channel === 'Phone Script' ? 'none' : '';
+}
+
+async function saveOutreachMessage() {
+  const name = document.getElementById('om-name')?.value?.trim();
+  const channel = document.getElementById('om-channel')?.value;
+  const subject = document.getElementById('om-subject')?.value?.trim();
+  const body = document.getElementById('om-body')?.value?.trim();
+  if (!name || !body) { alert('Please fill in the name and message body.'); return; }
+
+  const entry = {
+    id: 'outreach-' + Date.now(),
+    name,
+    channel,
+    subject: channel === 'Phone Script' ? '' : subject,
+    body,
+    created_at: new Date().toISOString().slice(0, 10),
+    source: 'builder'
+  };
+  try {
+    await saveKitEntry('outreach_messages', entry);
+    closeKitModal();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
+}
+
+// ── Screen Question Guide Builder (AI) ────────────────────────────────────────
+
+let _screenQCategories = null;
+
+function openScreenQBuilder(search) {
+  _kitSearch = search;
+  _screenQCategories = null;
+  const profiles = (search.search_kit?.ideal_candidate_profiles || []);
+  const profileOpts = profiles.length === 0
+    ? '<option value="">No profiles yet — build one first</option>'
+    : profiles.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}</option>`).join('');
+
+  const body = `
+    <div class="form-group">
+      <label class="form-label">Job Description</label>
+      <div style="font-size:11px;color:#999;margin-bottom:6px">Upload a file or paste the job description text</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input type="file" id="sq-file" accept=".pdf,.doc,.docx,.txt" onchange="handleScreenQFile(this)" style="font-size:12px">
+      </div>
+      <textarea class="form-control" id="sq-jd" rows="6" placeholder="Or paste job description text here..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Reference Candidate Profile</label>
+      <select class="form-control" id="sq-profile">${profileOpts}</select>
+    </div>
+    <div id="sq-results"></div>`;
+
+  kitModal('&#128172; Screen Question Guide', `${escapeHtml(search.client_name)} — ${escapeHtml(search.role_title || '')}`,
+    body,
+    `<button class="btn btn-ghost" onclick="closeKitModal()">Cancel</button>
+     <button class="btn btn-primary" id="sq-gen-btn" onclick="generateScreenQuestions()">Generate with AI</button>`,
+    { maxWidth: '800px' });
+}
+
+async function handleScreenQFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const textarea = document.getElementById('sq-jd');
+  if (file.name.endsWith('.txt')) {
+    textarea.value = await file.text();
+  } else {
+    // For PDF/Word, read as text (basic extraction)
+    try {
+      const text = await file.text();
+      // Strip obvious binary/markup if it looks like it has some readable text
+      const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{3,}/g, '\n').trim();
+      if (cleaned.length > 50) {
+        textarea.value = cleaned;
+      } else {
+        textarea.value = '[File uploaded: ' + file.name + ' — could not extract text. Please paste the content manually.]';
+      }
+    } catch (e) {
+      textarea.value = '[Error reading file. Please paste the content manually.]';
     }
+  }
+}
+
+async function generateScreenQuestions() {
+  const jd = document.getElementById('sq-jd')?.value?.trim() || '';
+  const profileId = document.getElementById('sq-profile')?.value || '';
+  const btn = document.getElementById('sq-gen-btn');
+  const results = document.getElementById('sq-results');
+
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  results.innerHTML = '<div style="text-align:center;padding:20px;color:#888"><div class="spinner" style="display:inline-block;margin-bottom:8px"></div><br>AI is generating screening questions...</div>';
+
+  try {
+    const resp = await api('POST', '/searches/' + _kitSearch.search_id + '/ai/generate-screen-questions', {
+      job_description: jd,
+      profile_id: profileId
+    });
+    _screenQCategories = resp.categories || [];
+    renderScreenQResults();
+  } catch (err) {
+    results.innerHTML = `<div class="error-banner">Error: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Regenerate';
+  }
+}
+
+function renderScreenQResults() {
+  const results = document.getElementById('sq-results');
+  if (!results || !_screenQCategories) return;
+
+  let html = '<div style="margin-top:16px">';
+  _screenQCategories.forEach((cat, ci) => {
+    html += `
+      <div style="margin-bottom:16px;background:#f9f6fd;border-radius:8px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <input class="form-control" value="${escapeHtml(cat.category)}" style="font-weight:700;color:#5C2D91;border:none;background:transparent;padding:0;font-size:14px" onchange="_screenQCategories[${ci}].category=this.value">
+          <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="_screenQCategories.splice(${ci},1);renderScreenQResults()">Remove Category</button>
+        </div>
+        <ol style="margin:0 0 0 16px;list-style:decimal">`;
+    cat.questions.forEach((q, qi) => {
+      html += `
+          <li style="margin-bottom:6px;display:flex;align-items:flex-start;gap:6px">
+            <textarea class="form-control" rows="2" style="flex:1;font-size:13px;min-height:36px" onchange="_screenQCategories[${ci}].questions[${qi}]=this.value">${escapeHtml(q)}</textarea>
+            <button class="btn btn-ghost btn-sm" style="color:#c62828;padding:4px" onclick="_screenQCategories[${ci}].questions.splice(${qi},1);renderScreenQResults()">&#10005;</button>
+          </li>`;
+    });
+    html += `
+          <li style="list-style:none;margin-left:-16px;margin-top:4px">
+            <button class="btn btn-ghost btn-sm" onclick="_screenQCategories[${ci}].questions.push('');renderScreenQResults()">+ Add Question</button>
+          </li>
+        </ol>
+      </div>`;
+  });
+  html += `
+    <button class="btn btn-ghost btn-sm" onclick="_screenQCategories.push({category:'New Category',questions:['']});renderScreenQResults()">+ Add Category</button>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <input class="form-control" id="sq-name" placeholder="Guide name..." value="${escapeHtml(_kitSearch.role_title || 'Role')} — Screen Guide" style="max-width:300px">
+      <button class="btn btn-primary" onclick="saveScreenQGuide()">Save Guide</button>
+    </div>
+  </div>`;
+  results.innerHTML = html;
+}
+
+async function saveScreenQGuide() {
+  const name = document.getElementById('sq-name')?.value?.trim();
+  if (!name) { alert('Please enter a guide name.'); return; }
+  if (!_screenQCategories?.length) { alert('No questions to save.'); return; }
+  // Clean empty questions
+  const categories = _screenQCategories.map(c => ({
+    category: c.category,
+    questions: c.questions.filter(q => q.trim())
+  })).filter(c => c.questions.length > 0);
+
+  const entry = {
+    id: 'screen-' + Date.now(),
+    name,
+    categories,
+    created_at: new Date().toISOString().slice(0, 10),
+    ai_generated: true
+  };
+  try {
+    await saveKitEntry('screen_question_guides', entry);
+    closeKitModal();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
+}
+
+// ── PitchBook Parameters Builder (AI) ─────────────────────────────────────────
+
+let _pbState = null;
+
+function openPitchbookBuilder(search) {
+  _kitSearch = search;
+  _pbState = null;
+
+  const body = `
+    <div style="background:#f9f6fd;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.6">
+      <strong style="color:#5C2D91">How this works:</strong> AI will analyze <strong>${escapeHtml(search.client_name)}</strong>'s profile and suggest similar PE firms, portfolio companies, and search parameters for PitchBook sourcing.
+    </div>
+    <div id="pb-results">
+      <div style="text-align:center;padding:30px">
+        <button class="btn btn-primary" id="pb-gen-btn" onclick="generatePitchbookParams()">Generate Suggestions with AI</button>
+      </div>
+    </div>`;
+
+  kitModal('&#128200; PitchBook Parameters', `${escapeHtml(search.client_name)} — ${escapeHtml(search.role_title || '')}`,
+    body, '', { maxWidth: '800px' });
+}
+
+async function generatePitchbookParams() {
+  const btn = document.getElementById('pb-gen-btn');
+  const results = document.getElementById('pb-results');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating...'; }
+  results.innerHTML = '<div style="text-align:center;padding:20px;color:#888"><div class="spinner" style="display:inline-block;margin-bottom:8px"></div><br>AI is analyzing and generating parameters...</div>';
+
+  try {
+    const resp = await api('POST', '/searches/' + _kitSearch.search_id + '/ai/generate-pitchbook-params', {});
+    _pbState = resp;
+    renderPitchbookResults();
+  } catch (err) {
+    results.innerHTML = `<div class="error-banner">Error: ${escapeHtml(err.message)}</div><div style="text-align:center;margin-top:12px"><button class="btn btn-primary" id="pb-gen-btn" onclick="generatePitchbookParams()">Retry</button></div>`;
+  }
+}
+
+function renderPitchbookResults() {
+  const results = document.getElementById('pb-results');
+  if (!results || !_pbState) return;
+
+  const tagInput = (id, arr, color) => {
+    const tags = arr.map((t, i) => `<span class="bool-tag" style="background:${color.bg};color:${color.text}">${escapeHtml(t)}<button type="button" onclick="removePBTag('${id}',${i})">&#10005;</button></span>`).join('');
+    return `<div class="bool-tag-input" style="min-height:42px" onclick="document.getElementById('pb-${id}-input').focus()">
+      ${tags}
+      <input class="bool-tag-raw" id="pb-${id}-input" placeholder="Type & press Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault();const v=this.value.trim();if(v){addPBTag('${id}',v);this.value='';}}">
+    </div>`;
+  };
+
+  let html = `
+    <div class="form-group">
+      <label class="form-label">Similar PE Firms</label>
+      <div style="font-size:11px;color:#999;margin-bottom:6px">PE firms with similar strategies to ${escapeHtml(_kitSearch.client_name)}</div>
+      ${tagInput('pe', _pbState.similar_pe_firms || [], { bg:'#EDE7F6', text:'#5C2D91' })}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Similar Companies</label>
+      <div style="font-size:11px;color:#999;margin-bottom:6px">Companies where operating talent could be a good fit</div>
+      ${tagInput('co', _pbState.similar_companies || [], { bg:'#E3F2FD', text:'#1565C0' })}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="form-group">
+        <label class="form-label">Revenue Range</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-control" id="pb-rev-min" value="${escapeHtml(_pbState.revenue_range?.min || '$50M')}" style="width:100px">
+          <span>to</span>
+          <input class="form-control" id="pb-rev-max" value="${escapeHtml(_pbState.revenue_range?.max || '$500M')}" style="width:100px">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ownership Types</label>
+        ${tagInput('own', _pbState.ownership_types || [], { bg:'#FFF3E0', text:'#E65100' })}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Geographies</label>
+      ${tagInput('geo', _pbState.geographies || [], { bg:'#E8F5E9', text:'#2E7D32' })}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Industries</label>
+      ${tagInput('ind', _pbState.industries || [], { bg:'#FFF8E1', text:'#F57F17' })}
+    </div>
+    <div class="form-group">
+      <label class="form-label">AI Rationale</label>
+      <textarea class="form-control" id="pb-notes" rows="3">${escapeHtml(_pbState.notes || '')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <input class="form-control" id="pb-name" placeholder="Name..." value="${escapeHtml(_kitSearch.role_title || 'Role')} — PitchBook Params" style="max-width:300px">
+      <button class="btn btn-primary" onclick="savePitchbookParams()">Save Parameters</button>
+    </div>`;
+  results.innerHTML = html;
+}
+
+function addPBTag(field, val) {
+  const map = { pe: 'similar_pe_firms', co: 'similar_companies', own: 'ownership_types', geo: 'geographies', ind: 'industries' };
+  const key = map[field];
+  if (key && _pbState[key]) { _pbState[key].push(val); renderPitchbookResults(); }
+}
+function removePBTag(field, idx) {
+  const map = { pe: 'similar_pe_firms', co: 'similar_companies', own: 'ownership_types', geo: 'geographies', ind: 'industries' };
+  const key = map[field];
+  if (key && _pbState[key]) { _pbState[key].splice(idx, 1); renderPitchbookResults(); }
+}
+
+async function savePitchbookParams() {
+  const name = document.getElementById('pb-name')?.value?.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const entry = {
+    id: 'pb-' + Date.now(),
+    name,
+    similar_pe_firms: _pbState.similar_pe_firms || [],
+    similar_companies: _pbState.similar_companies || [],
+    revenue_range: {
+      min: document.getElementById('pb-rev-min')?.value || '',
+      max: document.getElementById('pb-rev-max')?.value || ''
+    },
+    geographies: _pbState.geographies || [],
+    ownership_types: _pbState.ownership_types || [],
+    industries: _pbState.industries || [],
+    notes: document.getElementById('pb-notes')?.value || '',
+    created_at: new Date().toISOString().slice(0, 10),
+    ai_generated: true
+  };
+  try {
+    await saveKitEntry('pitchbook_params', entry);
+    closeKitModal();
   } catch (err) {
     alert('Error saving: ' + err.message);
   }

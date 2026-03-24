@@ -129,6 +129,17 @@ function onCpFilterChange() {
   if (tierSelect)  cpFilters.size_tier = tierSelect.value;
   if (secSelect)   cpFilters.sector    = secSelect.value;
   if (textInput)   cpFilters.text      = textInput.value.trim();
+
+  // Only update the table + count (not the whole page) to preserve focus
+  const tableWrap = document.getElementById('cp-table-container');
+  const countEl   = document.getElementById('cp-count');
+  if (tableWrap) {
+    const filtered = applyCompanyFilters(cpAllCompanies);
+    const sorted   = sortCompanies(filtered);
+    tableWrap.innerHTML = renderCompanyTable(sorted);
+    if (countEl) countEl.textContent = `${filtered.length.toLocaleString()} of ${cpAllCompanies.length.toLocaleString()} companies`;
+    return;
+  }
   renderCompanyView();
 }
 
@@ -182,7 +193,7 @@ function renderCompanyView() {
     <div class="pool-header">
       <div>
         <h1 class="pool-title">Company Pool</h1>
-        <div class="pool-subtitle">${filtered.length.toLocaleString()} of ${cpAllCompanies.length.toLocaleString()} companies</div>
+        <div class="pool-subtitle" id="cp-count">${filtered.length.toLocaleString()} of ${cpAllCompanies.length.toLocaleString()} companies</div>
       </div>
       <button class="btn btn-primary" onclick="openAddCompanyModal()">+ Add Company</button>
     </div>
@@ -222,7 +233,7 @@ function renderCompanyView() {
              value="${cpEscape(cpFilters.text)}" oninput="onCpFilterChange()">
     </div>
 
-    ${renderCompanyTable(sorted)}
+    <div id="cp-table-container">${renderCompanyTable(sorted)}</div>
   `;
 }
 
@@ -312,6 +323,11 @@ function closeCompanyDetail() {
   document.removeEventListener('keydown', _cpPanelEscapeHandler);
 }
 
+// Keep for backwards compat — old sidebar panel references
+function renderCompanyDetailPanel(company) {
+  openCompanyDetail(company.company_id);
+}
+
 function _cpPanelEscapeHandler(e) {
   if (e.key === 'Escape') closeCompanyDetail();
 }
@@ -320,54 +336,107 @@ async function openCompanyDetail(companyId) {
   closeCompanyDetail();
   try {
     const company = await api('GET', '/companies/' + companyId);
-    renderCompanyDetailPanel(company);
+    // Fetch candidates for people sections
+    const poolResp = await api('GET', '/candidates');
+    const allCandidates = poolResp.candidates || [];
+    renderCompanyFullPage(company, allCandidates);
   } catch (err) {
     alert('Error loading company: ' + err.message);
   }
 }
 
-function renderCompanyDetailPanel(company) {
-  const overlay = document.createElement('div');
-  overlay.id = 'company-detail-overlay';
-  overlay.className = 'detail-panel-overlay';
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) closeCompanyDetail();
-  });
-
+function renderCompanyFullPage(company, allCandidates) {
   const isPE    = company.company_type === 'PE Firm';
   const isPriv  = company.company_type === 'Private Company';
   const isPub   = company.company_type === 'Public Company';
 
-  overlay.innerHTML = `
-    <div class="detail-panel" id="company-detail-panel">
-      <div class="detail-panel-header">
-        <div style="flex:1;min-width:0">
-          <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${cpEscape(company.name)}</h2>
-          <div style="font-size:13px;color:#555">${cpEscape(company.hq || '')}</div>
-          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center">
+  // Match current employees and alumni from candidate pool
+  const companyName = company.name || '';
+  const currentEmployees = allCandidates.filter(c =>
+    firmNamesMatch(c.current_firm, companyName)
+  );
+  const alumni = allCandidates.filter(c => {
+    if (firmNamesMatch(c.current_firm, companyName)) return false;
+    return (c.work_history || []).some(w =>
+      firmNamesMatch(w.company, companyName)
+    );
+  });
+
+  function personRow(c, showCurrentRole) {
+    const linkedinIcon = c.linkedin_url
+      ? `<a href="${cpEscape(c.linkedin_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;margin-left:6px;color:#0077B5" title="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>`
+      : '';
+    const subtitle = showCurrentRole
+      ? cpEscape(c.current_title || '')
+      : cpEscape((c.current_title || '') + (c.current_firm ? ' @ ' + c.current_firm : ''));
+    const location = cpEscape(c.home_location || c.location || '');
+    return `
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:10px 12px">
+          <div style="font-weight:600;font-size:13px;color:#5C2D91"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${cpEscape(c.candidate_id)}')">${cpEscape(c.name)}</span>${linkedinIcon}</div>
+          <div style="font-size:12px;color:#777;margin-top:2px">${subtitle}</div>
+        </td>
+        <td style="padding:10px 12px;font-size:13px;color:#666">${location}</td>
+        <td style="padding:10px 12px;font-size:13px">
+          ${(c.sector_tags || []).map(t => {
+            const s = CP_SECTORS.find(s => s.id === t);
+            return `<span style="background:#f3e8ff;color:#7c3aed;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-right:3px">${s ? s.label.slice(0,4) : t.slice(0,4)}</span>`;
+          }).join('')}
+        </td>
+        <td style="padding:10px 12px;font-size:12px;color:#888">${cpEscape(c.archetype || '—')}</td>
+      </tr>`;
+  }
+
+  function peopleTable(people, showCurrentRole) {
+    if (people.length === 0) {
+      return `<div style="padding:16px;color:#aaa;font-size:13px">No candidates found in the pool.</div>`;
+    }
+    return `
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid #e0e0e0">
+            <th style="text-align:left;padding:8px 12px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700">Name</th>
+            <th style="text-align:left;padding:8px 12px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700">Location</th>
+            <th style="text-align:left;padding:8px 12px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700">Sectors</th>
+            <th style="text-align:left;padding:8px 12px;font-size:11px;color:#999;text-transform:uppercase;font-weight:700">Archetype</th>
+          </tr>
+        </thead>
+        <tbody>${people.map(c => personRow(c, showCurrentRole)).join('')}</tbody>
+      </table>`;
+  }
+
+  const content = document.getElementById('app-content');
+  content.innerHTML = `
+    <div style="max-width:1100px;margin:0 auto;padding:24px">
+      <div style="margin-bottom:20px">
+        <button class="btn btn-ghost btn-sm" onclick="renderCompanies()">← Back to Company Pool</button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:24px">
+        <div>
+          <h1 style="font-size:1.6rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${cpEscape(company.name)}</h1>
+          <div style="font-size:14px;color:#555;margin-bottom:8px">${cpEscape(company.hq || '')}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             ${companyTypePill(company.company_type)}
             ${isPE && company.size_tier ? sizeTierPillCP(company.size_tier) : ''}
             ${isPE && company.strategy ? `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${cpEscape(company.strategy)}</span>` : ''}
-            ${company.website_url ? `<a href="${cpEscape(company.website_url)}" target="_blank" rel="noopener" style="font-size:12px;color:#5C2D91;text-decoration:none">🌐 Website</a>` : ''}
+            ${company.website_url ? `<a href="${cpEscape(company.website_url)}" target="_blank" rel="noopener" style="font-size:12px;color:#5C2D91;text-decoration:none">Website →</a>` : ''}
             ${isPE && company.sector_focus_tags && company.sector_focus_tags.length ? `<button onclick="openFirmInPlaybook('${cpEscape(company.company_id)}','${cpEscape(company.sector_focus_tags[0])}')" style="background:#fff;border:1px solid #5C2D91;color:#5C2D91;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer">View in Playbook →</button>` : ''}
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${cpEscape(company.company_id)}')">Edit</button>
-          <button class="detail-panel-close" onclick="closeCompanyDetail()">✕</button>
-        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${cpEscape(company.company_id)}')">Edit</button>
       </div>
-      <div class="detail-panel-body">
 
-        ${company.description ? `
-        <div class="detail-section">
-          <div class="detail-label">Description</div>
-          <div style="font-size:13px;color:#444;line-height:1.5">${cpEscape(company.description)}</div>
-        </div>` : ''}
+      ${company.description ? `
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:8px">Description</div>
+        <div style="font-size:13px;color:#444;line-height:1.6">${cpEscape(company.description)}</div>
+      </div>` : ''}
 
+      <div style="display:grid;grid-template-columns:${isPE ? '1fr 1fr' : '1fr'};gap:16px;margin-bottom:24px">
         ${isPE ? `
-        <div class="detail-section">
-          <div class="detail-label">Firm Details</div>
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Firm Details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
             ${company.entity_type ? `<div><span style="color:#888">Type:</span> ${cpEscape(company.entity_type)}</div>` : ''}
             ${company.year_founded ? `<div><span style="color:#888">Founded:</span> ${cpEscape(String(company.year_founded))}</div>` : ''}
@@ -377,34 +446,33 @@ function renderCompanyDetailPanel(company) {
             ${company.active_portfolio_count ? `<div><span style="color:#888">Portfolio Cos:</span> ${cpEscape(String(company.active_portfolio_count))}</div>` : ''}
           </div>
         </div>
-
         ${(company.last_fund_name || company.last_fund_size || company.last_fund_vintage) ? `
-        <div class="detail-section">
-          <div class="detail-label">Latest Fund</div>
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Latest Fund</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
             ${company.last_fund_name ? `<div><span style="color:#888">Fund:</span> ${cpEscape(company.last_fund_name)}</div>` : ''}
             ${company.last_fund_size ? `<div><span style="color:#888">Size:</span> $${cpEscape(String(company.last_fund_size))}M</div>` : ''}
             ${company.last_fund_vintage ? `<div><span style="color:#888">Vintage:</span> ${cpEscape(String(company.last_fund_vintage))}</div>` : ''}
             ${company.dry_powder ? `<div><span style="color:#888">Dry Powder:</span> $${cpEscape(String(company.dry_powder))}M</div>` : ''}
           </div>
-        </div>` : ''}
-
-        <div class="detail-section">
-          <div class="detail-label">Sector Focus</div>
+        </div>` : `
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Sector Focus</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
             ${(company.sector_focus_tags || []).length
               ? company.sector_focus_tags.map(t => {
                   const s = CP_SECTORS.find(s => s.id === t);
-                  return `<span style="background:#EDE7F6;color:#5C2D91;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${s ? s.label : t}</span>`;
+                  return `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
                 }).join('')
               : '<span style="color:#aaa;font-size:13px">None specified</span>'
             }
           </div>
-        </div>` : ''}
+        </div>`}
+        ` : ''}
 
         ${(isPriv || isPub) ? `
-        <div class="detail-section">
-          <div class="detail-label">Company Details</div>
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Company Details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
             ${company.revenue_tier ? `<div><span style="color:#888">Revenue Tier:</span> ${cpEscape(company.revenue_tier)}</div>` : ''}
             ${company.ownership_type ? `<div><span style="color:#888">Ownership:</span> ${cpEscape(company.ownership_type)}</div>` : ''}
@@ -415,25 +483,47 @@ function renderCompanyDetailPanel(company) {
             ${isPub && company.ticker ? `<div><span style="color:#888">Ticker:</span> <strong style="color:#1565c0">${cpEscape(company.ticker)}</strong></div>` : ''}
           </div>
         </div>` : ''}
-
-        <div class="detail-section">
-          <div class="detail-label">Notes</div>
-          <textarea style="width:100%;min-height:70px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box"
-            onblur="saveCompanyField('${cpEscape(company.company_id)}', 'notes', this.value)">${cpEscape(company.notes || '')}</textarea>
-        </div>
-
-        <div class="detail-section">
-          <div style="font-size:11px;color:#aaa">
-            Added ${formatCPDate(company.date_added)}
-            ${company.source ? ' &bull; Source: ' + cpEscape(company.source) : ''}
-          </div>
-        </div>
       </div>
-    </div>
-  `;
 
-  document.body.appendChild(overlay);
-  document.addEventListener('keydown', _cpPanelEscapeHandler);
+      ${isPE && (company.sector_focus_tags || []).length && (company.last_fund_name || company.last_fund_size) ? `
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Sector Focus</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${company.sector_focus_tags.map(t => {
+            const s = CP_SECTORS.find(s => s.id === t);
+            return `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- Current Employees -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">
+          Current Employees in Candidate Pool (${currentEmployees.length})
+        </div>
+        ${peopleTable(currentEmployees, true)}
+      </div>
+
+      <!-- Alumni -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">
+          Alumni in Candidate Pool (${alumni.length})
+        </div>
+        ${peopleTable(alumni, false)}
+      </div>
+
+      <!-- Notes -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Notes</div>
+        <textarea style="width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box"
+          onblur="saveCompanyField('${cpEscape(company.company_id)}', 'notes', this.value)">${cpEscape(company.notes || '')}</textarea>
+      </div>
+
+      <div style="font-size:11px;color:#aaa;margin-bottom:40px">
+        Added ${formatCPDate(company.date_added)}
+        ${company.source ? ' &bull; Source: ' + cpEscape(company.source) : ''}
+      </div>
+    </div>`;
 }
 
 async function saveCompanyField(companyId, field, value) {

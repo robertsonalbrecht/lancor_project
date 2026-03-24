@@ -438,9 +438,12 @@ function _renderFirmDetail(firmId) {
     rosterHTML = `<p style="color:#888;font-size:13px;padding:8px 0 16px;">No candidates on roster yet.</p>`;
   } else {
     const rows = roster.map((c, idx) => {
-      const nameCell = c.linkedin_url
-        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener" style="color:#5C2D91">${c.name}</a>`
+      const nameLink = c.candidate_id
+        ? `<span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${(c.candidate_id||'').replace(/'/g,'\\\'')}')">${c.name}</span>`
         : c.name;
+      const nameCell = c.linkedin_url
+        ? `${nameLink} <a href="${c.linkedin_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;margin-left:4px;font-size:11px">in</a>`
+        : nameLink;
       const statusOpts = ROSTER_STATUSES.map(st =>
         `<option value="${st}" ${c.roster_status === st ? 'selected' : ''}>${st}</option>`
       ).join('');
@@ -639,9 +642,10 @@ function _buildFirmAccordion(firm) {
     rosterHTML = `<p class="text-muted text-sm" style="margin:8px 0 12px;">No candidates in roster yet.</p>`;
   } else {
     const rows = roster.map((c, idx) => {
+      const _nl = c.candidate_id ? `<span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${(c.candidate_id||'').replace(/'/g,'\\\'')}')">${c.name}</span>` : c.name;
       const nameCell = c.linkedin_url
-        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${c.name}</a>`
-        : c.name;
+        ? `${_nl} <a href="${c.linkedin_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;margin-left:4px;font-size:11px">in</a>`
+        : _nl;
       const statusOpts = ROSTER_STATUSES.map(s =>
         `<option value="${s}" ${c.roster_status === s ? 'selected' : ''}>${s}</option>`
       ).join('');
@@ -1182,9 +1186,10 @@ function _buildCompanyAccordion(company) {
     rosterHTML = `<p class="text-muted text-sm" style="margin:8px 0 12px;">No candidates in roster yet.</p>`;
   } else {
     const rows = roster.map((c, idx) => {
+      const _nl = c.candidate_id ? `<span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${(c.candidate_id||'').replace(/'/g,'\\\'')}')">${c.name}</span>` : c.name;
       const nameCell = c.linkedin_url
-        ? `<a href="${c.linkedin_url}" target="_blank" rel="noopener">${c.name}</a>`
-        : c.name;
+        ? `${_nl} <a href="${c.linkedin_url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;margin-left:4px;font-size:11px">in</a>`
+        : _nl;
       const statusOpts = ROSTER_STATUSES.map(s =>
         `<option value="${s}" ${c.roster_status === s ? 'selected' : ''}>${s}</option>`
       ).join('');

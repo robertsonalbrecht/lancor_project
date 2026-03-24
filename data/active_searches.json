@@ -133,10 +133,919 @@
         }
       ],
       "sourcing_coverage": {
-        "pe_firms": [],
+        "pe_firms": [
+          {
+            "firm_id": "tenex-capital-management",
+            "name": "Tenex Capital Management",
+            "hq": "New York, NY",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Business Services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "brian-claypool-tenex-capital-management",
+                "name": "Brian Claypool",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/bclaypool",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "larry-davis-tenex-capital-management",
+                "name": "Larry Davis",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/larrydaviddavis",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bob-dibetta-tenex-capital-management",
+                "name": "Bob DiBetta",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/bob-dibetta-7277381",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "taylor-sweet-tenex-capital-management",
+                "name": "Taylor Sweet",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/taylor-sweet-1b94a342",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "tommy-hammond-tenex-capital-management",
+                "name": "Tommy Hammond",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/tommyhammond",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "robert-karam-tenex-capital-management",
+                "name": "Robert Karam",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/robert-karam-cpsm-b8156746",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "alex-avila-tenex-capital-management",
+                "name": "Alex Avila",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/alejandro-a-08149055",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "greg-tabak-tenex-capital-management",
+                "name": "Greg Tabak",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/gregory-tabak",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "dominic-blosil-tenex-capital-management",
+                "name": "Dominic Blosil",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/dominic-blosil-9439445",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jimmy-morency-tenex-capital-management",
+                "name": "Jimmy Morency",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/jimmy-morency-353ab0176",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "anton-danenkov-tenex-capital-management",
+                "name": "Anton Danenkov",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/anton-danenkov-92a85621",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "chris-clark-tenex-capital-management",
+                "name": "Chris Clark",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/chris-clark-5a77a249",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "maria-scharper-tenex-capital-management",
+                "name": "Maria Scharper",
+                "title": "Operating Advisor",
+                "linkedin_url": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "martin-moore-tenex-capital-management",
+                "name": "Martin Moore",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/martinwilliammoore",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "russell-bammerlin-tenex-capital-management",
+                "name": "Russell Bammerlin",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/russell-bammerlin-93343082",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "vishal-madan-tenex-capital-management",
+                "name": "Vishal Madan",
+                "title": "Operating Advisor, Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/vishal-madan-4207bb5",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "nick-spaeth-tenex-capital-management",
+                "name": "Nick Spaeth",
+                "title": "Director, Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/nickspaeth",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bruce-cornell-tenex-capital-management",
+                "name": "Bruce Cornell",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/bruce-cornell-a8abb54",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "david-brooks-tenex-capital-management",
+                "name": "David Brooks",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/david-s-brooks",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "guido-poggiali-tenex-capital-management",
+                "name": "Guido Poggiali",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/guido-poggiali",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "tayloe-berbert-tenex-capital-management",
+                "name": "Tayloe Berbert",
+                "title": "Operating Advisor",
+                "linkedin_url": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "justin-antony-tenex-capital-management",
+                "name": "Justin Antony",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/justin-antony",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "mark-kramer-tenex-capital-management",
+                "name": "Mark Kramer",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/markkramer",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "lev-davidson-tenex-capital-management",
+                "name": "Lev Davidson",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/lev-davidson",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "micah-wood-tenex-capital-management",
+                "name": "Micah Wood",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/micahrwood",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "brandon-pellatt-tenex-capital-management",
+                "name": "Brandon Pellatt",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/brandon-pellatt",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "lokesh-sharma-tenex-capital-management",
+                "name": "Lokesh Sharma",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/lokeshsharma23",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jack-heinle-tenex-capital-management",
+                "name": "Jack Heinle",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/jack-heinle-87b5bb113",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jeffrey-mullavey-tenex-capital-management",
+                "name": "Jeffrey Mullavey",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/jmullavey",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bill-zinnershine-tenex-capital-management",
+                "name": "Bill Zinnershine",
+                "title": "",
+                "linkedin_url": "https://www.linkedin.com/in/billy-zinnershine",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "laurent-kratz-tenex-capital-management",
+                "name": "Laurent Kratz",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/laurent-k-a8392b",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ben-whiteker-tenex-capital-management",
+                "name": "Ben Whiteker",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/bwhiteker",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "lee-fleury-tenex-capital-management",
+                "name": "Lee Fleury",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/lee-fleury",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "bain-capital",
+            "name": "Bain Capital",
+            "hq": "Boston, MA",
+            "size_tier": "Mega",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, Healthcare, Financial Services, Consumer",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "sumit-gupta-bain-capital",
+                "name": "Sumit Gupta",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/sumitgupta55",
+                "roster_status": "Identified",
+                "source": "auto-linked",
+                "reviewed": true,
+                "reviewed_date": "2026-03-24",
+                "review_status": "not_relevant"
+              },
+              {
+                "candidate_id": "rama-naageswaran-bain-capital",
+                "name": "Rama Naageswaran",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/rama-naageswaran-2a43105",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "celeste-clipp-lofqvist-bain-capital",
+                "name": "Celeste Clipp Lofqvist",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/celesteclipplofqvist",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "stephen-janco-bain-capital",
+                "name": "Stephen Janco",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/stephen-janco-7053b850",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ingrid-hammond-bain-capital",
+                "name": "Ingrid Hammond",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ingrid-hammond-612816",
+                "roster_status": "Identified",
+                "source": "auto-linked",
+                "last_updated": "2026-03-24",
+                "review_status": "relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-24"
+              },
+              {
+                "candidate_id": "alena-harrison-bain-capital",
+                "name": "Alena Harrison",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/alena-harrison-a6732831",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "matthew-hanson-bain-capital",
+                "name": "Matthew Hanson",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/matthewjhanson",
+                "roster_status": "Identified",
+                "source": "auto-linked",
+                "review_status": "relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-24"
+              },
+              {
+                "candidate_id": "danielle-wang-bain-capital",
+                "name": "Danielle Wang",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/danielle-wang-1531183a",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "surbhi-martin-bain-capital",
+                "name": "Surbhi Martin",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/surbhi-martin-b825483",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "larissa-quinn-bain-capital",
+                "name": "Larissa Quinn",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/larissa-quinn-47661515",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "scott-mckenzie-bain-capital",
+                "name": "Scott McKenzie",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/scott-mckenzie-0501a924",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "pape-ndaw-bain-capital",
+                "name": "Pape Ndaw",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/pape-ndaw-a224a55",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "peak-rock-capital",
+            "name": "Peak Rock Capital",
+            "hq": "Austin, Texas",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, tech-enabled-services, Healthcare, Consumer, infrastructure-energy, life-sciences, media-entertainment, real-estate-proptech",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "graham-partners",
+            "name": "Graham Partners",
+            "hq": "Newtown Square, Pennsylvania",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, Healthcare, Financial Services, Consumer, infrastructure-energy, life-sciences, real-estate-proptech, agriculture-fb",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "cand-sarah-kolansky-1774324700090",
+                "name": "Sarah Kolansky",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/sarah-kolansky/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-nate-van-wyk-cpa-cma-pmp-1774324375951",
+                "name": "Nate Van Wyk, CPA, CMA, PMP",
+                "title": "Manager, Finance Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/natevanwyk/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-daniel-soroka-1774324540072",
+                "name": "Daniel Soroka",
+                "title": "Senior Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/daniel-soroka-3436302/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-evan-kates-1774324743913",
+                "name": "Evan Kates",
+                "title": "Director, Finance Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/evan-kates/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-jay-dubois-1774324786921",
+                "name": "Jay DuBois",
+                "title": "Operations Advisor, Manufacturing & Lean",
+                "linkedin_url": "https://www.linkedin.com/in/jay-dubois-10823a28/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-lizzie-grobbel-1774324838135",
+                "name": "Lizzie Grobbel",
+                "title": "Director of Environmental, Social and Governance (ESG)",
+                "linkedin_url": "https://www.linkedin.com/in/lizzie-grobbel-65aa8b56/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-andrew-brenneman-1774324881273",
+                "name": "Andrew Brenneman",
+                "title": "Director, Value Management Office",
+                "linkedin_url": "https://www.linkedin.com/in/andrew-brenneman/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "the-jordan-company",
+            "name": "The Jordan Company",
+            "hq": "Chicago, IL",
+            "size_tier": "Middle Market",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Consumer, Business Services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "mark-emery-the-jordan-company",
+                "name": "Mark Emery",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-emery-59bb52b5",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jeff-j-dombek-the-jordan-company",
+                "name": "Jeff J. Dombek",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/jeff-j-dombek-84ba1322",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "christina-murray-the-jordan-company",
+                "name": "Christina Murray",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/christina-murray-91421672",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "nick-storm-the-jordan-company",
+                "name": "Nick Storm",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/nick-storm-cpa-ab085a26",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "mark-burggraaff-the-jordan-company",
+                "name": "Mark Burggraaff",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-b-2556173",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "zain-lakhani-the-jordan-company",
+                "name": "Zain Lakhani",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/zains-profile",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "teresa-ricotta-the-jordan-company",
+                "name": "Teresa Ricotta",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/teresa-ricotta-75862779",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "lisa-ondrula-the-jordan-company",
+                "name": "Lisa Ondrula",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/lisa-ondrula-b69618b2",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "chris-hlebasko-the-jordan-company",
+                "name": "Chris Hlebasko",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/chris-hlebasko-866704257",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bill-liss-the-jordan-company",
+                "name": "Bill Liss",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/williamcliss",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "sverica-capital-management",
+            "name": "Sverica Capital Management",
+            "hq": "Boston, MA",
+            "size_tier": "Middle Market",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, Healthcare, Business Services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "greg-hylant-sverica-capital-management",
+                "name": "Greg Hylant",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/greg-hylant-57094113",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "michael-dougherty-sverica-capital-management",
+                "name": "Michael Dougherty",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/michael-dougherty-985071a4",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "dave-finley-sverica-capital-management",
+                "name": "Dave Finley",
+                "title": "Managing Partner",
+                "linkedin_url": "https://www.linkedin.com/in/dave-finley-a0a10a",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ryan-harstad-sverica-capital-management",
+                "name": "Ryan Harstad",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ryan-harstad-86646a17",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "stellex-capital-management",
+            "name": "Stellex Capital Management",
+            "hq": "New York, NY",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "shankar-kiru-stellex-capital-management",
+                "name": "Shankar Kiru",
+                "title": "Operating Partner, Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/shankar-kiru-b656873",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jason-laduke-stellex-capital-management",
+                "name": "Jason LaDuke",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jason-laduke-7b6498",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "mariano-malvicino-stellex-capital-management",
+                "name": "Mariano Malvicino",
+                "title": "Principal, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/marianomalvicino",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "matthew-f-kajfez-stellex-capital-management",
+                "name": "Matthew F. Kajfez",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/matthewkajfez",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "russell-jenkins-stellex-capital-management",
+                "name": "Russell Jenkins",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/russell-jenkins",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "sk-capital-partners",
+            "name": "SK Capital Partners",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Healthcare",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "dante-c-parrini-sk-capital-partners",
+                "name": "Dante C. Parrini",
+                "title": "Senior Director",
+                "linkedin_url": "https://www.linkedin.com/in/danteparrini",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "brian-coe-sk-capital-partners",
+                "name": "Brian Coe",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/brian-coe-a75886376",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "barry-penney-sk-capital-partners",
+                "name": "Barry Penney",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/barry-penney-0868601",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "sarvinoz-fahriddinova-sk-capital-partners",
+                "name": "Sarvinoz Fahriddinova",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/sarvinozf",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "laura-kaspar-sk-capital-partners",
+                "name": "Laura Kaspar",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/laura-kaspar-108a537",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "chris-redding-sk-capital-partners",
+                "name": "Chris Redding",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/chris-redding-63b95a1",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "kris-radhakrishnan-sk-capital-partners",
+                "name": "Kris Radhakrishnan",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/kris-radhakrishnan-5642532b",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "kiran-gurumurthy-sk-capital-partners",
+                "name": "Kiran Gurumurthy",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/kiran-gurumurthy-6214462",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "american-industrial-partners",
+            "name": "American Industrial Partners",
+            "hq": "New York, New York",
+            "size_tier": "Mega",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, Financial Services, Consumer, infrastructure-energy, media-entertainment, real-estate-proptech",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "frontenac-company",
+            "name": "Frontenac Company",
+            "hq": "Chicago, Illinois",
+            "size_tier": "Middle Market",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, tech-enabled-services, Financial Services, Consumer, Business Services, infrastructure-energy",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "siris-capital-group",
+            "name": "Siris Capital Group",
+            "hq": "New York, NY",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, tech-enabled-services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "bret-griess-siris-capital-group",
+                "name": "Bret Griess",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/bret-griess-1ba7a51",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "john-mccormack-siris-capital-group",
+                "name": "John McCormack",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/john-mccormack-5a37b4",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jeff-jacobson-siris-capital-group",
+                "name": "Jeff Jacobson",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jeffjacobson1",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "hubert-de-pesquidoux-siris-capital-group",
+                "name": "Hubert de Pesquidoux",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/hubert-de-pesquidoux-8a911440",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "rod-randall-siris-capital-group",
+                "name": "Rod Randall",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/rodrandall",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ted-schell-siris-capital-group",
+                "name": "Ted Schell",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ted-schell-bba612",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "john-swainson-siris-capital-group",
+                "name": "John Swainson",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/johnswainson",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "robert-aquilina-siris-capital-group",
+                "name": "Robert Aquilina",
+                "title": "Operating Executive, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/robert-aquilina-7a268017",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "littlejohn-co",
+            "name": "Littlejohn & Co.",
+            "hq": "Greenwich, Connecticut",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, tech-enabled-services, Healthcare, Financial Services, Consumer, Business Services, infrastructure-energy, real-estate-proptech",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "cand-hussein-abdelhalim-1774331543249",
+                "name": "Hussein Abdelhalim",
+                "title": "Sr Director, Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/hussein-abdelhalim-00395a27/",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          }
+        ],
         "companies": []
       },
-      "weekly_updates": []
+      "weekly_updates": [],
+      "search_kit": {
+        "boolean_strings": [],
+        "outreach_messages": [],
+        "ideal_candidate_profiles": [
+          {
+            "name": "PE Lateral — Industrials Operating Partner",
+            "archetypes": [
+              "PE Lateral",
+              "Industry Operator"
+            ],
+            "years_experience": {
+              "min": 10,
+              "max": 25
+            },
+            "sector_preferences": [
+              "Industrials"
+            ],
+            "target_companies": [],
+            "target_pe_firms": [],
+            "must_haves": [],
+            "nice_to_haves": [],
+            "red_flags": [],
+            "id": "icp-1774297294285",
+            "created_at": "2026-03-23"
+          }
+        ],
+        "screen_question_guides": [],
+        "pitchbook_params": []
+      }
     }
   ]
 }

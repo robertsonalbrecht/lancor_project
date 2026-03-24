@@ -5,6 +5,32 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
+// Lazy-init Anthropic client (server starts fine without API key)
+let _anthropic = null;
+function getAnthropicClient() {
+  if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
+    const Anthropic = require('@anthropic-ai/sdk');
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _anthropic;
+}
+
+const EMPTY_SEARCH_KIT = {
+  boolean_strings: [],
+  outreach_messages: [],
+  ideal_candidate_profiles: [],
+  screen_question_guides: [],
+  pitchbook_params: []
+};
+
+function ensureSearchKit(search) {
+  if (!search.search_kit) search.search_kit = JSON.parse(JSON.stringify(EMPTY_SEARCH_KIT));
+  Object.keys(EMPTY_SEARCH_KIT).forEach(k => {
+    if (!search.search_kit[k]) search.search_kit[k] = [];
+  });
+  return search;
+}
+
 function searchesFile() {
   return path.join(process.env.DATA_PATH, 'active_searches.json');
 }
@@ -26,7 +52,7 @@ function writeSearches(data) {
 router.get('/', (req, res) => {
   try {
     const data = readSearches();
-    let results = data.searches;
+    let results = data.searches.map(ensureSearchKit);
     if (req.query.include !== 'closed') {
       results = results.filter(s => s.status !== 'closed');
     }
@@ -55,6 +81,7 @@ router.get('/:id', (req, res) => {
     const data = readSearches();
     const search = data.searches.find(s => s.search_id === req.params.id);
     if (!search) return res.status(404).json({ error: 'Search not found' });
+    ensureSearchKit(search);
     res.json(search);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -648,5 +675,158 @@ function parseDashboardHTML(html, search) {
 
   return candidates;
 }
+
+// ── AI: Generate Ideal Candidate Profile ──────────────────────────────────────
+
+router.post('/:id/ai/generate-icp', async (req, res) => {
+  try {
+    const client = getAnthropicClient();
+    if (!client) return res.status(400).json({ error: 'ANTHROPIC_API_KEY not configured. Add it to your .env file.' });
+
+    const data = readSearches();
+    const search = data.searches.find(s => s.search_id === req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+    ensureSearchKit(search);
+
+    const { job_description } = req.body;
+
+    const weeklyNotes = (search.weekly_updates || []).map(u => `${u.date}: ${u.note}`).join('\n');
+    const peFirmNames = (search.sourcing_coverage?.pe_firms || []).map(f => f.name).filter(Boolean).slice(0, 20);
+    const companyNames = (search.sourcing_coverage?.companies || []).map(c => c.name).filter(Boolean).slice(0, 20);
+
+    let contextParts = [
+      `Client: ${search.client_name}`,
+      `Role: ${search.role_title}`,
+      `Sectors: ${(search.sectors || []).join(', ')}`,
+      `Archetypes requested: ${(search.archetypes_requested || []).join(', ')}`
+    ];
+    if (search.ideal_candidate_profile) contextParts.push(`Existing profile notes: ${search.ideal_candidate_profile}`);
+    if (peFirmNames.length) contextParts.push(`PE firms in sourcing coverage: ${peFirmNames.join(', ')}`);
+    if (companyNames.length) contextParts.push(`Companies in sourcing coverage: ${companyNames.join(', ')}`);
+    if (weeklyNotes) contextParts.push(`\nMeeting Notes / Weekly Updates:\n${weeklyNotes}`);
+    if (job_description) contextParts.push(`\nJob Description:\n${job_description}`);
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2500,
+      system: `You are an expert executive recruiter specializing in PE-backed operating roles. Given a search context (job description, meeting notes, client info), generate an ideal candidate profile. Return ONLY valid JSON with this structure: {"archetypes":["PE Lateral","Industry Operator"],"years_experience":{"min":10,"max":25},"sector_preferences":["Industrials"],"target_companies":["Company A","Company B"],"target_pe_firms":["Firm X","Firm Y"],"must_haves":["requirement 1","requirement 2"],"nice_to_haves":["preference 1"],"red_flags":["concern 1"]}. For target_companies, suggest 8-15 companies whose alumni would be strong candidates for this role. For target_pe_firms, suggest 5-10 PE firms with similar strategies or portfolio focus to the hiring client where candidates with relevant experience might work. Must-haves, nice-to-haves, and red flags should each have 3-8 items. Be specific and practical, not generic.`,
+      messages: [{ role: 'user', content: `Generate an ideal candidate profile for this executive search:\n\n${contextParts.join('\n')}` }]
+    });
+
+    const text = response.content[0].text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(500).json({ error: 'Failed to parse AI response' });
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── AI: Generate Screen Questions ──────────────────────────────────────────────
+
+router.post('/:id/ai/generate-screen-questions', async (req, res) => {
+  try {
+    const client = getAnthropicClient();
+    if (!client) return res.status(400).json({ error: 'ANTHROPIC_API_KEY not configured. Add it to your .env file.' });
+
+    const data = readSearches();
+    const search = data.searches.find(s => s.search_id === req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+    ensureSearchKit(search);
+
+    const { job_description, profile_id } = req.body;
+
+    // Gather context
+    const profile = profile_id
+      ? (search.search_kit.ideal_candidate_profiles || []).find(p => p.id === profile_id)
+      : (search.search_kit.ideal_candidate_profiles || [])[0];
+
+    const weeklyNotes = (search.weekly_updates || []).map(u => `${u.date}: ${u.note}`).join('\n');
+
+    let contextParts = [
+      `Client: ${search.client_name}`,
+      `Role: ${search.role_title}`,
+      `Sectors: ${(search.sectors || []).join(', ')}`,
+      `Archetypes: ${(search.archetypes_requested || []).join(', ')}`
+    ];
+    if (profile) {
+      contextParts.push(`\nIdeal Candidate Profile:`);
+      if (profile.archetypes?.length) contextParts.push(`  Archetypes: ${profile.archetypes.join(', ')}`);
+      if (profile.years_experience) contextParts.push(`  Experience: ${profile.years_experience.min}-${profile.years_experience.max} years`);
+      if (profile.sector_preferences?.length) contextParts.push(`  Sectors: ${profile.sector_preferences.join(', ')}`);
+      if (profile.target_companies?.length) contextParts.push(`  Target companies: ${profile.target_companies.join(', ')}`);
+      if (profile.target_pe_firms?.length) contextParts.push(`  Target PE firms: ${profile.target_pe_firms.join(', ')}`);
+      if (profile.must_haves?.length) contextParts.push(`  Must-haves: ${profile.must_haves.join('; ')}`);
+      if (profile.nice_to_haves?.length) contextParts.push(`  Nice-to-haves: ${profile.nice_to_haves.join('; ')}`);
+      if (profile.red_flags?.length) contextParts.push(`  Red flags: ${profile.red_flags.join('; ')}`);
+    }
+    if (weeklyNotes) contextParts.push(`\nMeeting Notes:\n${weeklyNotes}`);
+    if (job_description) contextParts.push(`\nJob Description:\n${job_description}`);
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2500,
+      system: `You are an expert executive recruiter specializing in PE-backed operating roles. Generate screening questions for a recruiter to use when phone-screening candidates. Return ONLY valid JSON with this structure: {"categories":[{"category":"Category Name","questions":["Question 1","Question 2"]}]}. Generate 15-20 questions across 4-6 categories. Categories should cover: Background & Career Arc, Leadership & Operating Style, Deal/Transaction Experience, Industry & Sector Knowledge, Cultural Fit & Motivation, and any role-specific areas. Questions should be open-ended, behavioral, and probe for specific examples.`,
+      messages: [{ role: 'user', content: `Generate screening questions for this executive search:\n\n${contextParts.join('\n')}` }]
+    });
+
+    const text = response.content[0].text;
+    // Extract JSON from response (handle markdown code blocks)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(500).json({ error: 'Failed to parse AI response' });
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── AI: Generate PitchBook Parameters ─────────────────────────────────────────
+
+router.post('/:id/ai/generate-pitchbook-params', async (req, res) => {
+  try {
+    const client = getAnthropicClient();
+    if (!client) return res.status(400).json({ error: 'ANTHROPIC_API_KEY not configured. Add it to your .env file.' });
+
+    const data = readSearches();
+    const search = data.searches.find(s => s.search_id === req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+    ensureSearchKit(search);
+
+    // Gather context
+    const peFirmNames = (search.sourcing_coverage?.pe_firms || []).map(f => f.name).filter(Boolean).slice(0, 20);
+    const companyNames = (search.sourcing_coverage?.companies || []).map(c => c.name).filter(Boolean).slice(0, 20);
+    const profile = (search.search_kit.ideal_candidate_profiles || [])[0];
+
+    let contextParts = [
+      `Hiring Client: ${search.client_name}`,
+      `Role: ${search.role_title}`,
+      `Sectors: ${(search.sectors || []).join(', ')}`,
+      `Archetypes: ${(search.archetypes_requested || []).join(', ')}`
+    ];
+    if (peFirmNames.length) contextParts.push(`PE Firms already in sourcing coverage: ${peFirmNames.join(', ')}`);
+    if (companyNames.length) contextParts.push(`Companies already in sourcing coverage: ${companyNames.join(', ')}`);
+    if (profile) {
+      if (profile.target_companies?.length) contextParts.push(`Target companies from ICP: ${profile.target_companies.join(', ')}`);
+      if (profile.target_pe_firms?.length) contextParts.push(`Target PE firms from ICP: ${profile.target_pe_firms.join(', ')}`);
+    }
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2500,
+      system: `You are an expert at PE deal sourcing and PitchBook research for executive recruiting. Given an executive search context, suggest PitchBook search parameters to find candidates. Think about: PE firms with similar investment strategies to the hiring client, portfolio companies in similar industries, and companies where operating talent would be a good fit. Return ONLY valid JSON with this structure: {"similar_pe_firms":["Firm A","Firm B"],"similar_companies":["Co A","Co B"],"revenue_range":{"min":"$50M","max":"$500M"},"geographies":["United States"],"ownership_types":["PE-backed","Public"],"industries":["Industry A","Industry B"],"notes":"Brief explanation of the sourcing rationale"}. Provide 8-15 PE firms and 10-20 companies.`,
+      messages: [{ role: 'user', content: `Suggest PitchBook search parameters for this executive search:\n\n${contextParts.join('\n')}` }]
+    });
+
+    const text = response.content[0].text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(500).json({ error: 'Failed to parse AI response' });
+    const result = JSON.parse(jsonMatch[0]);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

@@ -125,7 +125,7 @@ function renderPoolView() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
         <div>
           <h1 style="font-size:1.6rem;font-weight:800;color:#1a1a1a;margin-bottom:2px">Candidate Pool</h1>
-          <div style="font-size:13px;color:#888">${poolAllCandidates.length} candidates total &bull; ${filtered.length} shown</div>
+          <div style="font-size:13px;color:#888" id="pool-count">${poolAllCandidates.length} candidates total &bull; ${filtered.length} shown</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openRunDebriefPicker()">&#9998; Run Debrief</button>
@@ -184,7 +184,7 @@ function renderPoolView() {
       </div>
 
       <!-- Table or empty state -->
-      ${sorted.length === 0 ? renderPoolEmptyState() : renderPoolTable(sorted)}
+      <div id="pool-table-container">${sorted.length === 0 ? renderPoolEmptyState() : renderPoolTable(sorted)}</div>
     </div>
   `;
 }
@@ -274,6 +274,17 @@ function onPoolFilterChange() {
   poolFilters.availability       = document.getElementById('pf-avail').value;
   poolFilters.rating             = document.getElementById('pf-rating').value;
   poolFilters.text               = document.getElementById('pf-text').value;
+
+  // Only update table + count to preserve input focus
+  const tableWrap = document.getElementById('pool-table-container');
+  const countEl   = document.getElementById('pool-count');
+  if (tableWrap) {
+    const filtered = applyPoolFilters(poolAllCandidates);
+    const sorted = sortPoolCandidates(filtered);
+    tableWrap.innerHTML = sorted.length === 0 ? renderPoolEmptyState() : renderPoolTable(sorted);
+    if (countEl) countEl.textContent = `${poolAllCandidates.length} candidates total \u2022 ${filtered.length} shown`;
+    return;
+  }
   renderPoolView();
 }
 
@@ -337,15 +348,9 @@ function setPoolSort(field) {
 // ── Candidate Detail Panel ────────────────────────────────────────────────────
 
 async function openCandidateDetail(candidateId) {
-  // Remove any existing panel
-  closeCandidateDetail();
-
-  try {
-    const candidate = await api('GET', '/candidates/' + candidateId);
-    renderCandidateDetailPanel(candidate);
-  } catch (err) {
-    alert('Error loading candidate: ' + err.message);
-  }
+  // Use the global candidate panel from app.js
+  openCandidatePanel(candidateId);
+  return;
 }
 
 function closeCandidateDetail() {

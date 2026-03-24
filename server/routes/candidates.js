@@ -68,6 +68,10 @@ router.post('/', (req, res) => {
     const pool = readPool();
     const body = req.body;
 
+    // Clean LinkedIn suffixes from firm names
+    const cleanFirmName = s => (s || '').replace(/\s*[·•]\s*(Full[- ]time|Part[- ]time|Contract|Freelance|Self[- ]employed|Seasonal|Internship).*$/i, '').trim();
+    if (body.current_firm) body.current_firm = cleanFirmName(body.current_firm);
+
     const newCandidate = Object.assign({
       candidate_id: body.candidate_id || `cand-${Date.now()}`,
       date_added: new Date().toISOString().slice(0, 10)
@@ -145,6 +149,8 @@ router.post('/prefill', (req, res) => {
     const normUrl  = s => (s || '').replace(/\?.*$/, '').replace(/\/$/, '').toLowerCase();
     // Normalize firm: strip LinkedIn suffixes like "· Full-time", "· Part-time", "· Contract"
     const normFirm = s => (s || '').replace(/\s*[·•]\s*(full[- ]time|part[- ]time|contract|freelance|self[- ]employed).*$/i, '').toLowerCase().trim();
+    // Clean firm name for storage: strip suffix but keep original casing
+    const cleanFirm = s => (s || '').replace(/\s*[·•]\s*(Full[- ]time|Part[- ]time|Contract|Freelance|Self[- ]employed|Seasonal|Internship).*$/i, '').trim();
 
     // 1. Match by LinkedIn URL (normalized, trailing-slash-insensitive)
     // 2. Fallback: match by name + firm (for candidates imported without a URL)
@@ -163,9 +169,11 @@ router.post('/prefill', (req, res) => {
       // UPDATE existing candidate — enrich blank fields, always refresh work history
       if (linkedinUrl && !existing.linkedin_url) existing.linkedin_url = linkedinUrl;
       if (currentTitle  && !existing.current_title)  existing.current_title  = currentTitle;
-      if (currentCompany && !existing.current_firm)  existing.current_firm   = currentCompany;
+      if (currentCompany && !existing.current_firm)  existing.current_firm   = cleanFirm(currentCompany);
       if (location      && !existing.home_location)  existing.home_location  = location;
-      if (Array.isArray(workHistory) && workHistory.length) existing.work_history = workHistory;
+      if (Array.isArray(workHistory) && workHistory.length) {
+        existing.work_history = workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) }));
+      }
       existing.last_scraped = new Date().toISOString().slice(0, 10);
 
       writePool(pool);
@@ -180,10 +188,10 @@ router.post('/prefill', (req, res) => {
       candidate_id,
       name:           fullName      || '',
       current_title:  currentTitle  || '',
-      current_firm:   currentCompany|| '',
+      current_firm:   cleanFirm(currentCompany) || '',
       home_location:  location      || '',
       linkedin_url:   linkedinUrl   || '',
-      work_history:   Array.isArray(workHistory) ? workHistory : [],
+      work_history:   Array.isArray(workHistory) ? workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) })) : [],
       sector_tags:    [],
       archetype:      '',
       operator_background: [],
