@@ -232,7 +232,7 @@ a:hover {
   justify-content: flex-end;
 }
 .cand-panel {
-  width: 480px;
+  width: 680px;
   max-width: 90vw;
   height: 100vh;
   background: #fff;
@@ -246,10 +246,10 @@ a:hover {
   to   { transform: translateX(0); }
 }
 .cand-panel-header {
-  padding: 20px 24px 16px;
+  padding: 24px 32px 18px;
   border-bottom: 1px solid #e0e0e0;
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: flex-start;
   flex-shrink: 0;
 }
@@ -268,7 +268,7 @@ a:hover {
 }
 .cand-panel-close:hover { background: #f5f5f5; color: #333; }
 .cand-panel-body {
-  padding: 20px 24px;
+  padding: 24px 32px;
   overflow-y: auto;
   flex: 1;
 }

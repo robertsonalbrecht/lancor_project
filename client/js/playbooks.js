@@ -447,12 +447,13 @@ function _renderFirmDetail(firmId) {
       const statusOpts = ROSTER_STATUSES.map(st =>
         `<option value="${st}" ${c.roster_status === st ? 'selected' : ''}>${st}</option>`
       ).join('');
+      const _pipeBtn = `<button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>`;
       return `<tr>
         <td>${nameCell}</td>
         <td style="color:#555">${c.title || ''}</td>
         <td><select class="form-control" style="padding:3px 6px;font-size:12px;"
               onchange="_updateCandidateStatus('${firmId}',${idx},this.value,false)">${statusOpts}</select></td>
-        <td><button class="btn btn-ghost btn-sm" style="color:#c62828;padding:2px 6px;"
+        <td style="white-space:nowrap">${_pipeBtn} <button class="btn btn-ghost btn-sm" style="color:#c62828;padding:2px 6px;"
               onclick="_removeCandidate('${firmId}',${idx},false)">&#10005;</button></td>
       </tr>`;
     }).join('');
@@ -659,7 +660,8 @@ function _buildFirmAccordion(firm) {
               ${statusOpts}
             </select>
           </td>
-          <td>
+          <td style="white-space:nowrap">
+            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
             <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
                     onclick="_removeCandidate('${firm.firm_id}', ${idx}, false)">&#10005;</button>
           </td>
@@ -1203,7 +1205,8 @@ function _buildCompanyAccordion(company) {
               ${statusOpts}
             </select>
           </td>
-          <td>
+          <td style="white-space:nowrap">
+            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
             <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
                     onclick="_removeCandidate('${company.company_id}', ${idx}, true)">&#10005;</button>
           </td>

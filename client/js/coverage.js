@@ -156,10 +156,26 @@ function getReviewStats(entity) {
   return { relevant, notRelevant, pending, total: roster.length, pct };
 }
 
-function coverageBar(pct, manual_complete) {
+function coverageBar(pct, manual_complete, entity) {
+  // If verified/complete, show freshness + checkmark instead of bar
+  if (manual_complete && entity && entity.last_verified) {
+    const daysAgo = Math.floor((Date.now() - new Date(entity.last_verified).getTime()) / 86400000);
+    const freshness = daysAgo <= 365 ? { color: '#2e7d32', label: 'Fresh', bg: '#e8f5e9' }
+                    : daysAgo <= 730 ? { color: '#e65100', label: 'Review', bg: '#fff3e0' }
+                    : { color: '#c62828', label: 'Stale', bg: '#ffebee' };
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${freshness.bg};color:${freshness.color};font-size:13px;font-weight:700">&#10003;</span>
+      <span style="font-size:11px;font-weight:700;color:${freshness.color}">${freshness.label}</span>
+    </div>`;
+  }
+  if (manual_complete) {
+    return `<div style="display:flex;align-items:center;gap:6px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#EDE7F6;color:#5C2D91;font-size:13px;font-weight:700">&#10003;</span>
+      <span style="font-size:11px;font-weight:700;color:#5C2D91">Complete</span>
+    </div>`;
+  }
   let color, label;
-  if (manual_complete) { color = '#5C2D91'; label = 'Manual Complete'; pct = 100; }
-  else if (pct === 0)  { color = '#bdbdbd'; label = 'Unsearched'; }
+  if (pct === 0)       { color = '#bdbdbd'; label = 'Unsearched'; }
   else if (pct <= 25)  { color = '#ef5350'; label = 'Low'; }
   else if (pct <= 55)  { color = '#ff9800'; label = 'Moderate'; }
   else if (pct <= 85)  { color = '#4caf50'; label = 'Good'; }
@@ -217,22 +233,38 @@ function addPersonFormHTML(entityId, searchId, type) {
 }
 
 function overrideSectionHTML(entity, entityId, searchId, type) {
-  const isManual = entity.manual_complete;
+  const isComplete = entity.manual_complete;
   const note = escCov(entity.manual_complete_note || '');
+  const lastVerified = entity.last_verified;
+  const verifiedBy = entity.verified_by || '';
+
+  let verifiedDisplay;
+  if (lastVerified) {
+    const daysAgo = Math.floor((Date.now() - new Date(lastVerified).getTime()) / 86400000);
+    const freshness = daysAgo <= 365 ? { color: '#2e7d32', label: 'Fresh' }
+                    : daysAgo <= 730 ? { color: '#ff9800', label: 'Review soon' }
+                    : { color: '#c62828', label: 'Stale' };
+    verifiedDisplay = `<span style="font-size:12px;color:${freshness.color};font-weight:600">${freshness.label}</span>
+      <span style="font-size:11px;color:#888;margin-left:6px">Last verified: ${escCov(lastVerified)}${verifiedBy ? ' by ' + escCov(verifiedBy) : ''} (${daysAgo}d ago)</span>`;
+  } else {
+    verifiedDisplay = `<span style="font-size:12px;color:#bbb">Never verified</span>`;
+  }
+
   return `
   <div class="override-section">
-    <strong style="font-size:13px;display:block;margin-bottom:8px">Coverage Override</strong>
-    <label class="override-section">
-      <input type="radio" name="override-${escCov(entityId)}" value="auto" ${!isManual ? 'checked' : ''} />
-      Auto (calculated)
-    </label>
-    <label class="override-section">
-      <input type="radio" name="override-${escCov(entityId)}" value="manual" ${isManual ? 'checked' : ''} />
-      Mark as Complete
-    </label>
-    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <strong style="font-size:13px;display:block;margin-bottom:10px;text-decoration:none">Coverage Verification</strong>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+      ${verifiedDisplay}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="override-complete-${escCov(entityId)}" ${isComplete ? 'checked' : ''} style="width:16px;height:16px;accent-color:#5C2D91">
+        Mark as Complete
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input type="text" id="override-note-${escCov(entityId)}" value="${note}" placeholder="Note (optional)" style="padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1;min-width:160px" />
-      <button class="btn btn-secondary btn-sm" onclick="saveCoverageOverride('${escCov(searchId)}','${type}','${escCov(entityId)}')">Save Override</button>
+      <button class="btn btn-primary btn-sm" onclick="verifyCoverage('${escCov(searchId)}','${type}','${escCov(entityId)}')">Verify Now</button>
     </div>
   </div>`;
 }
@@ -287,7 +319,11 @@ function rosterTableHTML(roster, entityId, searchId, type) {
         <div style="${nameStyle}"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escCov(p.candidate_id)}')" style="color:inherit">${escCov(p.name)}</span></div>
       </td>
       <td style="padding:6px 8px;font-size:12px;color:#666">${escCov(p.title || '')}</td>
+      <td style="padding:6px 8px;font-size:11px;color:#888">${escCov(p.location || '')}</td>
       <td style="padding:6px 8px">${rosterStatusSelect(entityId, p.candidate_id, p.roster_status, searchId, type)}</td>
+      <td style="padding:6px 8px;width:36px">
+        <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${escCov(p.candidate_id).replace(/'/g,"\\'")}',name:'${escCov(p.name).replace(/'/g,"\\'")}',current_title:'${escCov(p.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${escCov(p.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{preSelectSearchId:'${escCov(searchId)}',source:'Sourcing Coverage'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -305,7 +341,9 @@ function rosterTableHTML(roster, entityId, searchId, type) {
         <th style="width:30px;padding:4px"></th>
         <th style="font-size:11px;padding:4px 8px">Name</th>
         <th style="font-size:11px;padding:4px 8px">Title</th>
+        <th style="font-size:11px;padding:4px 8px">Location</th>
         <th style="font-size:11px;padding:4px 8px">Status</th>
+        <th style="width:36px"></th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -382,14 +420,17 @@ function buildPEFirmsTableHTML(firms, searchId) {
       ? `<span class="badge-search-specific" id="badge-${escCov(f.firm_id)}">Search Only</span>`
       : '';
     const rosterCount = (f.roster || []).length;
+    const poolRec = getCompanyPoolRecord(f.name);
+    const webUrl = f.website_url || (poolRec && poolRec.website_url) || '';
+    const firmWebsite = webUrl ? `<a href="${escCov(webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
     const firmRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escCov(f.firm_id)}" onclick="toggleCoverageAccordion('${escCov(searchId)}','pe_firms','${escCov(f.firm_id)}')">
-      <td><strong>${escCov(f.name)}</strong></td>
+      <td><strong>${escCov(f.name)}</strong>${firmWebsite}</td>
       <td>${escCov(f.hq || '—')}</td>
       <td>${escCov(f.size_tier || '—')}</td>
       <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
       <td id="revbar-${escCov(f.firm_id)}">${reviewedBar(f)}</td>
-      <td id="covbar-${escCov(f.firm_id)}">${coverageBar(pct, manual)}</td>
+      <td id="covbar-${escCov(f.firm_id)}">${coverageBar(pct, manual, f)}</td>
     </tr>`;
     const accRow = isOpen ? accordionHTML(f, f.firm_id, searchId, 'pe_firms') : `<tr class="accordion-tr" id="acc-${escCov(f.firm_id)}" style="display:none"><td colspan="7"></td></tr>`;
     return [firmRow, accRow];
@@ -454,14 +495,17 @@ function buildCompaniesTableHTML(companies, searchId) {
       ? `<span class="badge-search-specific" id="badge-${escCov(c.company_id)}">Search Only</span>`
       : '';
     const rosterCount = (c.roster || []).length;
+    const coPoolRec = getCompanyPoolRecord(c.name);
+    const coWebUrl = c.website_url || (coPoolRec && coPoolRec.website_url) || '';
+    const coWebsite = coWebUrl ? `<a href="${escCov(coWebUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
     const compRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escCov(c.company_id)}" onclick="toggleCoverageAccordion('${escCov(searchId)}','companies','${escCov(c.company_id)}')">
-      <td><strong>${escCov(c.name)}</strong></td>
+      <td><strong>${escCov(c.name)}</strong>${coWebsite}</td>
       <td>${escCov(c.hq || '—')}</td>
       <td>${escCov(c.revenue_tier || '—')}</td>
       <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
       <td id="revbar-${escCov(c.company_id)}">${reviewedBar(c)}</td>
-      <td id="covbar-${escCov(c.company_id)}">${coverageBar(pct, manual)}</td>
+      <td id="covbar-${escCov(c.company_id)}">${coverageBar(pct, manual, c)}</td>
     </tr>`;
     const accRow = isOpen ? accordionHTML(c, c.company_id, searchId, 'companies') : `<tr class="accordion-tr" id="acc-${escCov(c.company_id)}" style="display:none"><td colspan="7"></td></tr>`;
     return [compRow, accRow];
@@ -495,53 +539,67 @@ async function autoLinkCandidatesToRosters(search) {
 
     let changed = false;
 
-    // Match PE firms using fuzzy firm name matching
-    (coverage.pe_firms || []).forEach(firm => {
-      const matched = candidates.filter(c => firmNamesMatch(c.current_firm, firm.name));
-      if (matched.length === 0) return;
-      if (!firm.roster) firm.roster = [];
-      matched.forEach(c => {
-        const alreadyOnRoster = firm.roster.some(r =>
-          r.candidate_id === c.candidate_id ||
-          (r.name || '').toLowerCase() === (c.name || '').toLowerCase()
-        );
-        if (!alreadyOnRoster) {
-          firm.roster.push({
-            candidate_id: c.candidate_id,
-            name: c.name,
-            title: c.current_title || '',
-            linkedin_url: c.linkedin_url || '',
-            roster_status: 'Identified',
-            source: 'auto-linked'
-          });
-          changed = true;
-        }
-      });
-    });
+    // Build candidate lookup by ID for stale-check
+    const candidateById = {};
+    candidates.forEach(c => { if (c.candidate_id) candidateById[c.candidate_id] = c; });
 
-    // Match companies using fuzzy firm name matching
-    (coverage.companies || []).forEach(co => {
-      const matched = candidates.filter(c => firmNamesMatch(c.current_firm, co.name));
-      if (matched.length === 0) return;
-      if (!co.roster) co.roster = [];
+    function syncRoster(entity, entityName) {
+      if (!entity.roster) entity.roster = [];
+
+      // 1. Add new matches (current employees)
+      const matched = candidates.filter(c => firmNamesMatch(c.current_firm, entityName));
       matched.forEach(c => {
-        const alreadyOnRoster = co.roster.some(r =>
+        const alreadyOnRoster = entity.roster.some(r =>
           r.candidate_id === c.candidate_id ||
           (r.name || '').toLowerCase() === (c.name || '').toLowerCase()
         );
         if (!alreadyOnRoster) {
-          co.roster.push({
+          entity.roster.push({
             candidate_id: c.candidate_id,
             name: c.name,
             title: c.current_title || '',
             linkedin_url: c.linkedin_url || '',
+            location: c.home_location || '',
             roster_status: 'Identified',
             source: 'auto-linked'
           });
           changed = true;
         }
       });
-    });
+
+      // 1b. Enrich existing roster entries with missing data from candidate pool
+      entity.roster.forEach(r => {
+        const poolCand = candidateById[r.candidate_id];
+        if (!poolCand) return;
+        if (!r.location && poolCand.home_location) { r.location = poolCand.home_location; changed = true; }
+        if (!r.linkedin_url && poolCand.linkedin_url) { r.linkedin_url = poolCand.linkedin_url; changed = true; }
+        if ((!r.title || r.title === 'Identified') && poolCand.current_title) { r.title = poolCand.current_title; changed = true; }
+      });
+
+      // 2. Check all roster entries — remove if person no longer works there
+      entity.roster = entity.roster.filter(r => {
+        // Keep if person has been reviewed (user made a decision)
+        if (r.review_status === 'relevant' || r.review_status === 'not_relevant') return true;
+        // Keep if status changed from default (user took action)
+        if (r.roster_status && r.roster_status !== 'Identified') return true;
+        // Check if person still works there
+        const poolCandidate = candidateById[r.candidate_id];
+        if (!poolCandidate) return true; // keep if not in pool (manually added name without candidate_id match)
+        if (firmNamesMatch(poolCandidate.current_firm, entityName)) return true; // still there
+        // Person moved — remove from this roster
+        changed = true;
+        return false;
+      });
+    }
+
+    // Match PE firms
+    (coverage.pe_firms || []).forEach(firm => syncRoster(firm, firm.name));
+
+    // Match companies
+    (coverage.companies || []).forEach(co => syncRoster(co, co.name));
+
+    // Also auto-link to new firm if person moved
+    // (the add-new-matches step above already handles this since we check current_firm)
 
     // Save if any new people were linked
     if (changed) {
@@ -554,11 +612,37 @@ async function autoLinkCandidatesToRosters(search) {
   }
 }
 
+let _covCompanyPoolLookup = {};
+
+async function loadCovCompanyPool() {
+  try {
+    const resp = await api('GET', '/companies');
+    _covCompanyPoolLookup = {};
+    (resp.companies || []).forEach(c => {
+      _covCompanyPoolLookup[normalizeFirmName(c.name)] = c;
+    });
+  } catch (e) { /* ignore */ }
+}
+
+function getCompanyPoolRecord(firmName) {
+  return _covCompanyPoolLookup[normalizeFirmName(firmName)] || null;
+}
+
 function renderCoverageTabHTML(search) {
   // Reset state when tab first loads
   coverageSubTab = 'pe-firms';
   coverageFilters = { size_tier: 'all', revenue_tier: 'all', text: '' };
   openAccordionId = null;
+
+  // Load company pool for website URLs (async, re-renders when loaded)
+  loadCovCompanyPool().then(() => {
+    const tableEl = document.getElementById('coverage-table');
+    if (tableEl) {
+      const cov = search.sourcing_coverage || { pe_firms: [], companies: [] };
+      if (coverageSubTab === 'pe-firms') tableEl.innerHTML = buildPEFirmsTableHTML(cov.pe_firms || [], search.search_id);
+      else tableEl.innerHTML = buildCompaniesTableHTML(cov.companies || [], search.search_id);
+    }
+  });
 
   const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
   const firms = coverage.pe_firms || [];
@@ -588,19 +672,21 @@ function renderCoverageTabHTML(search) {
   const tableHTML = buildPEFirmsTableHTML(firms, searchId);
 
   return `<div id="coverage-module">
-  <!-- Sub-tab bar -->
-  <div class="sub-tab-bar">
-    <button class="sub-tab active" id="cov-tab-pe" onclick="switchCoverageTab('pe-firms','${escCov(searchId)}')">PE Firms (${firms.length})</button>
-    <button class="sub-tab" id="cov-tab-companies" onclick="switchCoverageTab('companies','${escCov(searchId)}')">Target Companies (${companies.length})</button>
+  <!-- Sub-tab bar + actions -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div class="sub-tab-bar" style="margin-bottom:0">
+      <button class="sub-tab active" id="cov-tab-pe" onclick="switchCoverageTab('pe-firms','${escCov(searchId)}')">PE Firms (${firms.length})</button>
+      <button class="sub-tab" id="cov-tab-companies" onclick="switchCoverageTab('companies','${escCov(searchId)}')">Target Companies (${companies.length})</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="cov-action-btns">
+      <button class="btn btn-secondary btn-sm" id="cov-add-btn" onclick="openAddFirmModal('${escCov(searchId)}')">+ Add PE Firm</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadCoverageFromPlaybook('${escCov(searchId)}')">&#8627; Load from Playbook</button>
+      <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="toggleCovSelectMode('${escCov(searchId)}')">&#9744; Select &amp; Delete</button>
+    </div>
   </div>
-  <!-- Filter bar + table (rendered together) -->
+  <!-- Filter bar + table -->
   <div id="coverage-table">
     ${tableHTML}
-  </div>
-  <!-- Add button row -->
-  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <button class="btn btn-secondary btn-sm" id="cov-add-btn" onclick="openAddFirmModal('${escCov(searchId)}')">+ Add PE Firm</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadCoverageFromPlaybook('${escCov(searchId)}')" title="Pull all firms/companies from selected sector playbooks into this search's coverage tracker">&#8627; Load from Playbook</button>
   </div>
 </div>`;
 }
@@ -828,12 +914,14 @@ async function addRosterPerson(searchId, type, entityId) {
   }
 }
 
-async function saveCoverageOverride(searchId, type, entityId) {
-  const radios = document.querySelectorAll(`input[name="override-${entityId}"]`);
-  let overrideValue = 'auto';
-  radios.forEach(r => { if (r.checked) overrideValue = r.value; });
+async function verifyCoverage(searchId, type, entityId) {
   const noteEl = document.getElementById('override-note-' + entityId);
+  const completeEl = document.getElementById('override-complete-' + entityId);
   const note = noteEl ? noteEl.value.trim() : '';
+  const isComplete = completeEl ? completeEl.checked : false;
+  const btn = event?.target;
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
   try {
     const search = await api('GET', '/searches/' + searchId);
@@ -842,25 +930,45 @@ async function saveCoverageOverride(searchId, type, entityId) {
     const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
     const entity = (list || []).find(e => e[idKey] === entityId);
     if (!entity) return;
-    entity.manual_complete = (overrideValue === 'manual');
+    entity.manual_complete = isComplete;
     entity.manual_complete_note = note;
+    entity.last_verified = todayISO();
+    entity.verified_by = 'RA';
     search.sourcing_coverage = coverage;
     await api('PUT', '/searches/' + searchId, search);
     refreshCoverageBar(entity, entityId, type);
-    // Visual confirmation
-    const saveBtn = event && event.target ? event.target : null;
-    if (saveBtn) { saveBtn.textContent = 'Saved!'; setTimeout(() => { saveBtn.textContent = 'Save Override'; }, 1500); }
+
+    // Flash confirmation then re-render
+    if (btn) {
+      btn.textContent = 'Verified!';
+      btn.style.background = '#4caf50';
+      btn.style.color = '#fff';
+    }
+    setTimeout(() => {
+      // Re-render the override section with updated data
+      const rosterEl = document.getElementById('roster-section-' + entityId);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+      const accInner = rosterEl?.closest('.accordion-inner');
+      if (accInner) {
+        const overrideDiv = accInner.querySelector('.override-section');
+        if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(entity, entityId, searchId, type);
+      }
+    }, 1000);
   } catch (e) {
-    console.error('saveCoverageOverride error:', e);
+    console.error('verifyCoverage error:', e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Verify Now'; }
   }
 }
+
+// Keep old name for backwards compat
+async function saveCoverageOverride(searchId, type, entityId) { return verifyCoverage(searchId, type, entityId); }
 
 // Helper: update the coverage bar cell in place (no full re-render)
 function refreshCoverageBar(entity, entityId, type) {
   const barEl = document.getElementById('covbar-' + entityId);
   if (barEl) {
     const { pct, manual } = getCoveragePct(entity, type);
-    barEl.innerHTML = coverageBar(pct, manual);
+    barEl.innerHTML = coverageBar(pct, manual, entity);
   }
   const revEl = document.getElementById('revbar-' + entityId);
   if (revEl) revEl.innerHTML = reviewedBar(entity);
@@ -1256,71 +1364,205 @@ async function loadCoverageFromPlaybook(searchId) {
 
     const playbooks = await api('GET', '/playbooks');
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-    let firmsAdded = 0, cosAdded = 0;
+
+    // Gather available firms and companies from matching sectors (exclude already loaded)
+    const availFirms = [];
+    const availCos = [];
+    search.sectors.forEach(sectorId => {
+      const sector = playbooks.sectors.find(s => s.sector_id === sectorId);
+      if (!sector) return;
+      (sector.pe_firms || []).forEach(firm => {
+        if (!coverage.pe_firms.some(f => f.firm_id === firm.firm_id) && !availFirms.some(f => f.firm_id === firm.firm_id)) {
+          availFirms.push(firm);
+        }
+      });
+      (sector.target_companies || []).forEach(co => {
+        if (!coverage.companies.some(c => c.company_id === co.company_id) && !availCos.some(c => c.company_id === co.company_id)) {
+          availCos.push(co);
+        }
+      });
+    });
+
+    if (availFirms.length === 0 && availCos.length === 0) {
+      alert('All firms and companies from the playbook are already loaded.');
+      return;
+    }
+
+    // Show picker modal
+    const existing = document.getElementById('cov-add-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'cov-add-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
+
+    const firmRows = availFirms.map(f =>
+      `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
+        <input type="checkbox" class="pb-pick-firm" value="${escCov(f.firm_id)}" style="width:16px;height:16px;accent-color:#5C2D91">
+        <strong>${escCov(f.name)}</strong>
+        <span style="color:#888;font-size:11px;margin-left:auto">${escCov(f.hq||'')} · ${escCov(f.size_tier||'')}</span>
+      </label>`
+    ).join('');
+
+    const coRows = availCos.map(c =>
+      `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
+        <input type="checkbox" class="pb-pick-co" value="${escCov(c.company_id)}" style="width:16px;height:16px;accent-color:#5C2D91">
+        <strong>${escCov(c.name)}</strong>
+        <span style="color:#888;font-size:11px;margin-left:auto">${escCov(c.hq||'')} · ${escCov(c.revenue_tier||'')}</span>
+      </label>`
+    ).join('');
+
+    modal.innerHTML = `
+    <div class="modal-box" style="max-width:640px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-header-s3">
+        <span class="modal-title-s3">Load from Playbook</span>
+        <button class="modal-close-s3" onclick="document.getElementById('cov-add-modal').remove()">&#x2715;</button>
+      </div>
+      <div style="font-size:12px;color:#888;padding:0 0 12px;border-bottom:1px solid #e0e0e0">Select which firms and companies to add to this search's coverage.</div>
+      <div style="overflow-y:auto;flex:1;padding:8px 0">
+        ${availFirms.length > 0 ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#5C2D91;letter-spacing:0.5px">PE Firms (${availFirms.length})</div>
+            <label style="font-size:11px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.pb-pick-firm').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
+          </div>
+          ${firmRows}` : ''}
+        ${availCos.length > 0 ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#5C2D91;letter-spacing:0.5px">Target Companies (${availCos.length})</div>
+            <label style="font-size:11px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.pb-pick-co').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
+          </div>
+          ${coRows}` : ''}
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:12px;border-top:1px solid #e0e0e0">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPlaybookPick('${escCov(searchId)}')">Add Selected</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+
+  } catch (e) {
+    console.error('loadCoverageFromPlaybook error:', e);
+    alert('Error loading from playbook: ' + e.message);
+  }
+}
+
+async function submitPlaybookPick(searchId) {
+  const selectedFirmIds = [...document.querySelectorAll('.pb-pick-firm:checked')].map(c => c.value);
+  const selectedCoIds = [...document.querySelectorAll('.pb-pick-co:checked')].map(c => c.value);
+
+  if (selectedFirmIds.length === 0 && selectedCoIds.length === 0) {
+    alert('Please select at least one firm or company.');
+    return;
+  }
+
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const playbooks = await api('GET', '/playbooks');
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
 
     search.sectors.forEach(sectorId => {
       const sector = playbooks.sectors.find(s => s.sector_id === sectorId);
       if (!sector) return;
 
       (sector.pe_firms || []).forEach(firm => {
-        const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id);
-        if (!exists) {
+        if (selectedFirmIds.includes(firm.firm_id) && !coverage.pe_firms.some(f => f.firm_id === firm.firm_id)) {
           coverage.pe_firms.push({
-            firm_id: firm.firm_id,
-            name: firm.name,
-            hq: firm.hq || '',
-            size_tier: firm.size_tier || '',
-            why_target: firm.why_target || '',
-            search_specific: false,
-            manual_complete: false,
-            manual_complete_note: '',
+            firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
+            why_target: firm.why_target || '', search_specific: false, manual_complete: false, manual_complete_note: '',
             roster: JSON.parse(JSON.stringify(firm.roster || []))
           });
-          firmsAdded++;
         }
       });
-
       (sector.target_companies || []).forEach(co => {
-        const exists = coverage.companies.some(c => c.company_id === co.company_id);
-        if (!exists) {
+        if (selectedCoIds.includes(co.company_id) && !coverage.companies.some(c => c.company_id === co.company_id)) {
           coverage.companies.push({
-            company_id: co.company_id,
-            name: co.name,
-            hq: co.hq || '',
-            revenue_tier: co.revenue_tier || '',
-            why_target: co.why_target || '',
-            search_specific: false,
-            manual_complete: false,
-            manual_complete_note: '',
+            company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
+            why_target: co.why_target || '', search_specific: false, manual_complete: false, manual_complete_note: '',
             roster: JSON.parse(JSON.stringify(co.roster || []))
           });
-          cosAdded++;
         }
       });
     });
 
     search.sourcing_coverage = coverage;
     await api('PUT', '/searches/' + searchId, search);
+    document.getElementById('cov-add-modal')?.remove();
 
-    // Re-render coverage module
+    // Re-render
     const tableEl = document.getElementById('coverage-table');
     const peBtn = document.getElementById('cov-tab-pe');
     const coBtn = document.getElementById('cov-tab-companies');
-    if (tableEl) tableEl.innerHTML = buildPEFirmsTableHTML(coverage.pe_firms, searchId);
+    if (tableEl) tableEl.innerHTML = coverageSubTab === 'pe-firms' ? buildPEFirmsTableHTML(coverage.pe_firms, searchId) : buildCompaniesTableHTML(coverage.companies, searchId);
     if (peBtn) peBtn.textContent = `PE Firms (${coverage.pe_firms.length})`;
     if (coBtn) coBtn.textContent = `Target Companies (${coverage.companies.length})`;
-    coverageSubTab = 'pe-firms';
-
-    const msg = `Loaded ${firmsAdded} PE firm${firmsAdded !== 1 ? 's' : ''} and ${cosAdded} compan${cosAdded !== 1 ? 'ies' : 'y'} from playbook.`;
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:10px 16px;font-size:13px;font-weight:600;margin-bottom:12px';
-    banner.textContent = '✓ ' + msg;
-    const module = document.getElementById('coverage-module');
-    if (module) module.insertBefore(banner, module.firstChild);
-    setTimeout(() => banner.remove(), 4000);
-
   } catch (e) {
-    console.error('loadCoverageFromPlaybook error:', e);
-    alert('Error loading from playbook: ' + e.message);
+    alert('Error: ' + e.message);
+  }
+}
+
+// ── Multi-select delete for coverage entries ──────────────────────────────────
+
+let _covSelectMode = false;
+
+function toggleCovSelectMode(searchId) {
+  _covSelectMode = !_covSelectMode;
+  const tableEl = document.getElementById('coverage-table');
+  if (!tableEl) return;
+
+  if (_covSelectMode) {
+    // Add checkboxes to each row
+    tableEl.querySelectorAll('.firm-row').forEach(row => {
+      const td = document.createElement('td');
+      td.style.cssText = 'width:32px;text-align:center;padding:6px';
+      td.innerHTML = `<input type="checkbox" class="cov-select-cb" value="${row.id.replace('row-','')}" style="width:16px;height:16px;accent-color:#c62828" onclick="event.stopPropagation()">`;
+      row.insertBefore(td, row.firstChild);
+    });
+    // Show delete bar
+    let bar = document.getElementById('cov-delete-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'cov-delete-bar';
+      bar.style.cssText = 'display:flex;gap:10px;align-items:center;padding:10px 0;margin-bottom:8px';
+      bar.innerHTML = `
+        <label style="font-size:12px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.cov-select-cb').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
+        <button class="btn btn-sm" style="background:#c62828;color:#fff;border:none" onclick="deleteSelectedCovEntries('${escCov(searchId)}')">Delete Selected</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCovSelectMode('${escCov(searchId)}')">Cancel</button>
+      `;
+      const module = document.getElementById('coverage-module');
+      if (module) module.insertBefore(bar, document.getElementById('coverage-table'));
+    }
+  } else {
+    // Remove checkboxes and bar
+    tableEl.querySelectorAll('.cov-select-cb').forEach(cb => cb.closest('td')?.remove());
+    document.getElementById('cov-delete-bar')?.remove();
+  }
+}
+
+async function deleteSelectedCovEntries(searchId) {
+  const selected = [...document.querySelectorAll('.cov-select-cb:checked')].map(c => c.value);
+  if (selected.length === 0) { alert('No items selected.'); return; }
+  if (!confirm(`Delete ${selected.length} selected entries from sourcing coverage?`)) return;
+
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const type = coverageSubTab === 'pe-firms' ? 'pe_firms' : 'companies';
+    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
+
+    coverage[type] = coverage[type].filter(e => !selected.includes(e[idKey]));
+    search.sourcing_coverage = coverage;
+    await api('PUT', '/searches/' + searchId, search);
+
+    _covSelectMode = false;
+    document.getElementById('cov-delete-bar')?.remove();
+
+    const tableEl = document.getElementById('coverage-table');
+    const peBtn = document.getElementById('cov-tab-pe');
+    const coBtn = document.getElementById('cov-tab-companies');
+    if (tableEl) tableEl.innerHTML = type === 'pe_firms' ? buildPEFirmsTableHTML(coverage.pe_firms, searchId) : buildCompaniesTableHTML(coverage.companies, searchId);
+    if (peBtn) peBtn.textContent = `PE Firms (${coverage.pe_firms.length})`;
+    if (coBtn) coBtn.textContent = `Target Companies (${coverage.companies.length})`;
+  } catch (e) {
+    alert('Error deleting: ' + e.message);
   }
 }

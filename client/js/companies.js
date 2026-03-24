@@ -350,15 +350,16 @@ function renderCompanyFullPage(company, allCandidates) {
   const isPriv  = company.company_type === 'Private Company';
   const isPub   = company.company_type === 'Public Company';
 
-  // Match current employees and alumni from candidate pool
+  // Match current employees and alumni from candidate pool (with alias support)
   const companyName = company.name || '';
+  const aliases = company.aliases || [];
   const currentEmployees = allCandidates.filter(c =>
-    firmNamesMatch(c.current_firm, companyName)
+    firmNamesMatch(c.current_firm, companyName, aliases)
   );
   const alumni = allCandidates.filter(c => {
-    if (firmNamesMatch(c.current_firm, companyName)) return false;
+    if (firmNamesMatch(c.current_firm, companyName, aliases)) return false;
     return (c.work_history || []).some(w =>
-      firmNamesMatch(w.company, companyName)
+      firmNamesMatch(w.company, companyName, aliases)
     );
   });
 
@@ -495,6 +496,21 @@ function renderCompanyFullPage(company, allCandidates) {
           }).join('')}
         </div>
       </div>` : ''}
+
+      <!-- Aliases -->
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:8px">Also Known As</div>
+        <div id="company-aliases-container">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center" id="company-alias-tags">
+            ${(company.aliases || []).map((a, i) => `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 10px;border-radius:10px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px">${cpEscape(a)}<button onclick="removeCompanyAlias('${cpEscape(company.company_id)}',${i})" style="background:none;border:none;cursor:pointer;color:#5C2D91;font-size:12px;padding:0;line-height:1">&#10005;</button></span>`).join('')}
+            <div style="display:inline-flex;gap:4px;align-items:center">
+              <input type="text" id="new-alias-input" placeholder="Add alias..." style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:140px"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();addCompanyAlias('${cpEscape(company.company_id)}');}">
+              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="addCompanyAlias('${cpEscape(company.company_id)}')">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Current Employees -->
       <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
@@ -769,5 +785,41 @@ async function _deleteCompany(companyId) {
     renderCompanyView();
   } catch (err) {
     alert('Error deleting: ' + err.message);
+  }
+}
+
+// ── Company Aliases ───────────────────────────────────────────────────────────
+
+async function addCompanyAlias(companyId) {
+  const input = document.getElementById('new-alias-input');
+  const alias = (input?.value || '').trim();
+  if (!alias) return;
+  try {
+    const company = await api('GET', '/companies/' + companyId);
+    const aliases = company.aliases || [];
+    if (aliases.some(a => a.toLowerCase() === alias.toLowerCase())) {
+      alert('Alias already exists.');
+      return;
+    }
+    aliases.push(alias);
+    await api('PUT', '/companies/' + companyId, { aliases });
+    invalidateAliasCache();
+    // Refresh the page
+    openCompanyDetail(companyId);
+  } catch (err) {
+    alert('Error adding alias: ' + err.message);
+  }
+}
+
+async function removeCompanyAlias(companyId, index) {
+  try {
+    const company = await api('GET', '/companies/' + companyId);
+    const aliases = company.aliases || [];
+    aliases.splice(index, 1);
+    await api('PUT', '/companies/' + companyId, { aliases });
+    invalidateAliasCache();
+    openCompanyDetail(companyId);
+  } catch (err) {
+    alert('Error removing alias: ' + err.message);
   }
 }

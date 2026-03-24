@@ -84429,7 +84429,12 @@
       "parent_company": null,
       "employee_count": null,
       "industry": null,
-      "ticker": null
+      "ticker": null,
+      "aliases": [
+        "TJC",
+        "Jordan Company",
+        "TJC (New York)"
+      ]
     },
     {
       "company_id": "the-k-funds",
@@ -92486,28 +92491,20 @@
     },
     {
       "company_id": "warburg-pincus",
+      "date_added": "2026-03-24",
+      "last_updated": "2026-03-24",
+      "source": "manual",
       "company_type": "PE Firm",
       "name": "Warburg Pincus",
       "hq": "New York, NY",
-      "website_url": "",
-      "description": "Founded in 1966, Warburg Pincus is a private equity investment firm headquartered in New York. The firm seeks to invest in companies across the consumer, energy transition & sustainability, financial services, healthcare, industrial & business services, real estate, and technology sectors, based in",
+      "website_url": "https://warburgpincus.com/",
       "year_founded": 1966,
+      "description": "Founded in 1966, Warburg Pincus is a private equity investment firm headquartered in New York. The firm seeks to invest in companies across the consumer, energy transition & sustainability, financial services, healthcare, industrial & business services, real estate, and technology sectors, based in",
       "notes": "",
-      "date_added": "2026-03-23",
-      "last_updated": "2026-03-23",
-      "source": "playbook-seed",
       "size_tier": "Mega",
       "strategy": "Buyout",
       "entity_type": "Dedicated PE Firm",
-      "investment_professionals": 401,
-      "last_fund_name": "Warburg Pincus Financial Sector III",
-      "last_fund_size": 1800,
-      "last_fund_vintage": 2025,
-      "dry_powder": 10024.27,
-      "preferred_ebitda_min": null,
-      "preferred_ebitda_max": null,
       "preferred_geography": "Brazil, Canada, China, Europe, Hong Kong, India, Middle East, Southeast Asia, Taiwan, United States",
-      "active_portfolio_count": 343,
       "sector_focus_tags": [
         "industrials",
         "technology-software",
@@ -92517,8 +92514,6 @@
       ],
       "revenue_tier": null,
       "ownership_type": null,
-      "parent_company": null,
-      "employee_count": null,
       "industry": null,
       "ticker": null
     },
