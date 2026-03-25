@@ -29,7 +29,7 @@ function firmNamesMatch(a, b, aliases) {
   // Check aliases if provided
   if (aliases && aliases.length) {
     const normalizedAliases = aliases.map(normalizeFirmName);
-    if (normalizedAliases.some(al => al && (al === na || al === nb))) return true;
+    if (normalizedAliases.some(al => al && al === na)) return true;
   }
   return false;
 }
@@ -383,10 +383,16 @@ function renderCandidatePanel(c) {
   const ratingOpts = [0,1,2,3].map(r =>
     `<option value="${r}" ${(c.quality_rating||0)===r?'selected':''}>${r===0?'Unrated':'★'.repeat(r)}</option>`).join('');
 
+  const photoImg = c.photo_url
+    ? `<img src="${_escPanel(c.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+       <div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:none;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(c.name || '?')[0].toUpperCase()}</div>`
+    : `<div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(c.name || '?')[0].toUpperCase()}</div>`;
+
   overlay.innerHTML = `
     <div class="cand-panel">
       <div class="cand-panel-header">
-        <div style="flex:1;min-width:0">
+        ${photoImg}
+        <div style="flex:1;min-width:0;margin-left:12px">
           <h2 style="font-size:1.2rem;font-weight:800;margin:0 0 2px;color:#1a1a1a" id="cp-name-display">${_escPanel(c.name)}</h2>
           <div style="font-size:13px;color:#555" id="cp-subtitle-display">${_escPanel(c.current_title || '')}${c.current_firm ? ' @ ' + _escPanel(c.current_firm) : ''}</div>
           <div style="font-size:12px;color:#888;margin-top:2px">${_escPanel(c.home_location || c.location || '')}</div>

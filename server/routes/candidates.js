@@ -5,6 +5,60 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
+function companyPoolFile() {
+  return path.join(process.env.DATA_PATH, 'company_pool.json');
+}
+
+function readCompanyPool() {
+  try {
+    return JSON.parse(fs.readFileSync(companyPoolFile(), 'utf8'));
+  } catch { return { companies: [] }; }
+}
+
+// Fuzzy-match a firm name against the company pool
+function findCompanyInPool(firmName) {
+  if (!firmName) return null;
+  const pool = readCompanyPool();
+  const norm = s => (s || '').replace(/\s*[·•]\s*(Full-time|Part-time|Contract|Freelance|Self-employed|Seasonal|Internship).*$/i, '')
+    .replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+  const target = norm(firmName);
+  if (!target) return null;
+
+  for (const c of pool.companies || []) {
+    const names = [c.name, ...(c.aliases || [])].map(norm);
+    for (const n of names) {
+      if (!n) continue;
+      if (n === target) return c;
+      // Substring match (shorter must be >= 60% of longer)
+      const shorter = n.length <= target.length ? n : target;
+      const longer = n.length > target.length ? n : target;
+      if (shorter.length >= 4 && longer.includes(shorter) && shorter.length >= longer.length * 0.6) return c;
+    }
+  }
+  return null;
+}
+
+// Auto-enrich candidate fields from company pool data
+function enrichFromCompanyPool(candidate) {
+  const company = findCompanyInPool(candidate.current_firm);
+  if (!company) return;
+
+  // Set firm_size_tier from company pool
+  if (!candidate.firm_size_tier && company.size_tier) {
+    candidate.firm_size_tier = company.size_tier;
+  }
+  // Set archetype based on company type
+  if (!candidate.archetype && company.company_type) {
+    if (/PE Firm|Private Equity/i.test(company.company_type)) {
+      candidate.archetype = 'PE Lateral';
+    }
+  }
+  // Set sector_tags from company sectors
+  if ((!candidate.sector_tags || candidate.sector_tags.length === 0) && company.sectors && company.sectors.length > 0) {
+    candidate.sector_tags = [...company.sectors];
+  }
+}
+
 function candidatesFile() {
   return path.join(process.env.DATA_PATH, 'candidate_pool.json');
 }
@@ -142,7 +196,19 @@ router.post('/', (req, res) => {
 router.post('/prefill', (req, res) => {
   try {
     const pool = readPool();
-    const { fullName, currentTitle, currentCompany, location, linkedinUrl, workHistory } = req.body;
+    const { fullName, currentTitle, currentCompany, location, linkedinUrl, photoUrl, workHistory } = req.body;
+
+    console.log('[prefill] Received:', { fullName, currentTitle, currentCompany, linkedinUrl: linkedinUrl?.slice(0, 60) });
+
+    // Reject imports with no name AND no LinkedIn URL — nothing to match or create
+    if ((!fullName || !fullName.trim()) && (!linkedinUrl || !linkedinUrl.trim())) {
+      return res.status(400).json({ error: 'Name or LinkedIn URL is required' });
+    }
+
+    // If we have a LinkedIn URL but no name, only allow update of existing candidates (not creation)
+    // Also reject names that are clearly scraper artifacts
+    const INVALID_NAMES = /^\d+\s*notification|^messaging$|^home$|^my network$|^jobs$/i;
+    const nameProvided = fullName && fullName.trim() && !INVALID_NAMES.test(fullName.trim());
 
     const normName = s => (s || '').toLowerCase().trim();
     // Extract LinkedIn slug for matching: /in/XXXXX -> xxxxx (ignore trailing variations)
@@ -211,6 +277,7 @@ router.post('/prefill', (req, res) => {
       if (currentTitle  && !existing.current_title)  existing.current_title  = currentTitle;
       if (safeCompany && !existing.current_firm)  existing.current_firm   = cleanFirm(safeCompany);
       if (location      && !existing.home_location)  existing.home_location  = location;
+      if (photoUrl) existing.photo_url = photoUrl; // always refresh photo
       if (Array.isArray(workHistory) && workHistory.length) {
         const cleaned = workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) }));
         const seen = new Set();
@@ -223,11 +290,17 @@ router.post('/prefill', (req, res) => {
       }
       existing.last_scraped = new Date().toISOString().slice(0, 10);
 
+      // Auto-enrich from company pool if metadata is missing
+      enrichFromCompanyPool(existing);
+
       writePool(pool);
       return res.json({ action: 'updated', id: existing.candidate_id });
     }
 
-    // CREATE new candidate
+    // CREATE new candidate — require a name to avoid ghost records
+    if (!nameProvided) {
+      return res.status(400).json({ error: 'Cannot create new candidate without a name' });
+    }
     const slugify = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
     const candidate_id = `cand-${slugify(fullName || 'unknown')}-${Date.now()}`;
 
@@ -238,6 +311,7 @@ router.post('/prefill', (req, res) => {
       current_firm:   cleanFirm(safeCompany) || '',
       home_location:  location      || '',
       linkedin_url:   linkedinUrl   || '',
+      photo_url:      photoUrl      || '',
       work_history:   Array.isArray(workHistory) ? workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) })) : [],
       sector_tags:    [],
       archetype:      '',
@@ -259,6 +333,9 @@ router.post('/prefill', (req, res) => {
       last_scraped:   new Date().toISOString().slice(0, 10),
       source:         'LinkedIn (Chrome Extension)'
     };
+
+    // Auto-enrich from company pool
+    enrichFromCompanyPool(newCandidate);
 
     pool.candidates.push(newCandidate);
     writePool(pool);

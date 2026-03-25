@@ -37,7 +37,8 @@
           "description": null
         }
       ],
-      "primary_experience_index": 0
+      "primary_experience_index": 0,
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "tucker-moon-accel-kkr",
@@ -75,7 +76,8 @@
           "description": null
         }
       ],
-      "primary_experience_index": 0
+      "primary_experience_index": 0,
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "neil-kimber-accel-kkr",
@@ -32360,7 +32362,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "jason-laduke-stellex-capital-management",
@@ -32542,7 +32544,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "mariano-malvicino-stellex-capital-management",
@@ -32604,7 +32606,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "matthew-f-kajfez-stellex-capital-management",
@@ -32704,7 +32706,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "russell-jenkins-stellex-capital-management",
@@ -32806,7 +32808,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "stefano-malnati-stg",
@@ -36551,17 +36553,20 @@
       "candidate_id": "mark-emery-the-jordan-company",
       "name": "Mark Emery",
       "current_title": "Operating Partner",
-      "current_firm": "The Jordan Company",
+      "current_firm": "TJC",
       "home_location": "Chicago, IL",
       "linkedin_url": "https://www.linkedin.com/in/mark-emery-59bb52b5",
       "sector_tags": [
         "industrials",
+        "healthcare",
+        "financial-services",
         "consumer",
-        "business-services"
+        "business-services",
+        "infrastructure-energy"
       ],
       "archetype": "PE Lateral",
       "operator_background": "",
-      "firm_size_tier": "Middle Market",
+      "firm_size_tier": "Mega",
       "company_revenue_tier": "",
       "quality_rating": null,
       "rating_set_by": null,
@@ -36640,7 +36645,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "christina-murray-the-jordan-company",
@@ -36680,7 +36685,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "nick-storm-the-jordan-company",
@@ -36769,7 +36774,7 @@
       ],
       "primary_experience_index": 0,
       "owned_pl": false,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "mark-burggraaff-the-jordan-company",
@@ -36881,23 +36886,26 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "zain-lakhani-the-jordan-company",
       "name": "Zain Lakhani",
       "current_title": "Vice President",
-      "current_firm": "The Jordan Company",
+      "current_firm": "TJC",
       "home_location": "Chicago, IL",
       "linkedin_url": "https://www.linkedin.com/in/zains-profile",
       "sector_tags": [
         "industrials",
+        "healthcare",
+        "financial-services",
         "consumer",
-        "business-services"
+        "business-services",
+        "infrastructure-energy"
       ],
       "archetype": "PE Lateral",
       "operator_background": "",
-      "firm_size_tier": "Middle Market",
+      "firm_size_tier": "Mega",
       "company_revenue_tier": "",
       "quality_rating": null,
       "rating_set_by": null,
@@ -36949,7 +36957,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "teresa-ricotta-the-jordan-company",
@@ -37017,7 +37025,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "lisa-ondrula-the-jordan-company",
@@ -37061,7 +37069,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "chris-hlebasko-the-jordan-company",
@@ -37105,7 +37113,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "bill-liss-the-jordan-company",
@@ -37149,7 +37157,7 @@
         }
       ],
       "primary_experience_index": 0,
-      "last_scraped": "2026-03-24"
+      "last_scraped": "2026-03-25"
     },
     {
       "candidate_id": "chris-ahearn-the-sterling-group",
@@ -47052,7 +47060,7 @@
       "notes": "",
       "date_added": "2026-03-24",
       "added_from_search": "",
-      "last_scraped": "2026-03-24",
+      "last_scraped": "2026-03-25",
       "source": "LinkedIn (Chrome Extension)"
     },
     {
@@ -49033,6 +49041,223 @@
       "added_from_search": "",
       "last_scraped": "2026-03-24",
       "source": "LinkedIn (Chrome Extension)"
+    },
+    {
+      "candidate_id": "cand-steven-austgen-1774457858991",
+      "name": "Steven Austgen",
+      "current_title": "Senior Associate",
+      "current_firm": "TJC",
+      "home_location": "Chicago, Illinois, United States",
+      "linkedin_url": "https://www.linkedin.com/in/steven-austgen/",
+      "work_history": [
+        {
+          "title": "Senior Associate",
+          "company": "TJC",
+          "dates": "Oct 2024 - Present",
+          "duration": "1 yr 6 mos",
+          "description": "I partner with portfolio company leadership teams to drive organic growth by strengthening GTM and commercial operations. My focus is on building scalable infrastructure—supporting CRM, marketing automation, and data warehouse implementations that improve visibility, reporting, and decision-making.\n\nI work closely with commercial leaders on pricing strategy, sales incentive plan design, and recruitment of key commercial leadership roles, including Revenue Operations and sales leadership positions. I also support initiatives around reporting, automation, and AI adoption to help teams operate more efficiently and accelerate growth.\n\nThe common thread across my work is connecting strategy, systems, data, and people—ensuring our portfolio companies have the right tools, talent, and processes to scale effectively.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQEt9B--pRLjmQ/company-logo_100_100/company-logo_100_100/0/1644873950859/the_jordan_company_logo?e=1776297600&v=beta&t=EK_6dUpp7JOWI3scmrrnICR5bjL4NJddZ9sP04bZk7M"
+        },
+        {
+          "title": "Associate",
+          "company": "TJC",
+          "dates": "Nov 2021 - Oct 2024",
+          "duration": "3 yrs",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQEt9B--pRLjmQ/company-logo_100_100/company-logo_100_100/0/1644873950859/the_jordan_company_logo?e=1776297600&v=beta&t=EK_6dUpp7JOWI3scmrrnICR5bjL4NJddZ9sP04bZk7M"
+        },
+        {
+          "title": "Senior Business Operations Analyst",
+          "company": "TraceHQ.com",
+          "dates": "Jan 2021 - Nov 2021",
+          "duration": "11 mos",
+          "description": "Trace was acquired by Paylocity (PCTY) in 2023.\n\nJoined Trace as employee #7. Built foundational finance, accounting and GTM operations (systems, processes, technology & reporting). Reported to the CEO and supported our VP Sales and VP Marketing on all things GTM.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEkU0tqi96Y8g/company-logo_100_100/company-logo_100_100/0/1720753514195/tracehqdotcom_logo?e=1776297600&v=beta&t=7vNga3_T894Qexz8QNDGry0WCMGjQ85yyva6D4uVQwI"
+        },
+        {
+          "title": "Business Operations Analyst",
+          "company": "TraceHQ.com",
+          "dates": "Apr 2020 - Jan 2021",
+          "duration": "10 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEkU0tqi96Y8g/company-logo_100_100/company-logo_100_100/0/1720753514195/tracehqdotcom_logo?e=1776297600&v=beta&t=7vNga3_T894Qexz8QNDGry0WCMGjQ85yyva6D4uVQwI"
+        },
+        {
+          "title": "Financial Analyst",
+          "company": "Charles River Associates",
+          "dates": "Aug 2019 - Apr 2020",
+          "duration": "9 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGJuZYyBt91pA/company-logo_100_100/company-logo_100_100/0/1729261472450/charles_river_associates_logo?e=1776297600&v=beta&t=xia2rd2vxGuOIXKaPokzCS34aZJNvusu6kFYc26AXtM"
+        },
+        {
+          "title": "Vice President of the Commercial Real Estate Workshop",
+          "company": "Indiana University - Kelley School of Business",
+          "dates": "Jun 2018 - May 2019",
+          "duration": "1 yr",
+          "description": "The Commercial Real Estate Workshop is designed to expose all members to nearly every aspect within the real estate industry, including brokerage, development, tenant rep, private equity, valuations, etc. \n\nThe weekly cases are focused on emphasizing both the qualitative and quantitive aspects of real estate and heavily focus on financial modeling.\n\nEach week workshop members are assigned specific cases to different sectors and present to current professionals within that real estate Industry. These professionals are usually Kelley alumni but are also often just supporters of the real estate program at IU. \n\nI went through the workshop as a student my sophomore year. I was then asked to be the Vice President and become apart of the executive board for the following year to help lead the incoming class of workshop members.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQHvxkLYVG95JA/company-logo_100_100/company-logo_100_100/0/1692300973410/kelley_school_of_business_logo?e=1776297600&v=beta&t=NoiTZSBrSPiUXhiLMdZz-KippQxJtavM3H9eR3_NZt8"
+        },
+        {
+          "title": "Academic Fairness Committee Panelist",
+          "company": "Indiana University - Kelley School of Business",
+          "dates": "Jun 2017 - May 2019",
+          "duration": "2 yrs",
+          "description": "I served as a panelist for the Academic Fairness Committee (AFC) which hears cases brought by students or administration pertaining to academic misconduct or general academic disputes. This board of panelists is made up of both select students and faculty. We hear individual cases presented by the student(s) and faculty involved, then break to deliberate and ultimately vote towards a resolution/remedy.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQHvxkLYVG95JA/company-logo_100_100/company-logo_100_100/0/1692300973410/kelley_school_of_business_logo?e=1776297600&v=beta&t=NoiTZSBrSPiUXhiLMdZz-KippQxJtavM3H9eR3_NZt8"
+        },
+        {
+          "title": "Career Ambassador",
+          "company": "Indiana University - Kelley School of Business",
+          "dates": "Aug 2017 - Apr 2018",
+          "duration": "9 mos",
+          "description": "I worked as a Career Ambassador for the Undergraduate Career Services Office (UCSO). This unique office provides undergraduate students with great opportunities to get involved, perfect their professional self as well as recruit and network. Specifically as a Career Ambassador I helped fellow students with interview preparation, resume editing/building, meeting with recruiters and assisting them with setting up their presentations, as well as many other career related services.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQHvxkLYVG95JA/company-logo_100_100/company-logo_100_100/0/1692300973410/kelley_school_of_business_logo?e=1776297600&v=beta&t=NoiTZSBrSPiUXhiLMdZz-KippQxJtavM3H9eR3_NZt8"
+        },
+        {
+          "title": "Financial Analyst Intern",
+          "company": "Charles River Associates",
+          "dates": "Jun 2018 - Aug 2018",
+          "duration": "3 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQGJuZYyBt91pA/company-logo_100_100/company-logo_100_100/0/1729261472450/charles_river_associates_logo?e=1776297600&v=beta&t=xia2rd2vxGuOIXKaPokzCS34aZJNvusu6kFYc26AXtM"
+        },
+        {
+          "title": "Financial Administration Analyst",
+          "company": "University of Chicago Medicine",
+          "dates": "May 2016 - Aug 2016",
+          "duration": "4 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C510BAQEVq-44HBYPFQ/company-logo_100_100/company-logo_100_100/0/1631331082581?e=1776297600&v=beta&t=kYjGPYm_4ymHYAMhXe_65NaeusNIWocoSkRXUPJi7jQ"
+        }
+      ],
+      "sector_tags": [],
+      "archetype": "PE Lateral",
+      "operator_background": [],
+      "owned_pl": false,
+      "firm_size_tier": "Mega",
+      "company_revenue_tier": null,
+      "quality_rating": null,
+      "rating_set_by": null,
+      "rating_date": null,
+      "availability": "Unknown",
+      "availability_updated": null,
+      "search_history": [],
+      "dq_reasons": [],
+      "last_contact_date": null,
+      "notes": "",
+      "date_added": "2026-03-25",
+      "added_from_search": "",
+      "last_scraped": "2026-03-25",
+      "source": "LinkedIn (Chrome Extension)",
+      "primary_experience_index": 0
+    },
+    {
+      "candidate_id": "cand-junaid-zaheer-1774461401983",
+      "date_added": "2026-03-25",
+      "name": "Junaid Zaheer",
+      "current_title": "Group COO and Operating Partner",
+      "current_firm": "Sun Capital Partners, Inc.",
+      "home_location": "Sun Capital Partners, Inc.",
+      "linkedin_url": "https://www.linkedin.com/in/junaidzaheer/",
+      "archetype": "PE Lateral",
+      "source": "LinkedIn title search",
+      "stage": "Qualifying",
+      "notes": "",
+      "search_id": "berkshire-industrials-2026",
+      "work_history": [
+        {
+          "title": "Group COO and Operating Partner",
+          "company": "Sun Capital Partners, Inc.",
+          "dates": "Feb 2026 - Present",
+          "duration": "2 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQE4HfP_fKpxlw/company-logo_100_100/B4EZxSkNbSJYAQ-/0/1770911750440/sun_capital_partners_logo?e=1776297600&v=beta&t=lfF18E2gWZT8RdZ9gFyv4GPso0t2kPmZUTJjo59wYc8"
+        },
+        {
+          "title": "Operating Partner | Portfolio Operations and Value Creation",
+          "company": "Sun Capital Partners, Inc.",
+          "dates": "2024 - Feb 2026",
+          "duration": "2 yrs 2 mos",
+          "description": "Operating Partner and board member supporting industrial and business services portfolio companies on value creation, growth, and transformation. Partner closely with CEOs on strategy, operational improvement, M&A integration, and execution of high-impact initiatives.\n\nGuiding operational and strategic priorities across industrial and business services platforms to accelerate growth, build execution muscle, and deepen competitive advantage.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQE4HfP_fKpxlw/company-logo_100_100/B4EZxSkNbSJYAQ-/0/1770911750440/sun_capital_partners_logo?e=1776297600&v=beta&t=lfF18E2gWZT8RdZ9gFyv4GPso0t2kPmZUTJjo59wYc8"
+        },
+        {
+          "title": "Board Member",
+          "company": "Tier One Relocation LLC",
+          "dates": "2024 - Present",
+          "duration": "2 yrs 3 mos",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C4D0BAQGrKs06e-Je1A/company-logo_100_100/company-logo_100_100/0/1631363709652/tier_one_relocation_llc_logo?e=1776297600&v=beta&t=NMx5K5wghUkDRM6_AC2kcTWMgS0cyJ89NBh2avLK5m8"
+        },
+        {
+          "title": "Operating Principal | Private Equity Value Creation and Portfolio Operations",
+          "company": "Access Holdings",
+          "dates": "2020 - 2024",
+          "duration": "4 yrs",
+          "description": "Led hands-on value creation for portfolio companies, working with management teams to drive growth, operational improvement, and enterprise transformation. Built and scaled firmwide operating capabilities, analytics platforms, and governance models to institutionalize repeatable value creation.\n\nDrove measurable value creation through commercial acceleration, performance frameworks, and repeatable operating playbooks across a diversified portfolio.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQHzcfVRydphJg/company-logo_100_100/B4EZlJl7HHGUAQ-/0/1757876302618/access_holdings_logo?e=1776297600&v=beta&t=eMtsjbJB2LabMgTvviB_P-kiNaXOhzrf4GLu704R28k"
+        },
+        {
+          "title": "Board Observer",
+          "company": "American Student Transportation Partners, Inc.",
+          "dates": "2021 - 2023",
+          "duration": "2 yrs",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQFqnemEeI6nkQ/company-logo_100_100/company-logo_100_100/0/1630366734091/american_student_transportation_partners_inc_logo?e=1776297600&v=beta&t=-EPaGDqBVfUh36yV-bCo664lUQ77pJ12d8QMpQ1nV60"
+        },
+        {
+          "title": "Board Observer",
+          "company": "Oasis Experiences",
+          "dates": "2021 - 2023",
+          "duration": "2 yrs",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQH9nU_9Crc7CA/company-logo_100_100/company-logo_100_100/0/1716244459981/oasisexperiences_logo?e=1776297600&v=beta&t=5JI5SOz9bOF2Bgp8fWhCfUrPlC3W0SGzLdLejHVJenE"
+        },
+        {
+          "title": "Board Observer",
+          "company": "Foundation Partners Group",
+          "dates": "2021 - 2023",
+          "duration": "2 yrs",
+          "description": null,
+          "logoUrl": "https://media.licdn.com/dms/image/v2/C4E0BAQGEbnnM17XF5A/company-logo_100_100/company-logo_100_100/0/1630592918209/foundation_partners_group_logo?e=1776297600&v=beta&t=5zsmIvW31KNzW08AR29uOKPUFby-4DNq3xb7798eGyk"
+        },
+        {
+          "title": "Operating Executive - Vice President and Head of Strategic Initiatives and Transformation Office",
+          "company": "TEGNA",
+          "dates": "2017 - 2021",
+          "duration": "4 yrs",
+          "description": "Senior operating executive leading enterprise strategy, transformation, and new business incubation. Held interim P&L leadership roles, led acquisitions and integrations, and drove large-scale commercial and cost transformations across a complex, multi-market organization.\n\nChampioned cross-functional initiatives that improved operating performance, strengthened competitive positioning, and enabled new revenue streams.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQFBOPtuV9LOdw/company-logo_100_100/B4EZZJGjV_GYAQ-/0/1744983176956/tegna_logo?e=1776297600&v=beta&t=hZux4SjiOtGnPPw2EyIQuaAfuK_yRqy6ZIt_-mf_pfg"
+        },
+        {
+          "title": "Senior Manager",
+          "company": "Kearney",
+          "dates": "2014 - 2017",
+          "duration": "3 yrs",
+          "description": "Advised private equity firms and Fortune 500 clients on growth strategy, digital transformation, and operational improvement across technology, industrial, automotive, and healthcare sectors. Led complex, cross-functional transformation programs from strategy through execution.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D4E0BAQEH8PSHpR3L4A/company-logo_100_100/B4EZuMSFVKI0AQ-/0/1767585109714/kearney_logo?e=1776297600&v=beta&t=hC4wRy984U3KeZAcppL8WVyXjOLJbIirT6HtttIt2vg"
+        },
+        {
+          "title": "Venture Capital",
+          "company": "Long River Ventures III LP",
+          "dates": "2012 - 2012",
+          "duration": "Less than a year",
+          "description": null,
+          "logoUrl": null
+        },
+        {
+          "title": "Product Management",
+          "company": "Johnson Controls",
+          "dates": "2009 - 2012",
+          "duration": "3 yrs",
+          "description": "Product and systems leader in the energy efficiency division, responsible for launching new HVAC products end-to-end—from market insight and requirements through development, testing, and commercialization.",
+          "logoUrl": "https://media.licdn.com/dms/image/v2/D560BAQFLnizgdgpDFA/company-logo_100_100/company-logo_100_100/0/1728672007366/johnson_controls_logo?e=1776297600&v=beta&t=4jqCG8E-1mZLOrAffOCEPEWG-vWa641m3wgK74YHRcQ"
+        }
+      ],
+      "last_scraped": "2026-03-25",
+      "firm_size_tier": "Large",
+      "photo_url": "https://media.licdn.com/dms/image/v2/D4E03AQH3-hWzxLQcXw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1714957573301?e=1776297600&v=beta&t=LoUQlLryWcJag-FXA0XLd2olHgxoEt4nNH90c_JG8Tk"
     }
   ]
 }

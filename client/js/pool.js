@@ -403,11 +403,16 @@ function renderCandidateDetailPanel(candidate) {
     ? `<a href="${poolEscape(candidate.linkedin_url)}" target="_blank" style="font-size:12px;color:#1565c0;text-decoration:none">&#128279; LinkedIn</a>`
     : '';
 
+  const photoHtml = candidate.photo_url
+    ? `<img src="${poolEscape(candidate.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0">`
+    : `<div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(candidate.name || '?')[0].toUpperCase()}</div>`;
+
   overlay.innerHTML = `
     <div class="detail-panel" id="candidate-detail-panel">
       <!-- Header -->
       <div class="detail-panel-header">
-        <div style="flex:1;min-width:0">
+        ${photoHtml}
+        <div style="flex:1;min-width:0;margin-left:12px">
           <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${poolEscape(candidate.name)}</h2>
           <div style="font-size:13px;color:#555">${poolEscape(candidate.current_title || '')}${candidate.current_firm ? ' <span style="color:#aaa">@</span> ' + poolEscape(candidate.current_firm) : ''}</div>
           ${linkedinLink ? '<div style="margin-top:4px">' + linkedinLink + '</div>' : ''}
