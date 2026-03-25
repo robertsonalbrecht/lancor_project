@@ -9,6 +9,8 @@ let cpFilters = {
   type: 'all',
   size_tier: 'all',
   sector: 'all',
+  industry: 'all',
+  enrichment: 'all',
   text: ''
 };
 let cpSortField = 'name';
@@ -45,12 +47,19 @@ function cpEscape(s) {
 
 function companyTypePill(type) {
   const map = {
-    'PE Firm':          { bg: '#EDE7F6', color: '#5C2D91' },
-    'Private Company':  { bg: '#e3f2fd', color: '#1565c0' },
-    'Public Company':   { bg: '#e8f5e9', color: '#2e7d32' }
+    'PE Firm':              { bg: '#EDE7F6', color: '#5C2D91' },
+    'Private Company':      { bg: '#e3f2fd', color: '#1565c0' },
+    'Public Company':       { bg: '#e8f5e9', color: '#2e7d32' },
+    'Portfolio Company':    { bg: '#fff3e0', color: '#e65100' },
+    'Consulting Firm':      { bg: '#fce4ec', color: '#880e4f' },
+    'Investment Bank':      { bg: '#f3e5f5', color: '#6a1b9a' },
+    'Accounting Firm':      { bg: '#efebe9', color: '#4e342e' },
+    'Law Firm':             { bg: '#e0f2f1', color: '#00695c' },
+    'Government / Military':{ bg: '#eceff1', color: '#37474f' },
+    'Nonprofit / Education':{ bg: '#fff8e1', color: '#f57f17' }
   };
   const c = map[type] || { bg: '#f5f5f5', color: '#555' };
-  return `<span style="background:${c.bg};color:${c.color};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap">${cpEscape(type) || '—'}</span>`;
+  return `<span style="background:${c.bg};color:${c.color};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap">${cpEscape(type) || 'Unclassified'}</span>`;
 }
 
 function sizeTierPillCP(tier) {
@@ -83,14 +92,33 @@ function formatCPDate(dateStr) {
 
 function applyCompanyFilters(companies) {
   return companies.filter(c => {
-    if (cpFilters.type !== 'all' && c.company_type !== cpFilters.type) return false;
-    if (cpFilters.size_tier !== 'all' && c.size_tier !== cpFilters.size_tier) return false;
+    // Type filter: "Unclassified" matches null/undefined types
+    if (cpFilters.type !== 'all') {
+      if (cpFilters.type === 'Unclassified') {
+        if (c.company_type) return false;
+      } else if (c.company_type !== cpFilters.type) return false;
+    }
+    if (cpFilters.size_tier !== 'all') {
+      if (cpFilters.size_tier.startsWith('rev:')) {
+        // Revenue tier filter
+        if (c.revenue_tier !== cpFilters.size_tier.slice(4)) return false;
+      } else {
+        // PE firm size tier filter
+        if (c.size_tier !== cpFilters.size_tier) return false;
+      }
+    }
     if (cpFilters.sector !== 'all') {
       if (!Array.isArray(c.sector_focus_tags) || !c.sector_focus_tags.includes(cpFilters.sector)) return false;
     }
+    if (cpFilters.industry !== 'all') {
+      if ((c.industry || '') !== cpFilters.industry) return false;
+    }
+    if (cpFilters.enrichment !== 'all') {
+      if ((c.enrichment_status || 'none') !== cpFilters.enrichment) return false;
+    }
     if (cpFilters.text) {
       const q = cpFilters.text.toLowerCase();
-      const hay = [c.name, c.hq, c.description, c.industry].filter(Boolean).join(' ').toLowerCase();
+      const hay = [c.name, c.hq, c.description, c.industry, ...(c.aliases || [])].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -124,10 +152,12 @@ function onCpFilterChange() {
   const typeSelect  = document.getElementById('cp-filter-type');
   const tierSelect  = document.getElementById('cp-filter-tier');
   const secSelect   = document.getElementById('cp-filter-sector');
+  const indSelect   = document.getElementById('cp-filter-industry');
   const textInput   = document.getElementById('cp-filter-text');
   if (typeSelect)  cpFilters.type      = typeSelect.value;
   if (tierSelect)  cpFilters.size_tier = tierSelect.value;
   if (secSelect)   cpFilters.sector    = secSelect.value;
+  if (indSelect)   cpFilters.industry  = indSelect.value;
   if (textInput)   cpFilters.text      = textInput.value.trim();
 
   // Only update the table + count (not the whole page) to preserve focus
@@ -145,14 +175,12 @@ function onCpFilterChange() {
 
 function setCpTypeFilter(type) {
   cpFilters.type = type;
-  // Sync the hidden select too
+  // Reset size filter when switching types to avoid stale filters
+  cpFilters.size_tier = 'all';
+  cpFilters.industry = 'all';
+  // Sync the hidden select
   const typeSelect = document.getElementById('cp-filter-type');
   if (typeSelect) typeSelect.value = type;
-  // Update pill states
-  document.querySelectorAll('.cp-type-pill').forEach(pill => {
-    const t = pill.dataset.type;
-    pill.className = 'cp-type-pill' + (t === type ? ' active-' + (t === 'all' ? 'all' : t === 'PE Firm' ? 'pe' : t === 'Private Company' ? 'priv' : 'pub') : '');
-  });
   renderCompanyView();
 }
 
@@ -179,15 +207,41 @@ function renderCompanyView() {
   const sorted   = sortCompanies(filtered);
 
   const activeType = cpFilters.type;
-  const pillClass = t => {
-    if (activeType !== t) return 'cp-type-pill';
-    const suffix = t === 'all' ? 'all' : t === 'PE Firm' ? 'pe' : t === 'Private Company' ? 'priv' : 'pub';
-    return `cp-type-pill active-${suffix}`;
-  };
+  const pillClass = t => `cp-type-pill${activeType === t ? ' active-all' : ''}`;
 
-  const peCounts    = cpAllCompanies.filter(c => c.company_type === 'PE Firm').length;
-  const privCounts  = cpAllCompanies.filter(c => c.company_type === 'Private Company').length;
-  const pubCounts   = cpAllCompanies.filter(c => c.company_type === 'Public Company').length;
+  // Count companies by type
+  const typeCounts = {};
+  cpAllCompanies.forEach(c => { const t = c.company_type || 'Unclassified'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+
+  // Build type pills: All, PE Firm, then others sorted by count
+  const typeOrder = ['PE Firm', 'Portfolio Company', 'Public Company', 'Private Company',
+    'Consulting Firm', 'Investment Bank', 'Accounting Firm', 'Law Firm',
+    'Government / Military', 'Nonprofit / Education', 'Other', 'Unclassified'];
+  const typePills = typeOrder
+    .filter(t => typeCounts[t] > 0)
+    .map(t => `<button class="${pillClass(t)}" data-type="${cpEscape(t)}" onclick="setCpTypeFilter('${cpEscape(t)}')">${cpEscape(t === 'Unclassified' ? 'Unclassified' : t)} (${typeCounts[t].toLocaleString()})</button>`)
+    .join('');
+
+  // Collect unique industries for filter dropdown
+  const industries = [...new Set(cpAllCompanies.map(c => c.industry).filter(Boolean))].sort();
+
+  // Size dropdown — show PE sizes + revenue tiers
+  const sizeOpts = `
+    <option value="all">All Sizes</option>
+    <optgroup label="PE Firm Size">
+      <option value="Mega" ${cpFilters.size_tier==='Mega'?'selected':''}>Mega</option>
+      <option value="Large" ${cpFilters.size_tier==='Large'?'selected':''}>Large</option>
+      <option value="Middle Market" ${cpFilters.size_tier==='Middle Market'?'selected':''}>Middle Market</option>
+      <option value="Lower Middle Market" ${cpFilters.size_tier==='Lower Middle Market'?'selected':''}>Lower Middle Market</option>
+    </optgroup>
+    <optgroup label="Revenue Tier">
+      <option value="rev:$1B+" ${cpFilters.size_tier==='rev:$1B+'?'selected':''}>$1B+</option>
+      <option value="rev:$500M-$1B" ${cpFilters.size_tier==='rev:$500M-$1B'?'selected':''}>$500M-$1B</option>
+      <option value="rev:$200M-$500M" ${cpFilters.size_tier==='rev:$200M-$500M'?'selected':''}>$200M-$500M</option>
+      <option value="rev:$50M-$200M" ${cpFilters.size_tier==='rev:$50M-$200M'?'selected':''}>$50M-$200M</option>
+      <option value="rev:$10M-$50M" ${cpFilters.size_tier==='rev:$10M-$50M'?'selected':''}>$10M-$50M</option>
+      <option value="rev:<$10M" ${cpFilters.size_tier==='rev:<$10M'?'selected':''}>&lt;$10M</option>
+    </optgroup>`;
 
   content.innerHTML = `
     <div class="pool-header">
@@ -202,32 +256,29 @@ function renderCompanyView() {
       <!-- Type pills -->
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <button class="${pillClass('all')}" data-type="all" onclick="setCpTypeFilter('all')">All (${cpAllCompanies.length.toLocaleString()})</button>
-        <button class="${pillClass('PE Firm')}" data-type="PE Firm" onclick="setCpTypeFilter('PE Firm')">PE Firms (${peCounts.toLocaleString()})</button>
-        <button class="${pillClass('Private Company')}" data-type="Private Company" onclick="setCpTypeFilter('Private Company')">Private (${privCounts.toLocaleString()})</button>
-        <button class="${pillClass('Public Company')}" data-type="Public Company" onclick="setCpTypeFilter('Public Company')">Public (${pubCounts.toLocaleString()})</button>
+        ${typePills}
       </div>
 
       <!-- Hidden type select for onCpFilterChange compatibility -->
       <select id="cp-filter-type" style="display:none" onchange="onCpFilterChange()">
         <option value="all">All</option>
-        <option value="PE Firm">PE Firm</option>
-        <option value="Private Company">Private Company</option>
-        <option value="Public Company">Public Company</option>
+        ${typeOrder.filter(t => typeCounts[t] > 0).map(t => `<option value="${cpEscape(t)}">${cpEscape(t)}</option>`).join('')}
       </select>
 
-      ${activeType === 'PE Firm' || activeType === 'all' ? `
       <select id="cp-filter-tier" class="pool-filter-select" onchange="onCpFilterChange()">
-        <option value="all">All Sizes</option>
-        <option value="Mega"               ${cpFilters.size_tier==='Mega'?'selected':''}>Mega</option>
-        <option value="Large"              ${cpFilters.size_tier==='Large'?'selected':''}>Large</option>
-        <option value="Middle Market"      ${cpFilters.size_tier==='Middle Market'?'selected':''}>Middle Market</option>
-        <option value="Lower Middle Market"${cpFilters.size_tier==='Lower Middle Market'?'selected':''}>Lower Middle Market</option>
-      </select>` : ''}
+        ${sizeOpts}
+      </select>
 
       <select id="cp-filter-sector" class="pool-filter-select" onchange="onCpFilterChange()">
         <option value="all">All Sectors</option>
         ${CP_SECTORS.map(s => `<option value="${s.id}" ${cpFilters.sector===s.id?'selected':''}>${s.label}</option>`).join('')}
       </select>
+
+      ${industries.length > 0 ? `
+      <select id="cp-filter-industry" class="pool-filter-select" onchange="onCpFilterChange()">
+        <option value="all">All Industries</option>
+        ${industries.map(i => `<option value="${cpEscape(i)}" ${cpFilters.industry===i?'selected':''}>${cpEscape(i)}</option>`).join('')}
+      </select>` : ''}
 
       <input id="cp-filter-text" class="pool-filter-text" placeholder="Search companies…"
              value="${cpEscape(cpFilters.text)}" oninput="onCpFilterChange()">
@@ -245,9 +296,9 @@ function renderCompanyTable(companies) {
   }
 
   const activeType = cpFilters.type;
-  const showPECols     = activeType === 'PE Firm';
-  const showPrivPubCols = activeType === 'Private Company' || activeType === 'Public Company';
-  const showAllCols    = activeType === 'all';
+  const isPE       = activeType === 'PE Firm';
+  const isAll      = activeType === 'all';
+  const isNonPE    = !isPE && !isAll;
 
   const sortIcon = field => cpSortField === field ? (cpSortAsc ? ' ↑' : ' ↓') : '';
 
@@ -258,57 +309,76 @@ function renderCompanyTable(companies) {
           <tr>
             <th onclick="setCpSort('name')" style="cursor:pointer;min-width:200px">Name${sortIcon('name')}</th>
             <th onclick="setCpSort('hq')" style="cursor:pointer">HQ${sortIcon('hq')}</th>
-            ${showAllCols ? `<th>Type</th>` : ''}
-            ${showPECols || showAllCols ? `
+            <th>Type</th>
+            ${isPE ? `
               <th onclick="setCpSort('size_tier')" style="cursor:pointer">Size${sortIcon('size_tier')}</th>
               <th onclick="setCpSort('strategy')" style="cursor:pointer">Strategy${sortIcon('strategy')}</th>
               <th>Sectors</th>
             ` : ''}
-            ${showPrivPubCols ? `
-              <th onclick="setCpSort('revenue_tier')" style="cursor:pointer">Revenue Tier${sortIcon('revenue_tier')}</th>
-              <th onclick="setCpSort('ownership_type')" style="cursor:pointer">Ownership${sortIcon('ownership_type')}</th>
+            ${isNonPE ? `
               <th onclick="setCpSort('industry')" style="cursor:pointer">Industry${sortIcon('industry')}</th>
-              ${activeType === 'Public Company' ? `<th>Ticker</th>` : ''}
+              <th onclick="setCpSort('revenue_tier')" style="cursor:pointer">Revenue${sortIcon('revenue_tier')}</th>
+              <th onclick="setCpSort('ownership_type')" style="cursor:pointer">Ownership${sortIcon('ownership_type')}</th>
+              <th onclick="setCpSort('employee_count')" style="cursor:pointer">Employees${sortIcon('employee_count')}</th>
+            ` : ''}
+            ${isAll ? `
+              <th onclick="setCpSort('size_tier')" style="cursor:pointer">Size / Revenue${sortIcon('size_tier')}</th>
+              <th onclick="setCpSort('industry')" style="cursor:pointer">Industry${sortIcon('industry')}</th>
             ` : ''}
             <th>Description</th>
           </tr>
         </thead>
         <tbody>
-          ${companies.map(c => renderCompanyRow(c, showAllCols, showPECols, showPrivPubCols)).join('')}
+          ${companies.map(c => renderCompanyRow(c, isAll, isPE, isNonPE)).join('')}
         </tbody>
       </table>
     </div>
   `;
 }
 
-function renderCompanyRow(c, showAllCols, showPECols, showPrivPubCols) {
-  const activeType = cpFilters.type;
+function renderCompanyRow(c, isAll, isPE, isNonPE) {
   const nameCell = `
     <div style="display:flex;align-items:center;gap:6px">
       <span style="font-weight:600;font-size:13px">${cpEscape(c.name)}</span>
       ${c.website_url ? `<a href="${cpEscape(c.website_url)}" target="_blank" rel="noopener"
           onclick="event.stopPropagation()" title="Open website"
           style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#5C2D91;border-radius:3px;color:#fff;text-decoration:none;font-size:10px;font-weight:800;flex-shrink:0">W</a>` : ''}
+      ${c.linkedin_company_url ? `<a href="${cpEscape(c.linkedin_company_url)}" target="_blank" rel="noopener"
+          onclick="event.stopPropagation()" title="LinkedIn"
+          style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#0a66c2;border-radius:3px;color:#fff;text-decoration:none;font-size:9px;font-weight:800;flex-shrink:0">in</a>` : ''}
     </div>
   `;
 
   const desc = c.description ? c.description.slice(0, 80) + (c.description.length > 80 ? '…' : '') : '';
 
+  // Size display: show PE size_tier or revenue_tier depending on company type
+  const sizeDisplay = c.size_tier || c.revenue_tier || '—';
+
+  const fmtEmployees = n => {
+    if (!n) return '—';
+    if (n >= 1000) return Math.round(n / 1000).toLocaleString() + 'K';
+    return n.toLocaleString();
+  };
+
   return `
     <tr onclick="openCompanyDetail('${cpEscape(c.company_id)}')" style="cursor:pointer">
       <td>${nameCell}</td>
       <td style="color:#666;font-size:12px">${cpEscape(c.hq || '—')}</td>
-      ${showAllCols ? `<td>${companyTypePill(c.company_type)}</td>` : ''}
-      ${showPECols || showAllCols ? `
+      <td>${companyTypePill(c.company_type)}</td>
+      ${isPE ? `
         <td>${sizeTierPillCP(c.size_tier)}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.strategy || '—')}</td>
         <td>${cpSectorTags(c.sector_focus_tags)}</td>
       ` : ''}
-      ${showPrivPubCols ? `
+      ${isNonPE ? `
+        <td style="color:#666;font-size:12px">${cpEscape(c.industry || '—')}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.revenue_tier || '—')}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.ownership_type || '—')}</td>
+        <td style="color:#666;font-size:12px">${fmtEmployees(c.employee_count)}</td>
+      ` : ''}
+      ${isAll ? `
+        <td style="color:#666;font-size:12px">${cpEscape(sizeDisplay)}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.industry || '—')}</td>
-        ${activeType === 'Public Company' ? `<td style="font-family:monospace;font-size:12px;font-weight:600;color:#1565c0">${cpEscape(c.ticker || '—')}</td>` : ''}
       ` : ''}
       <td style="color:#888;font-size:12px;max-width:200px">${cpEscape(desc)}</td>
     </tr>

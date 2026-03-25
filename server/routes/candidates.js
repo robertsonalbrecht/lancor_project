@@ -15,21 +15,43 @@ function readCompanyPool() {
   } catch { return { companies: [] }; }
 }
 
+const normCompanyName = s => (s || '').replace(/\s*[·•]\s*(Full-time|Part-time|Contract|Freelance|Self-employed|Seasonal|Internship).*$/i, '')
+  .replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+
+function extractLinkedInCompanySlug(url) {
+  if (!url) return null;
+  const m = url.match(/linkedin\.com\/company\/([a-zA-Z0-9_-]+)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function slugifyCompany(s) {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+
 // Fuzzy-match a firm name against the company pool
-function findCompanyInPool(firmName) {
-  if (!firmName) return null;
-  const pool = readCompanyPool();
-  const norm = s => (s || '').replace(/\s*[·•]\s*(Full-time|Part-time|Contract|Freelance|Self-employed|Seasonal|Internship).*$/i, '')
-    .replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
-  const target = norm(firmName);
+// Accepts optional poolData to avoid repeated file reads
+function findCompanyInPool(firmName, linkedinUrl, poolData) {
+  if (!firmName && !linkedinUrl) return null;
+  const pool = poolData || readCompanyPool();
+  const companies = pool.companies || [];
+
+  // 1. LinkedIn URL match (most reliable)
+  const slug = extractLinkedInCompanySlug(linkedinUrl);
+  if (slug) {
+    for (const c of companies) {
+      if (extractLinkedInCompanySlug(c.linkedin_company_url) === slug) return c;
+    }
+  }
+
+  // 2. Name match
+  const target = normCompanyName(firmName);
   if (!target) return null;
 
-  for (const c of pool.companies || []) {
-    const names = [c.name, ...(c.aliases || [])].map(norm);
+  for (const c of companies) {
+    const names = [c.name, ...(c.aliases || [])].map(normCompanyName);
     for (const n of names) {
       if (!n) continue;
       if (n === target) return c;
-      // Substring match (shorter must be >= 60% of longer)
       const shorter = n.length <= target.length ? n : target;
       const longer = n.length > target.length ? n : target;
       if (shorter.length >= 4 && longer.includes(shorter) && shorter.length >= longer.length * 0.6) return c;
@@ -38,9 +60,92 @@ function findCompanyInPool(firmName) {
   return null;
 }
 
+// Create a company stub for a new company not in the pool
+function createCompanyStub(name, linkedinUrl, source) {
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    company_id:               slugifyCompany(name),
+    company_type:             null,
+    name:                     name,
+    aliases:                  [],
+    linkedin_company_url:     linkedinUrl || null,
+    hq:                       null,
+    website_url:              null,
+    description:              null,
+    year_founded:             null,
+    notes:                    '',
+    date_added:               today,
+    last_updated:             today,
+    source:                   source || 'candidate-sync',
+    enrichment_status:        'pending',
+    size_tier:                null,
+    strategy:                 null,
+    entity_type:              null,
+    investment_professionals: null,
+    last_fund_name:           null,
+    last_fund_size:           null,
+    last_fund_vintage:        null,
+    dry_powder:               null,
+    preferred_ebitda_min:     null,
+    preferred_ebitda_max:     null,
+    preferred_geography:      null,
+    active_portfolio_count:   null,
+    sector_focus_tags:        [],
+    revenue_tier:             null,
+    ownership_type:           null,
+    parent_company:           null,
+    employee_count:           null,
+    industry:                 null,
+    ticker:                   null
+  };
+}
+
+// Auto-create company stubs for any unrecognized companies in work history
+function autoCreateCompaniesFromWorkHistory(workHistory, poolData) {
+  if (!Array.isArray(workHistory) || workHistory.length === 0) return false;
+  const existingIds = new Set((poolData.companies || []).map(c => c.company_id));
+  let added = false;
+
+  for (const entry of workHistory) {
+    const name = (entry.company || '').trim();
+    if (!name || name.length < 2) continue;
+    if (/^\d+\s*(yrs?|mos?)/i.test(name)) continue; // corrupted
+
+    // Skip if already linked
+    if (entry.company_id) continue;
+
+    const match = findCompanyInPool(name, entry.companyLinkedInUrl, poolData);
+    if (match) {
+      entry.company_id = match.company_id;
+      // Update LinkedIn URL on existing company if we have one
+      if (entry.companyLinkedInUrl && !match.linkedin_company_url) {
+        match.linkedin_company_url = entry.companyLinkedInUrl;
+      }
+      continue;
+    }
+
+    // Create stub
+    const stub = createCompanyStub(name, entry.companyLinkedInUrl, 'candidate-sync');
+    // Ensure unique ID
+    if (existingIds.has(stub.company_id)) {
+      let counter = 2;
+      while (existingIds.has(stub.company_id + '-' + counter)) counter++;
+      stub.company_id = stub.company_id + '-' + counter;
+    }
+
+    poolData.companies.push(stub);
+    existingIds.add(stub.company_id);
+    entry.company_id = stub.company_id;
+    added = true;
+    console.log(`[prefill] Created company stub: "${name}" (${stub.company_id})`);
+  }
+
+  return added;
+}
+
 // Auto-enrich candidate fields from company pool data
 function enrichFromCompanyPool(candidate) {
-  const company = findCompanyInPool(candidate.current_firm);
+  const company = findCompanyInPool(candidate.current_firm, null, null);
   if (!company) return;
 
   // Set firm_size_tier from company pool
@@ -57,6 +162,46 @@ function enrichFromCompanyPool(candidate) {
   if ((!candidate.sector_tags || candidate.sector_tags.length === 0) && company.sectors && company.sectors.length > 0) {
     candidate.sector_tags = [...company.sectors];
   }
+}
+
+// Post-process work history: propagate company names between consecutive entries
+// that share the same logoUrl (same company) or are adjacent with empty company names
+function normalizeWorkHistory(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) return entries;
+
+  // Pass 1: propagate company from grouped entries sharing the same logoUrl
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].company) continue;
+    const logo = entries[i].logoUrl || '';
+    if (!logo) continue;
+    // Look for a nearby entry with the same logo that has a company name
+    for (let j = 0; j < entries.length; j++) {
+      if (j === i) continue;
+      if ((entries[j].logoUrl || '') === logo && entries[j].company) {
+        entries[i].company = entries[j].company;
+        break;
+      }
+    }
+  }
+
+  // Pass 2: for consecutive entries with empty company, group them under the
+  // same company if they share similar descriptions or if there's a preceding
+  // entry with a company name and matching logo
+  for (let i = 1; i < entries.length; i++) {
+    if (entries[i].company) continue;
+    const prev = entries[i - 1];
+    // If previous entry has a company and both have same (or empty) logo, propagate
+    if (prev.company && (prev.logoUrl || '') === (entries[i].logoUrl || '')) {
+      entries[i].company = prev.company;
+    }
+    // If both are empty-company but have identical descriptions, they're likely the same company
+    if (!entries[i].company && prev.company && entries[i].description && prev.description &&
+        entries[i].description.trim() === prev.description.trim()) {
+      entries[i].company = prev.company;
+    }
+  }
+
+  return entries;
 }
 
 function candidatesFile() {
@@ -156,7 +301,7 @@ router.post('/', (req, res) => {
             linkedin_url: newCandidate.linkedin_url || '',
             archetype: newCandidate.archetype || 'PE Lateral',
             source: body.source || 'LinkedIn title search',
-            stage: body.initial_stage || 'Pursuing',
+            stage: body.stage || body.initial_stage || 'Pursuing',
             lancor_screener: '',
             screen_date: null,
             lancor_assessment: '',
@@ -280,6 +425,7 @@ router.post('/prefill', (req, res) => {
       if (photoUrl) existing.photo_url = photoUrl; // always refresh photo
       if (Array.isArray(workHistory) && workHistory.length) {
         const cleaned = workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) }));
+        normalizeWorkHistory(cleaned);
         const seen = new Set();
         existing.work_history = cleaned.filter(w => {
           const key = [(w.title||'').toLowerCase().trim(), (w.company||'').toLowerCase().trim(), (w.dates||'').toLowerCase().trim()].join('|');
@@ -292,6 +438,13 @@ router.post('/prefill', (req, res) => {
 
       // Auto-enrich from company pool if metadata is missing
       enrichFromCompanyPool(existing);
+
+      // Auto-create company stubs for unrecognized companies in work history
+      const companyPool = readCompanyPool();
+      const companiesAdded = autoCreateCompaniesFromWorkHistory(existing.work_history, companyPool);
+      if (companiesAdded) {
+        fs.writeFileSync(companyPoolFile(), JSON.stringify(companyPool, null, 2), 'utf8');
+      }
 
       writePool(pool);
       return res.json({ action: 'updated', id: existing.candidate_id });
@@ -312,7 +465,7 @@ router.post('/prefill', (req, res) => {
       home_location:  location      || '',
       linkedin_url:   linkedinUrl   || '',
       photo_url:      photoUrl      || '',
-      work_history:   Array.isArray(workHistory) ? workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) })) : [],
+      work_history:   Array.isArray(workHistory) ? normalizeWorkHistory(workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) }))) : [],
       sector_tags:    [],
       archetype:      '',
       operator_background: [],
@@ -336,6 +489,13 @@ router.post('/prefill', (req, res) => {
 
     // Auto-enrich from company pool
     enrichFromCompanyPool(newCandidate);
+
+    // Auto-create company stubs for unrecognized companies in work history
+    const companyPool = readCompanyPool();
+    const companiesAdded = autoCreateCompaniesFromWorkHistory(newCandidate.work_history, companyPool);
+    if (companiesAdded) {
+      fs.writeFileSync(companyPoolFile(), JSON.stringify(companyPool, null, 2), 'utf8');
+    }
 
     pool.candidates.push(newCandidate);
     writePool(pool);

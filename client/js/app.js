@@ -894,22 +894,30 @@ async function openAddToPipelineModal(candidateInfo, opts) {
   closePipelineModal();
 
   let searchesHTML = '<option value="">— Select a search —</option>';
+  let _atpSearches = [];
   try {
     const resp = await api('GET', '/searches');
-    const searches = resp.searches || [];
-    searchesHTML += searches.map(s => {
-      const sel = (opts.preSelectSearchId || (typeof currentSearchId !== 'undefined' ? currentSearchId : '')) === s.search_id ? ' selected' : '';
+    _atpSearches = resp.searches || [];
+    const preSelect = opts.preSelectSearchId || (typeof currentSearchId !== 'undefined' ? currentSearchId : '');
+    searchesHTML += _atpSearches.map(s => {
+      const sel = preSelect === s.search_id ? ' selected' : '';
       return `<option value="${_escPanel(s.search_id)}"${sel}>${_escPanel(s.client_name)} — ${_escPanel(s.role_title)}</option>`;
     }).join('');
   } catch (e) {
     searchesHTML = '<option value="">Error loading searches</option>';
   }
 
-  const defaultSource = opts.source || '';
-  const sources = ['LinkedIn title search', 'LinkedIn alumni', 'PitchBook exit', 'Referral', 'All-star pool', 'Inbound', 'Sourcing Coverage'];
-  const sourceOpts = sources.map(s =>
-    `<option value="${s}" ${s === defaultSource ? 'selected' : ''}>${s}</option>`
-  ).join('');
+  // Store searches globally so onchange can access them
+  window._atpSearchesCache = _atpSearches;
+
+  // Build initial stage options based on pre-selected search (if any)
+  const preSelectedId = opts.preSelectSearchId || (typeof currentSearchId !== 'undefined' ? currentSearchId : '');
+  const preSelectedSearch = _atpSearches.find(s => s.search_id === preSelectedId);
+  const initialStageHTML = preSelectedSearch
+    ? (preSelectedSearch.pipeline_stages || []).map(s =>
+        `<option value="${_escPanel(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${_escPanel(s.name)}</option>`
+      ).join('')
+    : '<option value="">— Select a search first —</option>';
 
   const overlay = document.createElement('div');
   overlay.id = 'add-pipeline-overlay';
@@ -933,23 +941,12 @@ async function openAddToPipelineModal(candidateInfo, opts) {
 
         <div class="form-group">
           <label class="form-label">Target Search <span style="color:red">*</span></label>
-          <select class="form-control" id="atp-search">${searchesHTML}</select>
+          <select class="form-control" id="atp-search" onchange="onAtpSearchChange()">${searchesHTML}</select>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group">
-            <label class="form-label">Source</label>
-            <select class="form-control" id="atp-source">${sourceOpts}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Initial Stage</label>
-            <select class="form-control" id="atp-stage">
-              <option value="Pursuing" selected>Pursuing</option>
-              <option value="Outreach Sent">Outreach Sent</option>
-              <option value="Scheduling">Scheduling</option>
-              <option value="Qualifying">Qualifying</option>
-            </select>
-          </div>
+        <div class="form-group">
+          <label class="form-label">Initial Stage</label>
+          <select class="form-control" id="atp-stage" ${preSelectedSearch ? '' : 'disabled'}>${initialStageHTML}</select>
         </div>
 
         <div class="form-group">
@@ -968,6 +965,31 @@ async function openAddToPipelineModal(candidateInfo, opts) {
 
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) closePipelineModal(); });
+}
+
+function onAtpSearchChange() {
+  const searchId = document.getElementById('atp-search')?.value;
+  const stageEl = document.getElementById('atp-stage');
+  if (!stageEl) return;
+
+  if (!searchId) {
+    stageEl.innerHTML = '<option value="">— Select a search first —</option>';
+    stageEl.disabled = true;
+    return;
+  }
+
+  const searches = window._atpSearchesCache || [];
+  const search = searches.find(s => s.search_id === searchId);
+  const stages = (search && search.pipeline_stages) || [];
+
+  if (stages.length === 0) {
+    stageEl.innerHTML = '<option value="Pursuing">Pursuing</option>';
+  } else {
+    stageEl.innerHTML = stages.map(s =>
+      `<option value="${_escPanel(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${_escPanel(s.name)}</option>`
+    ).join('');
+  }
+  stageEl.disabled = false;
 }
 
 async function submitAddToPipeline(candidateInfo) {

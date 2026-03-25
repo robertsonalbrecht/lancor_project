@@ -19,27 +19,27 @@
       "client_contacts": [
         {
           "name": "Marni",
-          "title": "",
+          "abbreviation": "M",
           "display_in_matrix": true
         },
         {
           "name": "Ted",
-          "title": "",
+          "abbreviation": "T",
           "display_in_matrix": true
         },
         {
           "name": "Blake",
-          "title": "",
+          "abbreviation": "B",
           "display_in_matrix": true
         },
         {
           "name": "Sam A",
-          "title": "",
+          "abbreviation": "S",
           "display_in_matrix": true
         },
         {
           "name": "EJ",
-          "title": "",
+          "abbreviation": "E",
           "display_in_matrix": true
         }
       ],
@@ -169,7 +169,7 @@
             {
               "contact_name": "EJ",
               "status": "—",
-              "date": null
+              "date": "2026-03-25"
             }
           ],
           "client_feedback": "",
@@ -185,62 +185,12 @@
           "candidate_id": "cand-hussein-abdelhalim-1774331543249",
           "name": "Hussein Abdelhalim",
           "current_title": "Sr Director, Value Creation",
-          "current_firm": "",
-          "location": "",
+          "current_firm": "Littlejohn & Co",
+          "location": "Senior Director, Value Creation at Littlejohn & Co",
           "linkedin_url": "https://www.linkedin.com/in/hussein-abdelhalim-00395a27/",
           "archetype": "PE Lateral",
-          "source": "Sourcing Coverage",
-          "stage": "Pursuing",
-          "lancor_screener": "",
-          "screen_date": null,
-          "lancor_assessment": "",
-          "resume_attached": false,
-          "client_meetings": [
-            {
-              "contact_name": "Marni",
-              "status": "—",
-              "date": null
-            },
-            {
-              "contact_name": "Ted",
-              "status": "—",
-              "date": null
-            },
-            {
-              "contact_name": "Blake",
-              "status": "—",
-              "date": null
-            },
-            {
-              "contact_name": "Sam A",
-              "status": "—",
-              "date": null
-            },
-            {
-              "contact_name": "EJ",
-              "status": "—",
-              "date": null
-            }
-          ],
-          "client_feedback": "",
-          "next_step": "",
-          "next_step_owner": "",
-          "next_step_date": null,
-          "dq_reason": "",
-          "last_touchpoint": null,
-          "notes": "",
-          "date_added": "2026-03-24"
-        },
-        {
-          "candidate_id": "cand-junaid-zaheer-1774461401983",
-          "name": "Junaid Zaheer",
-          "current_title": "",
-          "current_firm": "",
-          "location": "",
-          "linkedin_url": "https://www.linkedin.com/in/junaidzaheer/",
-          "archetype": "PE Lateral",
           "source": "LinkedIn title search",
-          "stage": "Outreach Sent",
+          "stage": "Qualifying",
           "lancor_screener": "",
           "screen_date": null,
           "lancor_assessment": "",
@@ -280,6 +230,606 @@
           "last_touchpoint": null,
           "notes": "",
           "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-junaid-zaheer-1774461401983",
+          "name": "Junaid Zaheer",
+          "current_title": "Group COO and Operating Partner",
+          "current_firm": "Sun Capital Partners, Inc.",
+          "location": "Sun Capital Partners, Inc.",
+          "linkedin_url": "https://www.linkedin.com/in/junaidzaheer/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Interviewing",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-james-ceavers-1774465527828",
+          "name": "James Ceavers",
+          "current_title": "Principal",
+          "current_firm": "Comvest Partners",
+          "location": "Miami, Florida, United States",
+          "linkedin_url": "https://www.linkedin.com/in/jceavers/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Interviewing",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-david-peck-1774465855745",
+          "name": "David Peck",
+          "current_title": "Head of Supply Chain and Operational Excellence",
+          "current_firm": "Dunes Point Capital, LP",
+          "location": "Dunes Point Capital, LP",
+          "linkedin_url": "https://www.linkedin.com/in/david-peck-8852781/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Interviewing",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-matthew-jennings-1774465859691",
+          "name": "Matthew Jennings",
+          "current_title": "Operating Partner & Head of Centers of Excellence",
+          "current_firm": "Hidden Harbor Capital Partners",
+          "location": "Boca Raton, Florida, United States",
+          "linkedin_url": "https://www.linkedin.com/in/matthew-jennings-18a1b18/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Interviewing",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "tayo-akisanya-gi-partners",
+          "name": "Tayo Akisanya",
+          "current_title": "Vice President",
+          "current_firm": "GI Partners",
+          "location": "Atlanta, GA",
+          "linkedin_url": "https://www.linkedin.com/in/adetayoakisanya",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Interviewing",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "Met",
+              "date": "2026-03-25"
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "john-wang-l-catterton",
+          "name": "John Wang",
+          "current_title": "Managing Director",
+          "current_firm": "L Catterton",
+          "location": "New York, NY",
+          "linkedin_url": "https://www.linkedin.com/in/john-wang-5631a5",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Qualifying",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-mike-freed-1774467261607",
+          "name": "Mike Freed",
+          "current_title": "Chief Executive Officer",
+          "current_firm": "Sensaria",
+          "location": "",
+          "linkedin_url": "https://www.linkedin.com/in/mike-freed-20311b11/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Qualifying",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "tyler-yoon-kkr",
+          "name": "Tyler Yoon",
+          "current_title": "Director",
+          "current_firm": "KKR",
+          "location": "New York, NY",
+          "linkedin_url": "https://www.linkedin.com/in/tyleryoon",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Qualifying",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "cand-paul-f-fichiera-1774381771864",
+          "name": "Paul F. Fichiera",
+          "current_title": "Portfolio Operations",
+          "current_firm": "Platinum Equity",
+          "location": "Greater Phoenix Area",
+          "linkedin_url": "https://www.linkedin.com/in/paul-f-fichiera-7a46002/",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Qualifying",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "e-kyle-bisutti-american-securities",
+          "name": "E. Kyle Bisutti",
+          "current_title": "Senior Vice President",
+          "current_firm": "American Securities",
+          "location": "Baltimore, MD",
+          "linkedin_url": "https://www.linkedin.com/in/e-kyle-bisutti",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "Qualifying",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "vishal-garg-wynnchurch-capital",
+          "name": "Vishal Garg",
+          "current_title": "Managing Director",
+          "current_firm": "",
+          "location": "",
+          "linkedin_url": "https://www.linkedin.com/in/vishalgarg01",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "DQ/Not Interested",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "See notes",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "Wrong Fit",
+          "date_added": "2026-03-25"
+        },
+        {
+          "candidate_id": "hasan-niazi-monomoy-capital-partners",
+          "name": "Hasan Niazi",
+          "current_title": "Operating Executive",
+          "current_firm": "",
+          "location": "",
+          "linkedin_url": "https://www.linkedin.com/in/hasanniazi",
+          "archetype": "PE Lateral",
+          "source": "LinkedIn title search",
+          "stage": "DQ/Not Interested",
+          "lancor_screener": "",
+          "screen_date": null,
+          "lancor_assessment": "",
+          "resume_attached": false,
+          "client_meetings": [
+            {
+              "contact_name": "Marni",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Ted",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Blake",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "Sam A",
+              "status": "—",
+              "date": null
+            },
+            {
+              "contact_name": "EJ",
+              "status": "—",
+              "date": null
+            }
+          ],
+          "client_feedback": "",
+          "next_step": "See notes",
+          "next_step_owner": "",
+          "next_step_date": null,
+          "dq_reason": "",
+          "last_touchpoint": null,
+          "notes": "Not Interested",
+          "date_added": "2026-03-25"
         }
       ],
       "sourcing_coverage": {
@@ -315,7 +865,10 @@
                 "linkedin_url": "https://www.linkedin.com/in/rama-naageswaran-2a43105",
                 "roster_status": "Identified",
                 "source": "auto-linked",
-                "location": "San Francisco, CA"
+                "location": "San Francisco, CA",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "celeste-clipp-lofqvist-bain-capital",
@@ -324,7 +877,10 @@
                 "linkedin_url": "https://www.linkedin.com/in/celesteclipplofqvist",
                 "roster_status": "Identified",
                 "source": "auto-linked",
-                "location": "San Francisco, CA"
+                "location": "San Francisco, CA",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "stephen-janco-bain-capital",
@@ -412,7 +968,10 @@
                 "linkedin_url": "https://www.linkedin.com/in/pape-ndaw-a224a55",
                 "roster_status": "Identified",
                 "source": "auto-linked",
-                "location": "Dallas, TX"
+                "location": "Dallas, TX",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               }
             ]
           },
@@ -526,7 +1085,7 @@
                 "source": "auto-linked",
                 "review_status": "relevant",
                 "reviewed": true,
-                "reviewed_date": "2026-03-24",
+                "reviewed_date": "2026-03-25",
                 "location": "Chicago, IL"
               },
               {
@@ -624,6 +1183,15 @@
                 "reviewed": true,
                 "reviewed_date": "2026-03-24",
                 "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "cand-ali-hasanali-1774465012642",
+                "name": "Ali Hasanali",
+                "title": "Vice President Information Technology",
+                "linkedin_url": "https://www.linkedin.com/in/alihasanali/",
+                "location": "Chicago, Illinois, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
               }
             ],
             "last_verified": "2026-03-24",
@@ -960,7 +1528,8 @@
                 "source": "auto-linked",
                 "review_status": "relevant",
                 "reviewed": true,
-                "reviewed_date": "2026-03-24"
+                "reviewed_date": "2026-03-24",
+                "location": "Senior Director, Value Creation at Littlejohn & Co"
               },
               {
                 "candidate_id": "cand-andy-cook-1774331689068",
@@ -1057,6 +1626,15 @@
                 "reviewed": true,
                 "reviewed_date": "2026-03-24",
                 "location": "Greater Cleveland"
+              },
+              {
+                "candidate_id": "cand-matthew-gamsey-cpa-1774360642767",
+                "name": "Matthew Gamsey, CPA",
+                "title": "Operating Advisor – Senior Director, Office of the CFO",
+                "linkedin_url": "https://www.linkedin.com/in/matthewgamsey/",
+                "location": "United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
               }
             ],
             "last_verified": "2026-03-24",
@@ -2881,7 +3459,7 @@
             "size_tier": "Large",
             "why_target": "",
             "search_specific": false,
-            "manual_complete": false,
+            "manual_complete": true,
             "manual_complete_note": "",
             "roster": [
               {
@@ -2892,7 +3470,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "New York, NY"
+                "location": "New York, NY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "brittany-bolton-monomoy-capital-partners",
@@ -2902,7 +3483,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Detroit, MI"
+                "location": "Detroit, MI",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "thomas-branoff-monomoy-capital-partners",
@@ -2912,7 +3496,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Novi, MI"
+                "location": "Novi, MI",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "liam-canavan-monomoy-capital-partners",
@@ -2922,7 +3509,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "New York, NY"
+                "location": "New York, NY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "bob-coe-monomoy-capital-partners",
@@ -2932,7 +3522,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Detroit, MI"
+                "location": "Detroit, MI",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "benjamin-humphreys-monomoy-capital-partners",
@@ -2942,7 +3535,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "New York, NY"
+                "location": "New York, NY",
+                "review_status": "relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "ethan-klemperer-monomoy-capital-partners",
@@ -2952,7 +3548,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "New York, NY"
+                "location": "New York, NY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "bob-sheridan-monomoy-capital-partners",
@@ -2962,7 +3561,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Lynchburg, OH"
+                "location": "Lynchburg, OH",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "max-portocarrero-monomoy-capital-partners",
@@ -2972,7 +3574,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "helen-ruth-monomoy-capital-partners",
@@ -2982,7 +3587,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Lexington, KY"
+                "location": "Lexington, KY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "lauren-metzler-spira-monomoy-capital-partners",
@@ -2992,7 +3600,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "New York, NY"
+                "location": "New York, NY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "matt-newman-monomoy-capital-partners",
@@ -3002,7 +3613,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Louisville, KY"
+                "location": "Louisville, KY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "darren-cohen-monomoy-capital-partners",
@@ -3012,7 +3626,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Lexington, KY"
+                "location": "Lexington, KY",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "charles-cannon-monomoy-capital-partners",
@@ -3022,7 +3639,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "US"
+                "location": "US",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "hasan-niazi-monomoy-capital-partners",
@@ -3032,7 +3652,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Atlanta, GA"
+                "location": "Atlanta, GA",
+                "review_status": "relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "aaron-sordello-monomoy-capital-partners",
@@ -3042,7 +3665,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Boston, GA"
+                "location": "Boston, GA",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "dan-gustafson-monomoy-capital-partners",
@@ -3052,7 +3678,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Washington, DC"
+                "location": "Washington, DC",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "sean-leonard-monomoy-capital-partners",
@@ -3062,7 +3691,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Indianapolis, IN"
+                "location": "Indianapolis, IN",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "canon-melstrand-monomoy-capital-partners",
@@ -3072,7 +3704,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Milwaukee, WI"
+                "location": "Milwaukee, WI",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "joseph-simpson-monomoy-capital-partners",
@@ -3082,7 +3717,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Eden Prairie, MN"
+                "location": "Eden Prairie, MN",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "stephanie-goss-y-monomoy-capital-partners",
@@ -3092,7 +3730,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Charlottle, NC"
+                "location": "Charlottle, NC",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "matthew-thomas-monomoy-capital-partners",
@@ -3102,9 +3743,14 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Detroit, MI"
+                "location": "Detroit, MI",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               }
-            ]
+            ],
+            "last_verified": "2026-03-25",
+            "verified_by": "RA"
           },
           {
             "firm_id": "oaktree-capital-management",
@@ -4103,7 +4749,7 @@
             "size_tier": "Large",
             "why_target": "",
             "search_specific": false,
-            "manual_complete": false,
+            "manual_complete": true,
             "manual_complete_note": "",
             "roster": [
               {
@@ -4114,7 +4760,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "steve-welborn-wynnchurch-capital",
@@ -4124,7 +4773,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Marco Island, FL"
+                "location": "Marco Island, FL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "chris-wilson-wynnchurch-capital",
@@ -4134,7 +4786,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Indianapolis, IN"
+                "location": "Indianapolis, IN",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "alexis-underwood-wynnchurch-capital",
@@ -4144,7 +4799,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "US"
+                "location": "US",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "bob-cott-wynnchurch-capital",
@@ -4154,17 +4812,23 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Seattle, WA"
+                "location": "Seattle, WA",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "aron-beach-wynnchurch-capital",
                 "name": "Aron Beach",
                 "title": "Managing Director",
-                "linkedin_url": "",
+                "linkedin_url": "https://www.linkedin.com/in/aron-beach-61b3596/",
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "alex-dearaujo-wynnchurch-capital",
@@ -4174,7 +4838,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "adam-rimmer-wynnchurch-capital",
@@ -4184,7 +4851,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Seattle, WA"
+                "location": "Seattle, WA",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "michael-sharifi-wynnchurch-capital",
@@ -4194,7 +4864,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "bob-zeeb-wynnchurch-capital",
@@ -4204,7 +4877,10 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "Chicago, IL"
+                "location": "Chicago, IL",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               },
               {
                 "candidate_id": "duncan-s-bourne-wynnchurch-capital",
@@ -4214,9 +4890,38 @@
                 "roster_status": "Identified",
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
-                "location": "US"
+                "location": "US",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
+              },
+              {
+                "candidate_id": "cand-drew-scielzo-1774468334201",
+                "name": "Drew Scielzo",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/drew-scielzo-81140424/",
+                "location": "Wynnchurch Capital, L.P.",
+                "roster_status": "Identified",
+                "source": "auto-linked",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
+              },
+              {
+                "candidate_id": "cand-dave-venker-1774468485380",
+                "name": "Dave Venker",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/dave-venker-4a619a15/",
+                "location": "Wynnchurch Capital, L.P. · University of Notre Dame",
+                "roster_status": "Identified",
+                "source": "auto-linked",
+                "review_status": "not_relevant",
+                "reviewed": true,
+                "reviewed_date": "2026-03-25"
               }
-            ]
+            ],
+            "last_verified": "2026-03-25",
+            "verified_by": "RA"
           },
           {
             "firm_id": "littlejohn--co",
@@ -4299,6 +5004,24 @@
                 "roster_status": "Identified",
                 "source": "auto-linked",
                 "location": "Greater Cleveland"
+              },
+              {
+                "candidate_id": "cand-hussein-abdelhalim-1774331543249",
+                "name": "Hussein Abdelhalim",
+                "title": "Sr Director, Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/hussein-abdelhalim-00395a27/",
+                "location": "Senior Director, Value Creation at Littlejohn & Co",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-matthew-gamsey-cpa-1774360642767",
+                "name": "Matthew Gamsey, CPA",
+                "title": "Operating Advisor – Senior Director, Office of the CFO",
+                "linkedin_url": "https://www.linkedin.com/in/matthewgamsey/",
+                "location": "United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
               }
             ]
           },
@@ -4339,7 +5062,89 @@
             "search_specific": true,
             "manual_complete": false,
             "manual_complete_note": "",
-            "roster": []
+            "roster": [
+              {
+                "candidate_id": "mark-emery-the-jordan-company",
+                "name": "Mark Emery",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-emery-59bb52b5",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "nick-storm-the-jordan-company",
+                "name": "Nick Storm",
+                "title": "Principal, Operations Management Group",
+                "linkedin_url": "https://www.linkedin.com/in/nick-storm-ab085a26/",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "mark-burggraaff-the-jordan-company",
+                "name": "Mark Burggraaff",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-b-2556173",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "zain-lakhani-the-jordan-company",
+                "name": "Zain Lakhani",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/zains-profile",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "chris-hlebasko-the-jordan-company",
+                "name": "Chris Hlebasko",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/chris-hlebasko-866704257",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bill-liss-the-jordan-company",
+                "name": "Bill Liss",
+                "title": "Operations Management Group",
+                "linkedin_url": "https://www.linkedin.com/in/williamcliss",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-steven-austgen-1774457858991",
+                "name": "Steven Austgen",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/steven-austgen/",
+                "location": "Chicago, Illinois, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-peter-kennedy-1774464994563",
+                "name": "Peter Kennedy",
+                "title": "Operations Management Group",
+                "linkedin_url": "https://www.linkedin.com/in/peter-kennedy-978070173/",
+                "location": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-joshua-kowalski-1774465005420",
+                "name": "Joshua Kowalski",
+                "title": "Associate",
+                "linkedin_url": "https://www.linkedin.com/in/joshua-kowalski-745a5819a/",
+                "location": "Chicago, Illinois, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
           }
         ],
         "companies": [
@@ -4582,7 +5387,39 @@
             "ai_generated": true
           }
         ]
-      }
+      },
+      "pipeline_stages": [
+        {
+          "name": "Interviewing",
+          "color_bg": "rgba(21,101,192,0.1)",
+          "color_text": "#1565c0"
+        },
+        {
+          "name": "Qualifying",
+          "color_bg": "rgba(46,125,50,0.1)",
+          "color_text": "#2e7d32"
+        },
+        {
+          "name": "Scheduling",
+          "color_bg": "rgba(230,81,0,0.1)",
+          "color_text": "#e65100"
+        },
+        {
+          "name": "Hold",
+          "color_bg": "rgba(78,52,46,0.1)",
+          "color_text": "#4e342e"
+        },
+        {
+          "name": "Pursuing",
+          "color_bg": "rgba(97,97,97,0.1)",
+          "color_text": "#616161"
+        },
+        {
+          "name": "DQ/Not Interested",
+          "color_bg": "rgba(198,40,40,0.1)",
+          "color_text": "#c62828"
+        }
+      ]
     }
   ]
 }

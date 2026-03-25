@@ -8,7 +8,7 @@
 let currentSearchId = null;
 let currentSearchData = null;
 let currentTab = 'pipeline';
-let pipelineFilters = { stage: 'all', owner: 'all', archetype: 'all', text: '' };
+let pipelineFilters = { stage: 'all', archetype: 'all', text: '' };
 
 // ── Sector list (for wizard step 2) ──────────────────────────────────────────
 
@@ -37,23 +37,31 @@ const LANCOR_TEAM_DEFAULT = [
   { initials: 'TH', full_name: 'Trever Helwig',     role: 'Consultant' }
 ];
 
-const STAGES = ['Pursuing', 'Outreach Sent', 'Scheduling', 'Qualifying', 'Hold', 'DQ', 'NI'];
+const DEFAULT_PIPELINE_STAGES = [
+  { name: 'Pursuing',      color_bg: '#eeeeee', color_text: '#616161' },
+  { name: 'Outreach Sent', color_bg: '#f3e5f5', color_text: '#7b1fa2' },
+  { name: 'Scheduling',    color_bg: '#fff3e0', color_text: '#e65100' },
+  { name: 'Interviewing',  color_bg: '#e3f2fd', color_text: '#1565c0' },
+  { name: 'Qualifying',    color_bg: '#e8f5e9', color_text: '#2e7d32' },
+  { name: 'Hold',          color_bg: '#efebe9', color_text: '#4e342e' },
+  { name: 'DQ',            color_bg: '#ffebee', color_text: '#c62828' },
+  { name: 'NI',            color_bg: '#fffde7', color_text: '#f57f17' }
+];
 
-const STAGE_COLORS = {
-  'Pursuing':      { bg: '#eeeeee',  color: '#616161' },
-  'Outreach Sent': { bg: '#f3e5f5',  color: '#7b1fa2' },
-  'Scheduling':    { bg: '#fff3e0',  color: '#e65100' },
-  'Qualifying':    { bg: '#e8f5e9',  color: '#2e7d32' },
-  'Hold':          { bg: '#efebe9',  color: '#4e342e' },
-  'DQ':            { bg: '#ffebee',  color: '#c62828' },
-  'NI':            { bg: '#fffde7',  color: '#f57f17' }
-};
+function getSearchStages(search) {
+  return (search && search.pipeline_stages) || DEFAULT_PIPELINE_STAGES;
+}
+
+function getStageColor(search, stageName) {
+  const s = getSearchStages(search).find(st => st.name === stageName);
+  return s ? { bg: s.color_bg, color: s.color_text } : { bg: '#eee', color: '#333' };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function stagePillHTML(stage) {
-  const c = STAGE_COLORS[stage] || { bg: '#eee', color: '#333' };
-  return `<span class="stage-pill" style="background:${c.bg};color:${c.color}">${stage}</span>`;
+function stagePillHTML(stage, search) {
+  const c = getStageColor(search, stage);
+  return `<span class="stage-pill" style="background:${c.bg};color:${c.color}">${escapeHtml(stage)}</span>`;
 }
 
 function slugify(s) {
@@ -69,9 +77,14 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-function getPipelineStats(pipeline) {
-  const counts = { Qualifying: 0, Scheduling: 0, Hold: 0, DQ: 0, NI: 0, Pursuing: 0, 'Outreach Sent': 0 };
-  (pipeline || []).forEach(c => { if (counts[c.stage] !== undefined) counts[c.stage]++; });
+function getPipelineStats(pipeline, search) {
+  const stages = getSearchStages(search);
+  const counts = {};
+  stages.forEach(s => { counts[s.name] = 0; });
+  (pipeline || []).forEach(c => {
+    if (counts[c.stage] !== undefined) counts[c.stage]++;
+    else counts[c.stage] = (counts[c.stage] || 0) + 1;
+  });
   return counts;
 }
 
@@ -136,20 +149,14 @@ function renderSearchList(searches, includeArchived) {
 }
 
 function searchCardHTML(search) {
-  const counts = getPipelineStats(search.pipeline);
+  const counts = getPipelineStats(search.pipeline, search);
   const lastUpdated = getLastUpdated(search);
 
-  const qualCount     = counts.Qualifying;
-  const schedCount    = counts.Scheduling;
-  const holdCount     = counts.Hold;
-  const dqNiCount     = counts.DQ + counts.NI;
-
-  const pillsHTML = [
-    qualCount  > 0 ? `<span class="stage-pill" style="background:#e8f5e9;color:#2e7d32">${qualCount} Qualifying</span>` : '',
-    schedCount > 0 ? `<span class="stage-pill" style="background:#fff3e0;color:#e65100">${schedCount} Scheduling</span>` : '',
-    holdCount  > 0 ? `<span class="stage-pill" style="background:#efebe9;color:#4e342e">${holdCount} Hold</span>` : '',
-    dqNiCount  > 0 ? `<span class="stage-pill" style="background:#ffebee;color:#c62828">${dqNiCount} DQ/NI</span>` : ''
-  ].filter(Boolean).join('');
+  const stages = getSearchStages(search);
+  const pillsHTML = stages.map(s => {
+    const count = counts[s.name] || 0;
+    return count > 0 ? `<span class="stage-pill" style="background:${s.color_bg};color:${s.color_text}">${count} ${escapeHtml(s.name)}</span>` : '';
+  }).filter(Boolean).join('');
 
   const statusBadge = search.status === 'active'
     ? `<span class="pill pill-active">Active</span>`
@@ -523,29 +530,25 @@ async function switchSearchTab(tab) {
 
 function renderPipelineTabHTML(search) {
   const pipeline = search.pipeline || [];
-  const counts = getPipelineStats(pipeline);
+  const stages = getSearchStages(search);
+  const counts = getPipelineStats(pipeline, search);
 
-  // Metric row
+  // Metric pills — one per stage
   const metricsHTML = `
     <div class="pipeline-metrics">
-      <div class="metric-pill" style="background:#e8f5e9;color:#2e7d32">${counts.Qualifying} Qualifying</div>
-      <div class="metric-pill" style="background:#fff3e0;color:#e65100">${counts.Scheduling} Scheduling</div>
-      <div class="metric-pill" style="background:#efebe9;color:#4e342e">${counts.Hold} Hold</div>
-      <div class="metric-pill" style="background:#eeeeee;color:#616161">${counts.Pursuing + counts['Outreach Sent']} Pursuing / Outreach</div>
-      <div class="metric-pill" style="background:#ffebee;color:#c62828">${counts.DQ + counts.NI} DQ / NI</div>
+      ${stages.map(s => {
+        const count = counts[s.name] || 0;
+        return `<div class="metric-pill" style="background:${s.color_bg};color:${s.color_text}">${count} ${escapeHtml(s.name)}</div>`;
+      }).join('')}
     </div>
   `;
 
-  // Filter bar
-  const ownerOptions = ['all', ...new Set((search.lancor_team || []).map(m => m.initials))];
+  // Filter bar (no owner filter)
   const filterBarHTML = `
     <div class="filter-bar" style="margin-bottom:16px">
       <select id="filter-stage" onchange="applyPipelineFilters()">
         <option value="all">All Stages</option>
-        ${STAGES.map(s => `<option value="${s}" ${pipelineFilters.stage === s ? 'selected' : ''}>${s}</option>`).join('')}
-      </select>
-      <select id="filter-owner" onchange="applyPipelineFilters()">
-        ${ownerOptions.map(o => `<option value="${o}" ${pipelineFilters.owner === o ? 'selected' : ''}>${o === 'all' ? 'All Owners' : o}</option>`).join('')}
+        ${stages.map(s => `<option value="${escapeHtml(s.name)}" ${pipelineFilters.stage === s.name ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
       </select>
       <select id="filter-archetype" onchange="applyPipelineFilters()">
         <option value="all">All Archetypes</option>
@@ -558,118 +561,56 @@ function renderPipelineTabHTML(search) {
   `;
 
   // Apply current filters
-  let filtered = applyFiltersToList(pipeline);
+  const filtered = applyFiltersToList(pipeline);
 
-  // Active candidates table (Qualifying, Scheduling, Outreach Sent)
-  const activeStages = ['Qualifying', 'Scheduling', 'Outreach Sent'];
-  const activeCandidates = filtered.filter(c => activeStages.includes(c.stage));
+  // Build one collapsible section per stage
+  const sectionsHTML = stages.map((s, idx) => {
+    const stageCandidates = filtered.filter(c => c.stage === s.name);
+    // If filtering by stage and this isn't the selected stage, skip
+    if (pipelineFilters.stage !== 'all' && pipelineFilters.stage !== s.name) return '';
 
-  // Hold, Pursuing, DQ+NI sections
-  const holdCandidates    = filtered.filter(c => c.stage === 'Hold');
-  const pursuingCandidates = filtered.filter(c => c.stage === 'Pursuing');
-  const dqNiCandidates    = filtered.filter(c => c.stage === 'DQ' || c.stage === 'NI');
+    const count = stageCandidates.length;
+    const startExpanded = count > 0 && idx < 5; // first 5 stages start expanded if they have candidates
+    const sectionId = 'stage-section-' + slugify(s.name);
 
-  const contactHeaders = (search.client_contacts || [])
-    .filter(c => c.display_in_matrix !== false)
-    .map(c => `<th style="min-width:28px;text-align:center">${escapeHtml(c.name.charAt(0))}</th>`)
-    .join('');
-
-  const tableHTML = activeCandidates.length === 0
-    ? `<p style="color:#aaa;font-size:13px;padding:20px 0">No active candidates match current filters.</p>`
-    : `<div class="table-wrapper">
-         <table class="pipeline-table" id="pipeline-main-table">
-           <thead>
-             <tr>
-               <th>Candidate</th>
-               <th>Stage</th>
-               <th>
-                 <div class="meeting-dots" style="gap:4px">
-                   ${(search.client_contacts || []).filter(c => c.display_in_matrix !== false).map(c =>
-                     `<span title="${escapeHtml(c.name)}" style="font-size:10px;color:#999;min-width:24px;text-align:center">${escapeHtml(c.name.charAt(0))}</span>`
-                   ).join('')}
-                 </div>
-               </th>
-               <th>Screener</th>
-               <th>Assessment</th>
-               <th>Next Step</th>
-               <th>Owner / Date</th>
-             </tr>
-           </thead>
-           <tbody>
-             ${activeCandidates.map(c => pipelineRowHTML(c, search)).join('')}
-           </tbody>
-         </table>
-       </div>`;
-
-  // Hold section
-  const holdHTML = buildCollapsibleSection(
-    `On Hold (${holdCandidates.length})`,
-    holdCandidates.length === 0
-      ? '<p style="color:#aaa;font-size:13px">No candidates on hold.</p>'
-      : `<table class="pipeline-table">
-           <thead><tr><th>Candidate</th><th>Stage</th><th>Hold Reason</th><th>Next Step</th><th>Owner</th></tr></thead>
-           <tbody>
-             ${holdCandidates.map(c => `
+    const tableBody = count === 0
+      ? `<p style="color:#aaa;font-size:13px;padding:12px 0">No candidates in this stage.</p>`
+      : `<div class="table-wrapper">
+           <table class="pipeline-table">
+             <thead>
                <tr>
-                 <td><div class="candidate-name"><span class="cand-name-link" onclick="openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span></div><div class="candidate-subtitle">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div></td>
-                 <td>${stagePillHTML(c.stage)}</td>
-                 <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="dq_reason">${escapeHtml(c.dq_reason || '—')}</td>
-                 <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="next_step">${escapeHtml(c.next_step || '—')}</td>
-                 <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="next_step_owner">${escapeHtml(c.next_step_owner || '—')}</td>
-               </tr>`).join('')}
-           </tbody>
-         </table>`,
-    holdCandidates.length < 3
-  );
+                 <th>Candidate</th>
+                 <th style="text-align:center">
+                   <div style="font-size:10px;color:#888">Team members met with</div>
+                 </th>
+                 <th>Next Step</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${stageCandidates.map(c => pipelineRowHTML(c, search)).join('')}
+             </tbody>
+           </table>
+         </div>`;
 
-  // Pursuing section (card grid)
-  const pursuingHTML = buildCollapsibleSection(
-    `Pursuing (${pursuingCandidates.length})`,
-    pursuingCandidates.length === 0
-      ? '<p style="color:#aaa;font-size:13px">No candidates in pursuing stage.</p>'
-      : `<div class="pursuing-grid">
-           ${pursuingCandidates.map(c => `
-             <div class="pursuing-card">
-               <div class="pursuing-card-name"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span></div>
-               <div class="pursuing-card-sub">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div>
-               <div class="pursuing-card-sub" style="margin-top:4px">${escapeHtml(c.location || '')}</div>
-               <div style="margin-top:8px">${stagePillHTML(c.archetype || 'PE Lateral')}</div>
-               <div style="margin-top:8px;font-size:11px;color:#aaa">Added ${formatDate(c.date_added)}</div>
-               <button class="btn btn-sm btn-secondary" style="margin-top:10px;width:100%"
-                 onclick="moveCandidateToOutreach('${escapeHtml(c.candidate_id)}')">
-                 &#8594; Move to Active
-               </button>
-             </div>`).join('')}
-         </div>`,
-    true
-  );
-
-  // DQ/NI section
-  const dqNiHTML = buildCollapsibleSection(
-    `DQ / Not Interested (${dqNiCandidates.length})`,
-    dqNiCandidates.length === 0
-      ? '<p style="color:#aaa;font-size:13px">No DQ or NI candidates.</p>'
-      : `<div>${dqNiCandidates.map(c => `
-           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:13px">
-             <div style="flex:1">
-               <span class="candidate-name cand-name-link" onclick="openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span>
-               <span style="color:#aaa;margin-left:6px">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</span>
-             </div>
-             ${stagePillHTML(c.stage)}
-             <span style="color:#aaa;font-size:12px;flex:1">${escapeHtml(c.dq_reason || '—')}</span>
-             <span style="color:#aaa;font-size:11px">${formatDate(c.date_added)}</span>
-           </div>`).join('')}
-         </div>`,
-    true
-  );
+    return `
+      <div class="collapsible-section stage-section" style="border-left:4px solid ${s.color_bg}"
+        data-stage="${escapeHtml(s.name)}"
+        ondragover="onPipelineDragOver(event)" ondragleave="onPipelineDragLeave(event)"
+        ondrop="onPipelineDrop(event,'${escapeHtml(s.name)}')">
+        <div class="collapsible-header" onclick="toggleSection('${sectionId}')" style="background:${s.color_bg}22">
+          <span style="font-weight:700;color:${s.color_text}">${escapeHtml(s.name)} <span style="font-weight:400;color:#888">(${count})</span></span>
+          <span id="${sectionId}-arrow">${startExpanded ? '&#9660;' : '&#9654;'}</span>
+        </div>
+        <div class="collapsible-body" id="${sectionId}" style="${startExpanded ? '' : 'display:none'}">
+          ${tableBody}
+        </div>
+      </div>`;
+  }).join('');
 
   return `
     ${metricsHTML}
     ${filterBarHTML}
-    <div id="pipeline-table-container">${tableHTML}</div>
-    ${holdHTML}
-    ${pursuingHTML}
-    ${dqNiHTML}
+    <div id="pipeline-table-container">${sectionsHTML}</div>
   `;
 }
 
@@ -706,55 +647,35 @@ function pipelineRowHTML(c, search) {
     let dotClass = 'meeting-dot-none';
     if (m.status === 'Met') dotClass = 'meeting-dot-met';
     else if (m.status === 'Scheduled') dotClass = 'meeting-dot-scheduled';
-    const initial = ct.name.charAt(0).toUpperCase();
+    const abbr = ct.abbreviation || (ct.name || '??').slice(0, 2).toUpperCase();
     return `<div class="meeting-dot ${dotClass}" title="${escapeHtml(ct.name)}: ${escapeHtml(m.status)}"
       data-cid="${escapeHtml(c.candidate_id)}" data-contact="${escapeHtml(ct.name)}"
-      onclick="cycleMeetingStatus('${escapeHtml(c.candidate_id)}','${escapeHtml(ct.name)}')">${initial}</div>`;
+      onclick="cycleMeetingStatus('${escapeHtml(c.candidate_id)}','${escapeHtml(ct.name)}')">${escapeHtml(abbr)}</div>`;
   }).join('');
 
   const linkedinLink = c.linkedin_url
     ? ` <a href="${escapeHtml(c.linkedin_url)}" target="_blank" title="LinkedIn" style="color:#0a66c2;font-size:11px;margin-left:4px">in</a>`
     : '';
 
-  const stageCss = 'stage-' + (c.stage || 'Pursuing').replace(/ /g, '-');
-
-  const screenerText = c.lancor_screener
-    ? `${escapeHtml(c.lancor_screener)}${c.screen_date ? '<br><span style="font-size:10px;color:#aaa">' + formatDate(c.screen_date) + '</span>' : ''}`
-    : '<span style="color:#bbb">—</span>';
-
-  const ownerText = c.next_step_owner
-    ? `${escapeHtml(c.next_step_owner)}${c.next_step_date ? '<br><span style="font-size:10px;color:#aaa">' + formatDate(c.next_step_date) + '</span>' : ''}`
-    : '<span style="color:#bbb">—</span>';
+  const stageColor = getStageColor(search, c.stage);
 
   return `
-    <tr data-cid="${escapeHtml(c.candidate_id)}">
+    <tr data-cid="${escapeHtml(c.candidate_id)}" draggable="true"
+      ondragstart="onPipelineDragStart(event,'${escapeHtml(c.candidate_id)}')"
+      ondragend="onPipelineDragEnd(event)">
       <td>
         <div class="candidate-name"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span>${linkedinLink}</div>
-        <div class="candidate-subtitle">${escapeHtml(c.current_title || '')} @ ${escapeHtml(c.current_firm || '')}</div>
+        <div class="candidate-subtitle">${escapeHtml(c.current_title || '')}${c.current_firm ? ' @ ' + escapeHtml(c.current_firm) : ''}</div>
         ${c.location ? `<div class="candidate-subtitle">${escapeHtml(c.location)}</div>` : ''}
-      </td>
-      <td style="position:relative">
-        <span class="stage-pill ${stageCss}" onclick="openStageDropdown(event,'${escapeHtml(c.candidate_id)}')"
-          style="cursor:pointer">${escapeHtml(c.stage)}</span>
+        <span class="stage-pill" style="background:${stageColor.bg};color:${stageColor.color};cursor:pointer;margin-top:4px;display:inline-block;font-size:10px"
+          onclick="event.stopPropagation();openStageDropdown(event,'${escapeHtml(c.candidate_id)}')">${escapeHtml(c.stage)} &#9662;</span>
       </td>
       <td>
-        <div class="meeting-dots">${meetingDotsHTML}</div>
-      </td>
-      <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="lancor_screener"
-        onclick="startInlineEdit(this)">
-        ${screenerText}
-      </td>
-      <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="lancor_assessment"
-        onclick="startInlineEdit(this)" style="max-width:160px">
-        ${c.lancor_assessment ? escapeHtml(c.lancor_assessment) : '<span style="color:#bbb">—</span>'}
+        <div class="meeting-dots" style="justify-content:center">${meetingDotsHTML}</div>
       </td>
       <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="next_step"
-        onclick="startInlineEdit(this)" style="max-width:180px">
+        onclick="startInlineEdit(this)" style="min-width:180px;white-space:pre-wrap">
         ${c.next_step ? escapeHtml(c.next_step) : '<span style="color:#bbb">—</span>'}
-      </td>
-      <td class="editable-cell" data-cid="${escapeHtml(c.candidate_id)}" data-field="next_step_owner"
-        onclick="startInlineEdit(this)">
-        ${ownerText}
       </td>
     </tr>
   `;
@@ -771,7 +692,6 @@ function attachPipelineFilterListeners() {
 function applyFiltersToList(pipeline) {
   return (pipeline || []).filter(c => {
     if (pipelineFilters.stage !== 'all' && c.stage !== pipelineFilters.stage) return false;
-    if (pipelineFilters.owner !== 'all' && c.next_step_owner !== pipelineFilters.owner) return false;
     if (pipelineFilters.archetype !== 'all' && c.archetype !== pipelineFilters.archetype) return false;
     if (pipelineFilters.text) {
       const t = pipelineFilters.text.toLowerCase();
@@ -785,12 +705,10 @@ function applyFiltersToList(pipeline) {
 
 function applyPipelineFilters() {
   const stageEl = document.getElementById('filter-stage');
-  const ownerEl = document.getElementById('filter-owner');
   const archEl  = document.getElementById('filter-archetype');
   const textEl  = document.getElementById('filter-text');
 
   pipelineFilters.stage    = stageEl ? stageEl.value : 'all';
-  pipelineFilters.owner    = ownerEl ? ownerEl.value : 'all';
   pipelineFilters.archetype = archEl ? archEl.value : 'all';
   pipelineFilters.text     = textEl ? textEl.value.trim() : '';
 
@@ -809,19 +727,24 @@ function openStageDropdown(event, candidateId) {
   event.stopPropagation();
   closeAllDropdowns();
 
-  const cell = event.target.closest('td');
+  const trigger = event.target.closest('.stage-pill') || event.target;
+  const rect = trigger.getBoundingClientRect();
+
   const popup = document.createElement('div');
   popup.className = 'stage-dropdown-popup';
   popup.id = 'stage-popup-' + candidateId;
+  popup.style.position = 'fixed';
+  popup.style.zIndex = '9999';
+  popup.style.top = (rect.bottom + 4) + 'px';
+  popup.style.left = rect.left + 'px';
 
-  popup.innerHTML = STAGES.map(s => {
-    const c = STAGE_COLORS[s] || { bg: '#eee', color: '#333' };
-    return `<div class="stage-option" style="background:${c.bg};color:${c.color}"
-      onclick="setStage('${candidateId}','${s}')">${s}</div>`;
+  const stages = getSearchStages(currentSearchData);
+  popup.innerHTML = stages.map(s => {
+    return `<div class="stage-option" style="background:${s.color_bg};color:${s.color_text}"
+      onclick="setStage('${candidateId}','${escapeHtml(s.name)}')">${escapeHtml(s.name)}</div>`;
   }).join('');
 
-  cell.style.position = 'relative';
-  cell.appendChild(popup);
+  document.body.appendChild(popup);
 
   // Close on outside click
   setTimeout(() => {
@@ -831,6 +754,50 @@ function openStageDropdown(event, candidateId) {
 
 function closeAllDropdowns() {
   document.querySelectorAll('.stage-dropdown-popup').forEach(el => el.remove());
+}
+
+// ── Drag and drop between pipeline sections ────────────────────────────────
+
+let _dragCandidateId = null;
+
+function onPipelineDragStart(event, candidateId) {
+  _dragCandidateId = candidateId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', candidateId);
+  // Style the dragged row
+  const row = event.target.closest('tr');
+  if (row) row.style.opacity = '0.4';
+}
+
+function onPipelineDragEnd(event) {
+  _dragCandidateId = null;
+  const row = event.target.closest('tr');
+  if (row) row.style.opacity = '';
+  // Remove all drop highlights
+  document.querySelectorAll('.stage-section').forEach(s => s.classList.remove('drag-over'));
+}
+
+function onPipelineDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const section = event.target.closest('.stage-section');
+  if (section) section.classList.add('drag-over');
+}
+
+function onPipelineDragLeave(event) {
+  const section = event.target.closest('.stage-section');
+  // Only remove if we're actually leaving the section (not entering a child)
+  if (section && !section.contains(event.relatedTarget)) {
+    section.classList.remove('drag-over');
+  }
+}
+
+function onPipelineDrop(event, targetStage) {
+  event.preventDefault();
+  const candidateId = event.dataTransfer.getData('text/plain') || _dragCandidateId;
+  document.querySelectorAll('.stage-section').forEach(s => s.classList.remove('drag-over'));
+  if (!candidateId || !targetStage) return;
+  setStage(candidateId, targetStage);
 }
 
 async function setStage(candidateId, newStage) {
@@ -1111,7 +1078,7 @@ function openQuickAddModal() {
       <div class="form-group">
         <label class="form-label">Initial Stage</label>
         <select class="form-control" id="qa-stage">
-          ${STAGES.map(s => `<option ${s === 'Pursuing' ? 'selected' : ''}>${s}</option>`).join('')}
+          ${getSearchStages(currentSearchData).map(s => `<option ${s.name === 'Pursuing' ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
         </select>
       </div>
       <div class="form-group">
@@ -1310,6 +1277,43 @@ function openEditSearchModal() {
         <label class="form-label">Ideal Candidate Profile</label>
         <textarea class="form-control" id="edit-profile" rows="4">${escapeHtml(s.ideal_candidate_profile || '')}</textarea>
       </div>
+
+      <!-- Pipeline Stages Editor -->
+      <div class="form-group">
+        <label class="form-label">Pipeline Stages</label>
+        <div id="edit-stages-list" style="margin-bottom:8px">
+          ${getSearchStages(s).map((st, i) => `
+            <div class="edit-stage-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <button class="btn btn-ghost btn-sm" onclick="moveStageUp(this)" style="padding:2px 6px">&#9650;</button>
+              <button class="btn btn-ghost btn-sm" onclick="moveStageDown(this)" style="padding:2px 6px">&#9660;</button>
+              <span style="width:14px;height:14px;border-radius:3px;background:${st.color_bg};border:1px solid ${st.color_text};flex-shrink:0"></span>
+              <input class="form-control edit-stage-name" value="${escapeHtml(st.name)}" style="flex:1;padding:4px 8px;font-size:13px">
+              <input type="color" class="edit-stage-color" value="${st.color_text}" style="width:28px;height:28px;padding:0;border:none;cursor:pointer" title="Stage color">
+              <button class="btn btn-ghost btn-sm" onclick="removeStageRow(this)" style="color:#c62828;padding:2px 6px">&#10005;</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addStageRow()" style="font-size:12px">+ Add Stage</button>
+      </div>
+
+      <!-- Client Contacts Editor -->
+      <div class="form-group">
+        <label class="form-label">Client Contacts (meeting matrix)</label>
+        <div id="edit-contacts-list" style="margin-bottom:8px">
+          ${(s.client_contacts || []).map((ct, i) => `
+            <div class="edit-contact-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <input class="form-control edit-contact-name" value="${escapeHtml(ct.name || '')}" placeholder="Name" style="flex:1;padding:4px 8px;font-size:13px">
+              <input class="form-control edit-contact-abbr" value="${escapeHtml(ct.abbreviation || '')}" placeholder="Abbr" style="width:50px;padding:4px 8px;font-size:13px;text-align:center" maxlength="3">
+              <label style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap">
+                <input type="checkbox" class="edit-contact-visible" ${ct.display_in_matrix !== false ? 'checked' : ''}> Show
+              </label>
+              <button class="btn btn-ghost btn-sm" onclick="this.closest('.edit-contact-row').remove()" style="color:#c62828;padding:2px 6px">&#10005;</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addContactRow()" style="font-size:12px">+ Add Contact</button>
+      </div>
+
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
         <button class="btn btn-primary" onclick="saveEditSearch()">Save Changes</button>
@@ -1321,13 +1325,102 @@ function openEditSearchModal() {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 }
 
+// ── Stage/Contact editor helpers ──────────────────────────────────────────────
+
+function addStageRow() {
+  const list = document.getElementById('edit-stages-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'edit-stage-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px';
+  row.innerHTML = `
+    <button class="btn btn-ghost btn-sm" onclick="moveStageUp(this)" style="padding:2px 6px">&#9650;</button>
+    <button class="btn btn-ghost btn-sm" onclick="moveStageDown(this)" style="padding:2px 6px">&#9660;</button>
+    <span style="width:14px;height:14px;border-radius:3px;background:#e0e0e0;border:1px solid #888;flex-shrink:0"></span>
+    <input class="form-control edit-stage-name" value="" placeholder="New stage name" style="flex:1;padding:4px 8px;font-size:13px">
+    <input type="color" class="edit-stage-color" value="#666666" style="width:28px;height:28px;padding:0;border:none;cursor:pointer" title="Stage color">
+    <button class="btn btn-ghost btn-sm" onclick="removeStageRow(this)" style="color:#c62828;padding:2px 6px">&#10005;</button>
+  `;
+  list.appendChild(row);
+}
+
+function removeStageRow(btn) {
+  btn.closest('.edit-stage-row').remove();
+}
+
+function moveStageUp(btnOrIdx) {
+  const list = document.getElementById('edit-stages-list');
+  if (!list) return;
+  const row = typeof btnOrIdx === 'number'
+    ? list.querySelectorAll('.edit-stage-row')[btnOrIdx]
+    : btnOrIdx.closest('.edit-stage-row');
+  if (!row || !row.previousElementSibling) return;
+  list.insertBefore(row, row.previousElementSibling);
+}
+
+function moveStageDown(btnOrIdx) {
+  const list = document.getElementById('edit-stages-list');
+  if (!list) return;
+  const row = typeof btnOrIdx === 'number'
+    ? list.querySelectorAll('.edit-stage-row')[btnOrIdx]
+    : btnOrIdx.closest('.edit-stage-row');
+  if (!row || !row.nextElementSibling) return;
+  list.insertBefore(row.nextElementSibling, row);
+}
+
+function addContactRow() {
+  const list = document.getElementById('edit-contacts-list');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'edit-contact-row';
+  row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px';
+  row.innerHTML = `
+    <input class="form-control edit-contact-name" value="" placeholder="Name" style="flex:1;padding:4px 8px;font-size:13px">
+    <input class="form-control edit-contact-abbr" value="" placeholder="Abbr" style="width:50px;padding:4px 8px;font-size:13px;text-align:center" maxlength="3">
+    <label style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap">
+      <input type="checkbox" class="edit-contact-visible" checked> Show
+    </label>
+    <button class="btn btn-ghost btn-sm" onclick="this.closest('.edit-contact-row').remove()" style="color:#c62828;padding:2px 6px">&#10005;</button>
+  `;
+  list.appendChild(row);
+}
+
+function collectStagesFromEditor() {
+  const rows = document.querySelectorAll('#edit-stages-list .edit-stage-row');
+  return Array.from(rows).map(row => {
+    const name = row.querySelector('.edit-stage-name').value.trim();
+    const colorText = row.querySelector('.edit-stage-color').value;
+    // Generate a light background from the text color
+    const hex = colorText.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16), g = parseInt(hex.substr(2, 2), 16), b = parseInt(hex.substr(4, 2), 16);
+    const colorBg = `rgba(${r},${g},${b},0.1)`;
+    return { name, color_bg: colorBg, color_text: colorText };
+  }).filter(s => s.name);
+}
+
+function collectContactsFromEditor() {
+  const rows = document.querySelectorAll('#edit-contacts-list .edit-contact-row');
+  return Array.from(rows).map(row => {
+    const name = row.querySelector('.edit-contact-name').value.trim();
+    let abbreviation = row.querySelector('.edit-contact-abbr').value.trim();
+    if (!abbreviation && name) {
+      const parts = name.split(/\s+/);
+      abbreviation = parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
+    }
+    const display_in_matrix = row.querySelector('.edit-contact-visible').checked;
+    return { name, abbreviation, display_in_matrix };
+  }).filter(c => c.name);
+}
+
 async function saveEditSearch() {
   const updates = {
     client_name:             document.getElementById('edit-client-name').value.trim(),
     role_title:              document.getElementById('edit-role-title').value.trim(),
     lead_recruiter:          document.getElementById('edit-lead').value.trim(),
     status:                  document.getElementById('edit-status').value,
-    ideal_candidate_profile: document.getElementById('edit-profile').value.trim()
+    ideal_candidate_profile: document.getElementById('edit-profile').value.trim(),
+    pipeline_stages:         collectStagesFromEditor(),
+    client_contacts:         collectContactsFromEditor()
   };
 
   try {

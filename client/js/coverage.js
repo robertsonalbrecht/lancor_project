@@ -227,7 +227,6 @@ function addPersonFormHTML(entityId, searchId, type) {
     <input type="text" id="add-name-${escCov(entityId)}" placeholder="Name (required)" />
     <input type="text" id="add-title-${escCov(entityId)}" placeholder="Title" />
     <input type="text" id="add-linkedin-${escCov(entityId)}" placeholder="LinkedIn URL" style="min-width:160px" />
-    <select id="add-status-${escCov(entityId)}">${statusOpts}</select>
     <button class="btn btn-primary btn-sm" onclick="addRosterPerson('${escCov(searchId)}','${type}','${escCov(entityId)}')">Add</button>
   </div>`;
 }
@@ -320,7 +319,6 @@ function rosterTableHTML(roster, entityId, searchId, type) {
       </td>
       <td style="padding:6px 8px;font-size:12px;color:#666">${escCov(p.title || '')}</td>
       <td style="padding:6px 8px;font-size:11px;color:#888">${escCov(p.location || '')}</td>
-      <td style="padding:6px 8px">${rosterStatusSelect(entityId, p.candidate_id, p.roster_status, searchId, type)}</td>
       <td style="padding:6px 8px;width:36px">
         <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${escCov(p.candidate_id).replace(/'/g,"\\'")}',name:'${escCov(p.name).replace(/'/g,"\\'")}',current_title:'${escCov(p.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${escCov(p.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{preSelectSearchId:'${escCov(searchId)}',source:'Sourcing Coverage'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
       </td>
@@ -342,7 +340,6 @@ function rosterTableHTML(roster, entityId, searchId, type) {
         <th style="font-size:11px;padding:4px 8px">Name</th>
         <th style="font-size:11px;padding:4px 8px">Title</th>
         <th style="font-size:11px;padding:4px 8px">Location</th>
-        <th style="font-size:11px;padding:4px 8px">Status</th>
         <th style="width:36px"></th>
       </tr></thead>
       <tbody>${rows}</tbody>

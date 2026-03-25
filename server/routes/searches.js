@@ -15,6 +15,38 @@ function getAnthropicClient() {
   return _anthropic;
 }
 
+const DEFAULT_PIPELINE_STAGES = [
+  { name: 'Pursuing',      color_bg: '#eeeeee', color_text: '#616161' },
+  { name: 'Outreach Sent', color_bg: '#f3e5f5', color_text: '#7b1fa2' },
+  { name: 'Scheduling',    color_bg: '#fff3e0', color_text: '#e65100' },
+  { name: 'Interviewing',  color_bg: '#e3f2fd', color_text: '#1565c0' },
+  { name: 'Qualifying',    color_bg: '#e8f5e9', color_text: '#2e7d32' },
+  { name: 'Hold',          color_bg: '#efebe9', color_text: '#4e342e' },
+  { name: 'DQ',            color_bg: '#ffebee', color_text: '#c62828' },
+  { name: 'NI',            color_bg: '#fffde7', color_text: '#f57f17' }
+];
+
+function generateAbbreviation(name) {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+function migrateSearch(search) {
+  // Backfill pipeline_stages
+  if (!search.pipeline_stages) {
+    search.pipeline_stages = JSON.parse(JSON.stringify(DEFAULT_PIPELINE_STAGES));
+  }
+  // Backfill client_contacts abbreviations
+  if (Array.isArray(search.client_contacts)) {
+    search.client_contacts.forEach(c => {
+      if (!c.abbreviation) c.abbreviation = generateAbbreviation(c.name);
+    });
+  }
+  return search;
+}
+
 const EMPTY_SEARCH_KIT = {
   boolean_strings: [],
   outreach_messages: [],
@@ -42,7 +74,10 @@ function candidatesFile() {
 }
 
 function readSearches() {
-  return JSON.parse(fs.readFileSync(searchesFile(), 'utf8'));
+  const data = JSON.parse(fs.readFileSync(searchesFile(), 'utf8'));
+  // Lazy migration: backfill pipeline_stages and contact abbreviations
+  (data.searches || []).forEach(migrateSearch);
+  return data;
 }
 function writeSearches(data) {
   fs.writeFileSync(searchesFile(), JSON.stringify(data, null, 2), 'utf8');
@@ -137,9 +172,11 @@ router.post('/', (req, res) => {
       date_closed: null,
       status: 'active',
       pipeline: [],
+      pipeline_stages: JSON.parse(JSON.stringify(DEFAULT_PIPELINE_STAGES)),
       weekly_updates: [],
       sourcing_coverage: sourcingCoverage
     }, body);
+    migrateSearch(newSearch);
 
     data.searches.push(newSearch);
     writeSearches(data);
