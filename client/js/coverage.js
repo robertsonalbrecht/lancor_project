@@ -631,7 +631,7 @@ function renderCoverageTabHTML(search) {
   coverageFilters = { size_tier: 'all', revenue_tier: 'all', text: '' };
   openAccordionId = null;
 
-  // Load company pool for website URLs (async, re-renders when loaded)
+  // Load company pool and candidate firm map (async, re-renders when loaded)
   loadCovCompanyPool().then(() => {
     const tableEl = document.getElementById('coverage-table');
     if (tableEl) {
@@ -829,7 +829,7 @@ async function updateRosterPersonStatus(searchId, type, entityId, candidateId, n
     await api('PUT', '/searches/' + searchId, search);
     // Re-render roster section only
     const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
     // Update coverage bar
     refreshCoverageBar(entity, entityId, type);
   } catch (e) {
@@ -851,7 +851,7 @@ async function removeRosterPerson(searchId, type, entityId, candidateId) {
     await api('PUT', '/searches/' + searchId, search);
     // Re-render roster section
     const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
     // Update coverage bar
     refreshCoverageBar(entity, entityId, type);
   } catch (e) {
@@ -897,7 +897,7 @@ async function addRosterPerson(searchId, type, entityId) {
     await api('PUT', '/searches/' + searchId, search);
     // Re-render roster section
     const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
     // Update coverage bar
     refreshCoverageBar(entity, entityId, type);
     // Clear form
@@ -944,7 +944,7 @@ async function verifyCoverage(searchId, type, entityId) {
     setTimeout(() => {
       // Re-render the override section with updated data
       const rosterEl = document.getElementById('roster-section-' + entityId);
-      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
       const accInner = rosterEl?.closest('.accordion-inner');
       if (accInner) {
         const overrideDiv = accInner.querySelector('.override-section');
@@ -994,7 +994,7 @@ async function setReviewStatus(searchId, type, entityId, candidateId, newStatus)
     search.sourcing_coverage = coverage;
     await api('PUT', '/searches/' + searchId, search);
     const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type);
+    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
     refreshCoverageBar(entity, entityId, type);
   } catch (e) {
     console.error('setReviewStatus error:', e);

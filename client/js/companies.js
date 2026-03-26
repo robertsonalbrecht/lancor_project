@@ -111,14 +111,14 @@ function applyCompanyFilters(companies) {
       if (!Array.isArray(c.sector_focus_tags) || !c.sector_focus_tags.includes(cpFilters.sector)) return false;
     }
     if (cpFilters.industry !== 'all') {
-      if ((c.industry || '') !== cpFilters.industry) return false;
+      if ((c.industry_sector || '') !== cpFilters.industry) return false;
     }
     if (cpFilters.enrichment !== 'all') {
       if ((c.enrichment_status || 'none') !== cpFilters.enrichment) return false;
     }
     if (cpFilters.text) {
       const q = cpFilters.text.toLowerCase();
-      const hay = [c.name, c.hq, c.description, c.industry, ...(c.aliases || [])].filter(Boolean).join(' ').toLowerCase();
+      const hay = [c.name, c.hq, c.description, c.industry, c.industry_sector, ...(c.aliases || [])].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -222,8 +222,8 @@ function renderCompanyView() {
     .map(t => `<button class="${pillClass(t)}" data-type="${cpEscape(t)}" onclick="setCpTypeFilter('${cpEscape(t)}')">${cpEscape(t === 'Unclassified' ? 'Unclassified' : t)} (${typeCounts[t].toLocaleString()})</button>`)
     .join('');
 
-  // Collect unique industries for filter dropdown
-  const industries = [...new Set(cpAllCompanies.map(c => c.industry).filter(Boolean))].sort();
+  // Collect unique industry sectors for filter dropdown (high-level categories)
+  const industries = [...new Set(cpAllCompanies.map(c => c.industry_sector).filter(Boolean))].sort();
 
   // Size dropdown — show PE sizes + revenue tiers
   const sizeOpts = `
@@ -371,14 +371,14 @@ function renderCompanyRow(c, isAll, isPE, isNonPE) {
         <td>${cpSectorTags(c.sector_focus_tags)}</td>
       ` : ''}
       ${isNonPE ? `
-        <td style="color:#666;font-size:12px">${cpEscape(c.industry || '—')}</td>
+        <td style="color:#666;font-size:12px" title="${cpEscape(c.industry || '')}">${cpEscape(c.industry_sector || c.industry || '—')}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.revenue_tier || '—')}</td>
         <td style="color:#666;font-size:12px">${cpEscape(c.ownership_type || '—')}</td>
         <td style="color:#666;font-size:12px">${fmtEmployees(c.employee_count)}</td>
       ` : ''}
       ${isAll ? `
         <td style="color:#666;font-size:12px">${cpEscape(sizeDisplay)}</td>
-        <td style="color:#666;font-size:12px">${cpEscape(c.industry || '—')}</td>
+        <td style="color:#666;font-size:12px" title="${cpEscape(c.industry || '')}">${cpEscape(c.industry_sector || c.industry || '—')}</td>
       ` : ''}
       <td style="color:#888;font-size:12px;max-width:200px">${cpEscape(desc)}</td>
     </tr>

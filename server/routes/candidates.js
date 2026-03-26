@@ -419,8 +419,9 @@ router.post('/prefill', (req, res) => {
     if (existing) {
       // UPDATE existing candidate — enrich blank fields, always refresh work history
       if (linkedinUrl && !existing.linkedin_url) existing.linkedin_url = linkedinUrl;
-      if (currentTitle  && !existing.current_title)  existing.current_title  = currentTitle;
-      if (safeCompany && !existing.current_firm)  existing.current_firm   = cleanFirm(safeCompany);
+      // Always update current title and firm from latest scrape (people change jobs)
+      if (currentTitle) existing.current_title = currentTitle;
+      if (safeCompany)  existing.current_firm  = cleanFirm(safeCompany);
       if (location      && !existing.home_location)  existing.home_location  = location;
       if (photoUrl) existing.photo_url = photoUrl; // always refresh photo
       if (Array.isArray(workHistory) && workHistory.length) {
