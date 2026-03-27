@@ -64,19 +64,6 @@ function stagePillHTML(stage, search) {
   return `<span class="stage-pill" style="background:${c.bg};color:${c.color}">${escapeHtml(stage)}</span>`;
 }
 
-function slugify(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-}
-
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 function getPipelineStats(pipeline, search) {
   const stages = getSearchStages(search);
   const counts = {};
@@ -269,7 +256,7 @@ function renderWizardStep() {
       <p style="font-size:13px;color:#777;margin-bottom:16px">Matching PE firms and companies from playbooks will auto-load into sourcing coverage.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
         ${SECTORS.map(s =>
-          `<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:8px;border:1px solid #e0e0e0;border-radius:6px;${wizardData.sectors.includes(s.id) ? 'background:#EDE7F6;border-color:#5C2D91;' : ''}">
+          `<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:8px;border:1px solid #e0e0e0;border-radius:6px;${wizardData.sectors.includes(s.id) ? 'background:#F3E8EF;border-color:#6B2D5B;' : ''}">
              <input type="checkbox" value="${s.id}" ${wizardData.sectors.includes(s.id) ? 'checked' : ''}
                onchange="wizardToggleSector('${s.id}',this.checked)">
              ${s.label}
@@ -859,12 +846,6 @@ async function cycleMeetingStatus(candidateId, contactName) {
   }
 }
 
-// ── Move pursuing candidate to active ────────────────────────────────────────
-
-async function moveCandidateToOutreach(candidateId) {
-  await setStage(candidateId, 'Outreach Sent');
-}
-
 // ── Inline editing ────────────────────────────────────────────────────────────
 
 let activeEditCell = null;
@@ -945,7 +926,7 @@ function renderWeeklyUpdatesHTML(search) {
   const updatesHTML = updates.length === 0
     ? '<p style="color:#aaa;font-size:13px">No updates yet.</p>'
     : updates.map(u => `
-        <div style="border-left:3px solid #5C2D91;padding-left:16px;margin-bottom:20px">
+        <div style="border-left:3px solid #6B2D5B;padding-left:16px;margin-bottom:20px">
           <div style="font-weight:700;font-size:14px;margin-bottom:4px">${formatDate(u.date)}</div>
           <div style="font-size:13px;color:#444;white-space:pre-wrap">${escapeHtml(u.notes || '')}</div>
         </div>`
@@ -977,7 +958,7 @@ function renderWeeklyUpdatesHTML(search) {
 
       <!-- Dashboard generator -->
       <div class="dashboard-section">
-        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:#5C2D91">Client Dashboard</h3>
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;color:#6B2D5B">Client Dashboard</h3>
         <p style="font-size:13px;color:#666;margin-bottom:12px">Generate a client-facing HTML dashboard from the current pipeline state. Internal notes, assessments, and DQ reasons are automatically stripped.</p>
         <div id="dashboard-result-banner-placeholder"></div>
         <button id="generate-dashboard-btn" class="btn btn-primary" onclick="generateClientDashboard('${search.search_id}')">Generate Dashboard</button>
@@ -1523,7 +1504,7 @@ function kitModal(title, subtitle, bodyHTML, footerHTML, opts = {}) {
   overlay.id = 'kit-modal-overlay';
   overlay.innerHTML = `
     <div class="modal" style="max-width:${maxW};max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
-      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:20px 24px 18px;border-radius:14px 14px 0 0">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:20px 24px 18px;border-radius:14px 14px 0 0">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <h2 style="margin:0;font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-0.2px">${title}</h2>
@@ -1574,7 +1555,7 @@ function renderSearchKitWorkspace(search, kit) {
             <button class="btn btn-ghost btn-sm" onclick="openImportFromLibrary('${sec.key}', ${sj})">Import from Library</button>
           </div>
         </div>
-        <div style="margin-top:12px;padding-bottom:8px;border-bottom:1px solid #EDE7F6">
+        <div style="margin-top:12px;padding-bottom:8px;border-bottom:1px solid #F3E8EF">
           ${itemsHTML}
         </div>
       </div>`;
@@ -1582,7 +1563,7 @@ function renderSearchKitWorkspace(search, kit) {
 
   html += `
     <div style="margin-top:16px;font-size:13px;color:#888">
-      <a href="#" onclick="navigateTo('templates');return false;" style="color:#5C2D91;font-weight:600">&#8594; Open Templates Library</a>
+      <a href="#" onclick="navigateTo('templates');return false;" style="color:#6B2D5B;font-weight:600">&#8594; Open Templates Library</a>
     </div>`;
 
   return html;
@@ -1591,7 +1572,7 @@ function renderSearchKitWorkspace(search, kit) {
 function renderKitItem(type, item, search) {
   const name = escapeHtml(item.name || '(Untitled)');
   const date = item.created_at ? `<span style="color:#bbb;font-size:11px;margin-left:8px">${item.created_at}</span>` : '';
-  const aiTag = item.ai_generated ? `<span style="background:#EDE7F6;color:#5C2D91;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">AI</span>` : '';
+  const aiTag = item.ai_generated ? `<span style="background:#F3E8EF;color:#6B2D5B;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px">AI</span>` : '';
   const sj = JSON.stringify(search).replace(/"/g, '&quot;');
   const ij = JSON.stringify(item).replace(/"/g, '&quot;');
 
@@ -1648,7 +1629,7 @@ function viewKitItem(type, item, search) {
     const cats = item.categories || [];
     bodyHTML = cats.map(cat => `
       <div style="margin-bottom:16px">
-        <strong style="color:#5C2D91">${escapeHtml(cat.category)}</strong>
+        <strong style="color:#6B2D5B">${escapeHtml(cat.category)}</strong>
         <ol style="margin:6px 0 0 18px;line-height:1.8;font-size:13px">${cat.questions.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ol>
       </div>`).join('');
     copyText = cats.map(cat => cat.category + '\n' + cat.questions.map((q, i) => `  ${i + 1}. ${q}`).join('\n')).join('\n\n');
@@ -1813,7 +1794,7 @@ async function generateICPWithAI() {
 
 function renderICPStep(search) {
   const steps = ['Start', 'Archetypes & Experience', 'Sectors & Targets', 'Qualifications', 'Review & Save'];
-  const stepDots = steps.map((s, i) => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:${i === _icpStep ? 700 : 400};color:${i === _icpStep ? '#5C2D91' : '#bbb'}"><span style="width:22px;height:22px;border-radius:50%;background:${i <= _icpStep ? '#5C2D91' : '#e0e0e0'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i + 1}</span>${s}</span>`).join('<span style="color:#ddd;margin:0 6px">&#8594;</span>');
+  const stepDots = steps.map((s, i) => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:${i === _icpStep ? 700 : 400};color:${i === _icpStep ? '#6B2D5B' : '#bbb'}"><span style="width:22px;height:22px;border-radius:50%;background:${i <= _icpStep ? '#6B2D5B' : '#e0e0e0'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i + 1}</span>${s}</span>`).join('<span style="color:#ddd;margin:0 6px">&#8594;</span>');
 
   let body = `<div style="margin-bottom:20px;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${stepDots}</div>`;
 
@@ -1821,8 +1802,8 @@ function renderICPStep(search) {
     // Start — choose AI or manual
     const weeklyCount = (search.weekly_updates || []).length;
     body += `
-      <div style="background:#f9f6fd;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:1.6">
-        <strong style="color:#5C2D91">Build your ideal candidate profile</strong><br>
+      <div style="background:#faf6f9;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;line-height:1.6">
+        <strong style="color:#6B2D5B">Build your ideal candidate profile</strong><br>
         You can let AI analyze the job description and meeting notes to pre-fill the profile, then refine each section manually. Or skip straight to building it yourself.
       </div>
       <div class="form-group">
@@ -1866,7 +1847,7 @@ function renderICPStep(search) {
     const secChecks = allSectors.map(s => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" ${_icpState.sector_preferences.includes(s) ? 'checked' : ''} onchange="toggleICPSector('${s}', this.checked)"> ${s}</label>`).join('');
 
     const coTags = _icpState.target_companies.map((c, i) => `<span class="bool-tag" style="background:#E3F2FD;color:#1565C0">${escapeHtml(c)}<button type="button" onclick="_icpState.target_companies.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
-    const peTags = _icpState.target_pe_firms.map((f, i) => `<span class="bool-tag" style="background:#EDE7F6;color:#5C2D91">${escapeHtml(f)}<button type="button" onclick="_icpState.target_pe_firms.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
+    const peTags = _icpState.target_pe_firms.map((f, i) => `<span class="bool-tag" style="background:#F3E8EF;color:#6B2D5B">${escapeHtml(f)}<button type="button" onclick="_icpState.target_pe_firms.splice(${i},1);renderICPStep(_kitSearch)">&#10005;</button></span>`).join('');
 
     body += `
       <div class="form-group">
@@ -1914,8 +1895,8 @@ function renderICPStep(search) {
         <label class="form-label">Profile Name</label>
         <input class="form-control" id="icp-name" value="${escapeHtml(_icpState.name || (_icpState.archetypes[0] || 'Profile') + ' — ' + (_kitSearch.role_title || 'Role'))}" placeholder="Name this profile...">
       </div>
-      <div style="background:#f9f6fd;border-radius:8px;padding:16px;font-size:13px;line-height:1.7">
-        <strong style="color:#5C2D91">Summary</strong>
+      <div style="background:#faf6f9;border-radius:8px;padding:16px;font-size:13px;line-height:1.7">
+        <strong style="color:#6B2D5B">Summary</strong>
         ${listPreview('Archetypes', _icpState.archetypes)}
         ${_icpState.years_experience ? `<div style="margin-bottom:10px"><strong>Experience:</strong> ${_icpState.years_experience.min}-${_icpState.years_experience.max} years</div>` : ''}
         ${listPreview('Sectors', _icpState.sector_preferences)}
@@ -2054,7 +2035,7 @@ function openBooleanBuilder(search) {
   overlay.id = 'bool-builder-modal';
   overlay.innerHTML = `
     <div class="modal" style="max-width:820px;max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
-      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:20px 24px 18px;border-radius:14px 14px 0 0">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:20px 24px 18px;border-radius:14px 14px 0 0">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
             <h2 style="margin:0;font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-0.2px">&#128269; Boolean String Builder</h2>
@@ -2066,7 +2047,7 @@ function openBooleanBuilder(search) {
         </div>
       </div>
       <div style="padding:20px 24px 24px">
-      <div style="font-size:12px;color:#888;margin-bottom:16px;padding:10px 14px;background:#f9f6fd;border-radius:7px;border:1px solid #ede7f6">
+      <div style="font-size:12px;color:#888;margin-bottom:16px;padding:10px 14px;background:#faf6f9;border-radius:7px;border:1px solid #F3E8EF">
         Click &#10005; on a tag to remove it &nbsp;&middot;&nbsp; Type + <kbd style="font-size:11px;background:#fff;padding:1px 5px;border-radius:3px;border:1px solid #ddd">Enter</kbd> to add your own
       </div>
 
@@ -2355,9 +2336,9 @@ function renderScreenQResults() {
   let html = '<div style="margin-top:16px">';
   _screenQCategories.forEach((cat, ci) => {
     html += `
-      <div style="margin-bottom:16px;background:#f9f6fd;border-radius:8px;padding:14px 16px">
+      <div style="margin-bottom:16px;background:#faf6f9;border-radius:8px;padding:14px 16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <input class="form-control" value="${escapeHtml(cat.category)}" style="font-weight:700;color:#5C2D91;border:none;background:transparent;padding:0;font-size:14px" onchange="_screenQCategories[${ci}].category=this.value">
+          <input class="form-control" value="${escapeHtml(cat.category)}" style="font-weight:700;color:#6B2D5B;border:none;background:transparent;padding:0;font-size:14px" onchange="_screenQCategories[${ci}].category=this.value">
           <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="_screenQCategories.splice(${ci},1);renderScreenQResults()">Remove Category</button>
         </div>
         <ol style="margin:0 0 0 16px;list-style:decimal">`;
@@ -2419,8 +2400,8 @@ function openPitchbookBuilder(search) {
   _pbState = null;
 
   const body = `
-    <div style="background:#f9f6fd;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.6">
-      <strong style="color:#5C2D91">How this works:</strong> AI will analyze <strong>${escapeHtml(search.client_name)}</strong>'s profile and suggest similar PE firms, portfolio companies, and search parameters for PitchBook sourcing.
+    <div style="background:#faf6f9;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.6">
+      <strong style="color:#6B2D5B">How this works:</strong> AI will analyze <strong>${escapeHtml(search.client_name)}</strong>'s profile and suggest similar PE firms, portfolio companies, and search parameters for PitchBook sourcing.
     </div>
     <div id="pb-results">
       <div style="text-align:center;padding:30px">
@@ -2463,7 +2444,7 @@ function renderPitchbookResults() {
     <div class="form-group">
       <label class="form-label">Similar PE Firms</label>
       <div style="font-size:11px;color:#999;margin-bottom:6px">PE firms with similar strategies to ${escapeHtml(_kitSearch.client_name)}</div>
-      ${tagInput('pe', _pbState.similar_pe_firms || [], { bg:'#EDE7F6', text:'#5C2D91' })}
+      ${tagInput('pe', _pbState.similar_pe_firms || [], { bg:'#F3E8EF', text:'#6B2D5B' })}
     </div>
     <div class="form-group">
       <label class="form-label">Similar Companies</label>

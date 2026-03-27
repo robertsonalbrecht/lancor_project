@@ -62,7 +62,7 @@ let _allstarFilters = { archetype: 'All', rating: 'All', availability: 'All', se
 function getCoverageInfo(entity, isCompany) {
   // Manual complete overrides everything
   if (entity.roster_completeness === 'manual-complete') {
-    return { pct: 100, cls: 'complete', label: 'Manual Complete', color: '#5C2D91', fillWidth: 100 };
+    return { pct: 100, cls: 'complete', label: 'Manual Complete', color: '#6B2D5B', fillWidth: 100 };
   }
   const defaults = isCompany ? REVENUE_ROSTER_DEFAULTS : TIER_ROSTER_DEFAULTS;
   const rosterSize = entity.custom_roster_size != null
@@ -112,7 +112,7 @@ function sizeTierPill(tier) {
 }
 
 function genericPill(text, colorClass) {
-  return `<span class="pill ${colorClass || ''}" style="background:#EDE7F6;color:#5C2D91;border:1px solid #ce93d8;">${text}</span>`;
+  return `<span class="pill ${colorClass || ''}" style="background:#F3E8EF;color:#6B2D5B;border:1px solid #ce93d8;">${text}</span>`;
 }
 
 // ── Entity type badge ─────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ function genericPill(text, colorClass) {
 function entityTypeBadge(entityType) {
   const cfg = {
     'Growth Equity Firm':         { label: 'Growth Equity',    bg: '#e8f5e9', color: '#2e7d32', border: '#a5d6a7' },
-    'Venture Capital Firm':       { label: 'Venture',          bg: '#EDE7F6', color: '#5C2D91', border: '#ce93d8' },
+    'Venture Capital Firm':       { label: 'Venture',          bg: '#F3E8EF', color: '#6B2D5B', border: '#ce93d8' },
     'Credit / Distressed Firm':   { label: 'Credit / Distressed', bg: '#ffebee', color: '#c62828', border: '#ef9a9a' },
     'Asset Manager with PE Wing': { label: 'Multi-Strategy',   bg: '#fff8e1', color: '#e65100', border: '#ffcc80' },
     'PE Division of Larger Firm': { label: 'PE Division',      bg: '#e3f2fd', color: '#1565c0', border: '#90caf9' },
@@ -243,13 +243,80 @@ function _paintSectorDetail() {
   const s = _currentSector;
   const content = document.getElementById('app-content');
 
+  // Build All-Star Playbook section
+  const topFirms = (s.top_pe_firms || []).map(id => (s.pe_firms || []).find(f => f.firm_id === id)).filter(Boolean);
+  const topCompanies = (s.top_companies || []).map(id => (s.target_companies || []).find(c => c.company_id === id)).filter(Boolean);
+
+  const topFirmsHTML = topFirms.length === 0
+    ? `<p style="color:#aaa;font-size:13px;padding:12px 0">No top firms ranked yet.</p>`
+    : topFirms.map((f, i) => {
+        const cov = getCoverageInfo(f);
+        const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
+        const focusPill = f.sector_focus ? `<span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.sector_focus)}</span>` : '';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.1s" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+          <span style="font-weight:700;color:#999;width:20px;text-align:right;font-size:11px">${i + 1}</span>
+          <span style="font-weight:600;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="_openFirmDetail('${escapeHtml(f.firm_id)}')">${escapeHtml(f.name)}</span>
+          ${sizePill} ${focusPill}
+          <span style="font-size:11px;color:#888;width:36px;text-align:right">${cov.pct}%</span>
+          <button onclick="event.stopPropagation();_removeFromTopList('pe','${escapeHtml(f.firm_id)}')" title="Remove" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1" onmouseover="this.style.color='#c62828'" onmouseout="this.style.color='#ccc'">&#10005;</button>
+        </div>`;
+      }).join('');
+
+  const topCompaniesHTML = topCompanies.length === 0
+    ? `<p style="color:#aaa;font-size:13px;padding:12px 0">No top companies yet.</p>`
+    : topCompanies.map((c, i) => {
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.1s" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+          <span style="font-weight:700;color:#999;width:20px;text-align:right;font-size:11px">${i + 1}</span>
+          <span style="font-weight:600;font-size:13px;flex:1">${escapeHtml(c.name)}</span>
+          <span style="color:#666;font-size:11px">${escapeHtml(c.hq || '')}</span>
+          <span style="color:#888;font-size:11px">${escapeHtml(c.revenue_tier || '')}</span>
+          <button onclick="event.stopPropagation();_removeFromTopList('company','${escapeHtml(c.company_id)}')" title="Remove" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1" onmouseover="this.style.color='#c62828'" onmouseout="this.style.color='#ccc'">&#10005;</button>
+        </div>`;
+      }).join('');
+
   content.innerHTML = `
     <div class="page-header" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-sm" onclick="renderPlaybooks()">&#8592; Sector Playbooks</button>
       <div style="flex:1;">
-        <h1 style="display:inline;margin-right:12px;">${s.sector_name}</h1>
+        <h1 style="display:inline;margin-right:12px;">${escapeHtml(s.sector_name)}</h1>
         ${buildStatusBadge(s.build_status)}
         <span class="text-muted text-sm" style="margin-left:12px;">Updated ${formatDate(s.last_updated)}</span>
+      </div>
+    </div>
+
+    <!-- All-Star Playbook -->
+    <div style="margin-bottom:24px;border:2px solid #F3E8EF;border-radius:12px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0;color:#fff;font-size:16px;font-weight:700">All-Star Playbook</h2>
+        <span style="color:rgba(255,255,255,0.7);font-size:12px">Top firms and companies to prioritize for search kickoffs</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div style="border-right:1px solid #f0f0f0">
+          <div style="padding:8px 12px;background:#faf6f9;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3E8EF">
+            <span style="font-weight:700;font-size:12px;color:#6B2D5B;text-transform:uppercase;letter-spacing:0.5px">Top ${topFirms.length} PE Firms</span>
+            <button onclick="_showAddToTopList('pe')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;color:#6B2D5B">+ Add Firm</button>
+          </div>
+          <div id="allstar-add-pe" style="display:none;padding:8px 12px;background:#faf8ff;border-bottom:1px solid #F3E8EF">
+            <div style="display:flex;gap:6px">
+              <input id="allstar-pe-search" type="text" placeholder="Search PE firms..." style="flex:1;padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px" oninput="_filterAddToTopList('pe')">
+            </div>
+            <div id="allstar-pe-results" style="max-height:200px;overflow-y:auto;margin-top:6px"></div>
+          </div>
+          <div style="max-height:500px;overflow-y:auto">${topFirmsHTML}</div>
+        </div>
+        <div>
+          <div style="padding:8px 12px;background:#faf6f9;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F3E8EF">
+            <span style="font-weight:700;font-size:12px;color:#6B2D5B;text-transform:uppercase;letter-spacing:0.5px">Top ${topCompanies.length} Companies</span>
+            <button onclick="_showAddToTopList('company')" class="btn btn-ghost" style="font-size:11px;padding:2px 8px;color:#6B2D5B">+ Add Company</button>
+          </div>
+          <div id="allstar-add-company" style="display:none;padding:8px 12px;background:#faf8ff;border-bottom:1px solid #F3E8EF">
+            <div style="display:flex;gap:6px">
+              <input id="allstar-company-search" type="text" placeholder="Search companies..." style="flex:1;padding:6px 10px;border:1px solid #ccc;border-radius:6px;font-size:12px" oninput="_filterAddToTopList('company')">
+            </div>
+            <div id="allstar-company-results" style="max-height:200px;overflow-y:auto;margin-top:6px"></div>
+          </div>
+          <div style="max-height:500px;overflow-y:auto">${topCompaniesHTML}</div>
+        </div>
       </div>
     </div>
 
@@ -265,6 +332,108 @@ function _paintSectorDetail() {
     <div id="tab-content"></div>`;
 
   _renderActiveTab();
+}
+
+// ── All-Star Playbook add/remove ─────────────────────────────────────────────
+
+function _showAddToTopList(type) {
+  const panel = document.getElementById('allstar-add-' + type);
+  if (!panel) return;
+  const isVisible = panel.style.display !== 'none';
+  panel.style.display = isVisible ? 'none' : '';
+  if (!isVisible) {
+    const input = document.getElementById('allstar-' + type + '-search');
+    if (input) { input.value = ''; input.focus(); }
+    _filterAddToTopList(type);
+  }
+}
+
+function _filterAddToTopList(type) {
+  const s = _currentSector;
+  if (!s) return;
+  const input = document.getElementById('allstar-' + type + '-search');
+  const resultsEl = document.getElementById('allstar-' + type + '-results');
+  if (!input || !resultsEl) return;
+  const query = (input.value || '').toLowerCase().trim();
+
+  if (type === 'pe') {
+    const topIds = new Set(s.top_pe_firms || []);
+    let candidates = (s.pe_firms || []).filter(f => !topIds.has(f.firm_id));
+    if (query) candidates = candidates.filter(f => (f.name || '').toLowerCase().includes(query));
+    candidates = candidates.slice(0, 15);
+    resultsEl.innerHTML = candidates.length === 0
+      ? `<div style="color:#aaa;font-size:12px;padding:6px 0">${query ? 'No matching firms' : 'Type to search...'}</div>`
+      : candidates.map(f => {
+          const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 5px;border-radius:6px;font-size:9px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
+          return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px;transition:background 0.1s" onmouseover="this.style.background='#F3E8EF'" onmouseout="this.style.background=''" onclick="_addToTopList('pe','${escapeHtml(f.firm_id)}')">
+            <span style="color:#6B2D5B;font-weight:700;font-size:14px">+</span>
+            <span style="flex:1;font-weight:500">${escapeHtml(f.name)}</span>
+            ${sizePill}
+            <span style="color:#999;font-size:11px">${escapeHtml(f.hq || '')}</span>
+          </div>`;
+        }).join('');
+  } else {
+    const topIds = new Set(s.top_companies || []);
+    let candidates = (s.target_companies || []).filter(c => !topIds.has(c.company_id));
+    if (query) candidates = candidates.filter(c => (c.name || '').toLowerCase().includes(query));
+    candidates = candidates.slice(0, 15);
+    resultsEl.innerHTML = candidates.length === 0
+      ? `<div style="color:#aaa;font-size:12px;padding:6px 0">${query ? 'No matching companies' : 'Type to search...'}</div>`
+      : candidates.map(c => {
+          return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:12px;transition:background 0.1s" onmouseover="this.style.background='#F3E8EF'" onmouseout="this.style.background=''" onclick="_addToTopList('company','${escapeHtml(c.company_id)}')">
+            <span style="color:#6B2D5B;font-weight:700;font-size:14px">+</span>
+            <span style="flex:1;font-weight:500">${escapeHtml(c.name)}</span>
+            <span style="color:#999;font-size:11px">${escapeHtml(c.hq || '')}</span>
+            <span style="color:#888;font-size:11px">${escapeHtml(c.revenue_tier || '')}</span>
+          </div>`;
+        }).join('');
+  }
+}
+
+async function _addToTopList(type, id) {
+  const s = _currentSector;
+  if (!s) return;
+
+  if (type === 'pe') {
+    if (!s.top_pe_firms) s.top_pe_firms = [];
+    if (s.top_pe_firms.includes(id)) return;
+    s.top_pe_firms.push(id);
+  } else {
+    if (!s.top_companies) s.top_companies = [];
+    if (s.top_companies.includes(id)) return;
+    s.top_companies.push(id);
+  }
+
+  try {
+    const payload = type === 'pe'
+      ? { top_pe_firms: s.top_pe_firms }
+      : { top_companies: s.top_companies };
+    await api('PUT', '/playbooks/' + s.sector_id, payload);
+    _paintSectorDetail();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
+}
+
+async function _removeFromTopList(type, id) {
+  const s = _currentSector;
+  if (!s) return;
+
+  if (type === 'pe') {
+    s.top_pe_firms = (s.top_pe_firms || []).filter(fid => fid !== id);
+  } else {
+    s.top_companies = (s.top_companies || []).filter(cid => cid !== id);
+  }
+
+  try {
+    const payload = type === 'pe'
+      ? { top_pe_firms: s.top_pe_firms }
+      : { top_companies: s.top_companies };
+    await api('PUT', '/playbooks/' + s.sector_id, payload);
+    _paintSectorDetail();
+  } catch (err) {
+    alert('Error saving: ' + err.message);
+  }
 }
 
 function _switchTab(tab) {
@@ -352,7 +521,7 @@ function _renderPeFirmsTab() {
       const websiteIcon = f.website_url
         ? ` <a href="${f.website_url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener"
                onclick="event.stopPropagation()"
-               title="Visit website" style="color:#5C2D91;font-size:11px;margin-left:4px;text-decoration:none;">&#127760;</a>`
+               title="Visit website" style="color:#6B2D5B;font-size:11px;margin-left:4px;text-decoration:none;">&#127760;</a>`
         : '';
       tableRows += `
         <tr class="firm-row" style="cursor:pointer;" onclick="_renderFirmDetail('${f.firm_id}')">
@@ -447,7 +616,7 @@ function _renderFirmDetail(firmId) {
       const statusOpts = ROSTER_STATUSES.map(st =>
         `<option value="${st}" ${c.roster_status === st ? 'selected' : ''}>${st}</option>`
       ).join('');
-      const _pipeBtn = `<button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>`;
+      const _pipeBtn = `<button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#6B2D5B;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>`;
       return `<tr>
         <td>${nameCell}</td>
         <td style="color:#555">${c.title || ''}</td>
@@ -545,8 +714,8 @@ function _renderFirmDetail(firmId) {
 
       <!-- Why Target -->
       ${firm.why_target ? `
-      <div style="background:#f9f7ff;border-left:3px solid #5C2D91;border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:24px">
-        <div style="font-size:11px;font-weight:700;color:#5C2D91;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Why Target</div>
+      <div style="background:#f9f7ff;border-left:3px solid #6B2D5B;border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:24px">
+        <div style="font-size:11px;font-weight:700;color:#6B2D5B;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Why Target</div>
         <p style="font-size:13px;color:#333;margin:0;line-height:1.6">${firm.why_target}</p>
       </div>` : ''}
 
@@ -661,7 +830,7 @@ function _buildFirmAccordion(firm) {
             </select>
           </td>
           <td style="white-space:nowrap">
-            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
+            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#6B2D5B;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
             <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
                     onclick="_removeCandidate('${firm.firm_id}', ${idx}, false)">&#10005;</button>
           </td>
@@ -1206,7 +1375,7 @@ function _buildCompanyAccordion(company) {
             </select>
           </td>
           <td style="white-space:nowrap">
-            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
+            <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${(c.candidate_id||'').replace(/'/g,"\\'")}',name:'${(c.name||'').replace(/'/g,"\\'")}',current_title:'${(c.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${(c.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{source:'All-star pool'})" title="Add to Pipeline" style="background:#6B2D5B;color:#fff;border:none;width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
             <button class="btn btn-danger btn-sm" style="padding:3px 8px;"
                     onclick="_removeCandidate('${company.company_id}', ${idx}, true)">&#10005;</button>
           </td>

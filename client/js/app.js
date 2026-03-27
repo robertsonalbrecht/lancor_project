@@ -92,18 +92,6 @@ async function api(method, path, body) {
   return res.json();
 }
 
-// ── Date formatter ────────────────────────────────────────────────────────────
-
-function formatDate(isoString) {
-  if (!isoString) return '—';
-  try {
-    const d = new Date(isoString + (isoString.includes('T') ? '' : 'T00:00:00'));
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch (e) {
-    return isoString;
-  }
-}
-
 // ── Navigation ────────────────────────────────────────────────────────────────
 
 let currentModule = null;
@@ -243,11 +231,6 @@ async function openCandidatePanel(candidateId) {
   renderCandidatePanel(candidate);
 }
 
-function _escPanel(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 function renderCandidatePanel(c) {
   const overlay = document.createElement('div');
   overlay.id = 'candidate-panel-overlay';
@@ -255,12 +238,12 @@ function renderCandidatePanel(c) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeCandidatePanel(); });
 
   const linkedinBtn = c.linkedin_url
-    ? `<a href="${_escPanel(c.linkedin_url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="color:#0077B5;display:inline-flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn</a>`
+    ? `<a href="${escapeHtml(c.linkedin_url)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="color:#0077B5;display:inline-flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg> LinkedIn</a>`
     : '';
 
   const sectorPills = (c.sector_tags || []).map(t => {
     const labels = {'industrials':'Industrials','technology-software':'Technology','healthcare':'Healthcare','financial-services':'Financial Services','consumer':'Consumer','business-services':'Business Services','infrastructure-energy':'Infrastructure','life-sciences':'Life Sciences','media-entertainment':'Media','real-estate-proptech':'Real Estate','agriculture-fb':'Agriculture'};
-    return `<span style="background:#EDE7F6;color:#5C2D91;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${labels[t]||t}</span>`;
+    return `<span style="background:#F3E8EF;color:#6B2D5B;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${labels[t]||t}</span>`;
   }).join('');
 
   const rating = c.quality_rating != null
@@ -285,27 +268,27 @@ function renderCandidatePanel(c) {
     // Get logo from first role in group
     const logoUrl = group.roles[0].logo_url || group.roles[0].logoUrl || '';
     const logoImg = logoUrl
-      ? `<img src="${_escPanel(logoUrl)}" style="width:36px;height:36px;border-radius:6px;object-fit:contain;background:#f5f5f5;flex-shrink:0" onerror="this.style.display='none'">`
+      ? `<img src="${escapeHtml(logoUrl)}" style="width:36px;height:36px;border-radius:6px;object-fit:contain;background:#f5f5f5;flex-shrink:0" onerror="this.style.display='none'">`
       : `<div style="width:36px;height:36px;border-radius:6px;background:#f0f0f0;flex-shrink:0"></div>`;
 
     const roleHTML = (w, showCompany) => {
       const idx = w._idx;
       const isCurrent = (w.dates || '').toLowerCase().includes('present');
       const isPrimary = c.primary_experience_index === idx;
-      const barColor = isPrimary ? '#5C2D91' : isCurrent ? '#4caf50' : '#e0e0e0';
-      const bgColor = isPrimary ? '#f3ebff' : isCurrent ? '#f8fdf8' : 'transparent';
-      const hoverBg = isPrimary ? '#ecdeff' : isCurrent ? '#f0faf0' : '#f9f6fd';
-      return `<div onclick="setCandidatePrimaryExperience('${_escPanel(c.candidate_id)}', ${idx})"
+      const barColor = isPrimary ? '#6B2D5B' : isCurrent ? '#4caf50' : '#e0e0e0';
+      const bgColor = isPrimary ? '#f5ebf2' : isCurrent ? '#f8fdf8' : 'transparent';
+      const hoverBg = isPrimary ? '#f0dfe9' : isCurrent ? '#f0faf0' : '#faf6f9';
+      return `<div onclick="setCandidatePrimaryExperience('${escapeHtml(c.candidate_id)}', ${idx})"
         style="display:flex;gap:10px;padding:8px 0;cursor:pointer;background:${bgColor};transition:background 0.15s;${isMulti ? 'margin-left:48px;border-left:2px solid #e0e0e0;padding-left:12px;' : ''}"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='${bgColor}'">
         <div style="width:4px;border-radius:3px;background:${barColor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px">
-            <div style="font-weight:600;font-size:13px;color:#1a1a1a">${_escPanel(w.title || '')}</div>
-            ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#5C2D91;background:#e8d5ff;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
+            <div style="font-weight:600;font-size:13px;color:#1a1a1a">${escapeHtml(w.title || '')}</div>
+            ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#6B2D5B;background:#ebd5e6;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
           </div>
-          ${w.dates ? `<div style="font-size:11px;color:#999;margin-top:2px">${_escPanel(w.dates)}${(() => { const d = w.duration || _calcDuration(w.dates); return d ? ' · ' + d : ''; })()}</div>` : ''}
-          ${w.description ? `<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5">${_escPanel(w.description)}</div>` : ''}
+          ${w.dates ? `<div style="font-size:11px;color:#999;margin-top:2px">${escapeHtml(w.dates)}${(() => { const d = w.duration || _calcDuration(w.dates); return d ? ' · ' + d : ''; })()}</div>` : ''}
+          ${w.description ? `<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5">${escapeHtml(w.description)}</div>` : ''}
         </div>
       </div>`;
     };
@@ -324,8 +307,8 @@ function renderCandidatePanel(c) {
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:${isMulti ? '6' : '0'}px">
         ${logoImg}
         <div>
-          <div style="font-size:13px;font-weight:700;color:#5C2D91">${_escPanel(group.company)}</div>
-          ${tenureLabel ? `<div style="font-size:11px;color:#999">${_escPanel(tenureLabel)}${totalDuration ? ' · ' + totalDuration : ''}${rolesLabel}</div>` : ''}
+          <div style="font-size:13px;font-weight:700;color:#6B2D5B">${escapeHtml(group.company)}</div>
+          ${tenureLabel ? `<div style="font-size:11px;color:#999">${escapeHtml(tenureLabel)}${totalDuration ? ' · ' + totalDuration : ''}${rolesLabel}</div>` : ''}
         </div>
       </div>`;
 
@@ -339,22 +322,22 @@ function renderCandidatePanel(c) {
       const idx = w._idx;
       const isCurrent = (w.dates || '').toLowerCase().includes('present');
       const isPrimary = c.primary_experience_index === idx;
-      const bgColor = isPrimary ? '#f3ebff' : isCurrent ? '#f8fdf8' : 'transparent';
-      const hoverBg = isPrimary ? '#ecdeff' : isCurrent ? '#f0faf0' : '#f9f6fd';
-      const barColor = isPrimary ? '#5C2D91' : isCurrent ? '#4caf50' : '#e0e0e0';
-      return `<div onclick="setCandidatePrimaryExperience('${_escPanel(c.candidate_id)}', ${idx})"
+      const bgColor = isPrimary ? '#f5ebf2' : isCurrent ? '#f8fdf8' : 'transparent';
+      const hoverBg = isPrimary ? '#f0dfe9' : isCurrent ? '#f0faf0' : '#faf6f9';
+      const barColor = isPrimary ? '#6B2D5B' : isCurrent ? '#4caf50' : '#e0e0e0';
+      return `<div onclick="setCandidatePrimaryExperience('${escapeHtml(c.candidate_id)}', ${idx})"
         style="margin:0 -16px;padding:10px 16px;border-bottom:1px solid #f0f0f0;cursor:pointer;background:${bgColor};transition:background 0.15s;display:flex;gap:10px"
         onmouseover="this.style.background='${hoverBg}'" onmouseout="this.style.background='${bgColor}'">
         ${logoImg}
         <div style="width:4px;border-radius:3px;background:${barColor};flex-shrink:0"></div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#5C2D91">${_escPanel(w.company || '')}</div>
+          <div style="font-size:13px;font-weight:700;color:#6B2D5B">${escapeHtml(w.company || '')}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-            <div style="font-weight:600;font-size:13px;color:#1a1a1a">${_escPanel(w.title || '')}</div>
-            ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#5C2D91;background:#e8d5ff;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
+            <div style="font-weight:600;font-size:13px;color:#1a1a1a">${escapeHtml(w.title || '')}</div>
+            ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#6B2D5B;background:#ebd5e6;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
           </div>
-          ${w.dates ? `<div style="font-size:11px;color:#999;margin-top:2px">${_escPanel(w.dates)}${(() => { const d = w.duration || _calcDuration(w.dates); return d ? ' · ' + d : ''; })()}</div>` : ''}
-          ${w.description ? `<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5">${_escPanel(w.description)}</div>` : ''}
+          ${w.dates ? `<div style="font-size:11px;color:#999;margin-top:2px">${escapeHtml(w.dates)}${(() => { const d = w.duration || _calcDuration(w.dates); return d ? ' · ' + d : ''; })()}</div>` : ''}
+          ${w.description ? `<div style="font-size:12px;color:#666;margin-top:4px;line-height:1.5">${escapeHtml(w.description)}</div>` : ''}
         </div>
       </div>`;
     }
@@ -362,18 +345,18 @@ function renderCandidatePanel(c) {
 
   const searchHistory = (c.search_history || []).map(h =>
     `<div style="padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:12px">
-      <span style="font-weight:600">${_escPanel(h.client_name || h.search_id)}</span>
-      <span style="color:#888;margin-left:6px">Stage: ${_escPanel(h.stage_reached || '—')}</span>
-      ${h.outcome ? `<span style="color:#888;margin-left:6px">· ${_escPanel(h.outcome)}</span>` : ''}
+      <span style="font-weight:600">${escapeHtml(h.client_name || h.search_id)}</span>
+      <span style="color:#888;margin-left:6px">Stage: ${escapeHtml(h.stage_reached || '—')}</span>
+      ${h.outcome ? `<span style="color:#888;margin-left:6px">· ${escapeHtml(h.outcome)}</span>` : ''}
     </div>`
   ).join('') || '<div style="color:#bbb;font-size:12px">No search history</div>';
 
   const dqReasons = (c.dq_reasons || []).filter(d => d.reason).map(d =>
-    `<div style="padding:4px 0;font-size:12px;color:#c62828">${_escPanel(d.reason)} <span style="color:#999">(${_escPanel(d.search_id)})</span></div>`
+    `<div style="padding:4px 0;font-size:12px;color:#c62828">${escapeHtml(d.reason)} <span style="color:#999">(${escapeHtml(d.search_id)})</span></div>`
   ).join('');
 
-  const cId = _escPanel(c.candidate_id);
-  const _q = s => _escPanel(s||'').replace(/'/g,"\\'");
+  const cId = escapeHtml(c.candidate_id);
+  const _q = s => escapeHtml(s||'').replace(/'/g,"\\'");
 
   // Archetype & availability options for edit mode
   const archetypeOpts = ['','PE Lateral','Industry Operator','Functional Expert','Founder/Entrepreneur','Consultant'].map(a =>
@@ -384,7 +367,7 @@ function renderCandidatePanel(c) {
     `<option value="${r}" ${(c.quality_rating||0)===r?'selected':''}>${r===0?'Unrated':'★'.repeat(r)}</option>`).join('');
 
   const photoImg = c.photo_url
-    ? `<img src="${_escPanel(c.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    ? `<img src="${escapeHtml(c.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
        <div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:none;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(c.name || '?')[0].toUpperCase()}</div>`
     : `<div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(c.name || '?')[0].toUpperCase()}</div>`;
 
@@ -393,9 +376,9 @@ function renderCandidatePanel(c) {
       <div class="cand-panel-header">
         ${photoImg}
         <div style="flex:1;min-width:0;margin-left:12px">
-          <h2 style="font-size:1.2rem;font-weight:800;margin:0 0 2px;color:#1a1a1a" id="cp-name-display">${_escPanel(c.name)}</h2>
-          <div style="font-size:13px;color:#555" id="cp-subtitle-display">${_escPanel(c.current_title || '')}${c.current_firm ? ' @ ' + _escPanel(c.current_firm) : ''}</div>
-          <div style="font-size:12px;color:#888;margin-top:2px">${_escPanel(c.home_location || c.location || '')}</div>
+          <h2 style="font-size:1.2rem;font-weight:800;margin:0 0 2px;color:#1a1a1a" id="cp-name-display">${escapeHtml(c.name)}</h2>
+          <div style="font-size:13px;color:#555" id="cp-subtitle-display">${escapeHtml(c.current_title || '')}${c.current_firm ? ' @ ' + escapeHtml(c.current_firm) : ''}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${escapeHtml(c.home_location || c.location || '')}</div>
         </div>
         <div style="display:flex;gap:6px;align-items:flex-start;flex-shrink:0">
           <button class="btn btn-primary btn-sm" onclick="openAddToPipelineModal({candidate_id:'${cId}',name:'${_q(c.name)}',current_title:'${_q(c.current_title)}',current_firm:'${_q(c.current_firm)}',location:'${_q(c.home_location||c.location)}',linkedin_url:'${_q(c.linkedin_url)}',archetype:'${_q(c.archetype)}'})">+ Pipeline</button>
@@ -408,31 +391,31 @@ function renderCandidatePanel(c) {
 
       <div class="cand-panel-body">
         <!-- Edit form (hidden by default) -->
-        <div id="cp-edit-form" style="display:none;margin-bottom:20px;background:#f9f6fd;border-radius:8px;padding:16px">
+        <div id="cp-edit-form" style="display:none;margin-bottom:20px;background:#faf6f9;border-radius:8px;padding:16px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Name</label>
-              <input class="form-control" id="cp-edit-name" value="${_escPanel(c.name)}">
+              <input class="form-control" id="cp-edit-name" value="${escapeHtml(c.name)}">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">LinkedIn URL</label>
-              <input class="form-control" id="cp-edit-linkedin" value="${_escPanel(c.linkedin_url||'')}" placeholder="https://linkedin.com/in/...">
+              <input class="form-control" id="cp-edit-linkedin" value="${escapeHtml(c.linkedin_url||'')}" placeholder="https://linkedin.com/in/...">
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Title</label>
-              <input class="form-control" id="cp-edit-title" value="${_escPanel(c.current_title||'')}">
+              <input class="form-control" id="cp-edit-title" value="${escapeHtml(c.current_title||'')}">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Firm</label>
-              <input class="form-control" id="cp-edit-firm" value="${_escPanel(c.current_firm||'')}">
+              <input class="form-control" id="cp-edit-firm" value="${escapeHtml(c.current_firm||'')}">
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Location</label>
-              <input class="form-control" id="cp-edit-location" value="${_escPanel(c.home_location||c.location||'')}">
+              <input class="form-control" id="cp-edit-location" value="${escapeHtml(c.home_location||c.location||'')}">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Archetype</label>
@@ -451,7 +434,7 @@ function renderCandidatePanel(c) {
           </div>
           <div class="form-group" style="margin-bottom:10px">
             <label class="form-label">Notes</label>
-            <textarea class="form-control" id="cp-edit-notes" rows="3">${_escPanel(c.notes||'')}</textarea>
+            <textarea class="form-control" id="cp-edit-notes" rows="3">${escapeHtml(c.notes||'')}</textarea>
           </div>
 
           <!-- Work History Editor -->
@@ -461,12 +444,12 @@ function renderCandidatePanel(c) {
               ${(c.work_history || []).map((w, i) => `
                 <div class="cp-wh-entry" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;padding:8px 10px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;align-items:start">
                   <div>
-                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${_escPanel(w.title||'')}" placeholder="Title" data-field="title">
-                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${_escPanel(w.company||'')}" placeholder="Company" data-field="company">
+                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${escapeHtml(w.title||'')}" placeholder="Title" data-field="title">
+                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${escapeHtml(w.company||'')}" placeholder="Company" data-field="company">
                   </div>
                   <div>
-                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${_escPanel(w.dates||'')}" placeholder="Dates (e.g. 2020 - Present)" data-field="dates">
-                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${_escPanel(w.duration||'')}" placeholder="Duration" data-field="duration">
+                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${escapeHtml(w.dates||'')}" placeholder="Dates (e.g. 2020 - Present)" data-field="dates">
+                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${escapeHtml(w.duration||'')}" placeholder="Duration" data-field="duration">
                   </div>
                   <button onclick="this.closest('.cp-wh-entry').remove()" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px;padding:4px;margin-top:2px" title="Remove">&#10005;</button>
                 </div>`).join('')}
@@ -484,8 +467,8 @@ function renderCandidatePanel(c) {
         <div id="cp-read-view">
           <!-- Quick info -->
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center">
-            ${c.archetype ? `<span style="background:#f3e8ff;color:#7c3aed;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${_escPanel(c.archetype)}</span>` : ''}
-            ${c.availability ? `<span style="background:#e3f2fd;color:#1565c0;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${_escPanel(c.availability)}</span>` : ''}
+            ${c.archetype ? `<span style="background:#f3e8ff;color:#7c3aed;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(c.archetype)}</span>` : ''}
+            ${c.availability ? `<span style="background:#e3f2fd;color:#1565c0;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(c.availability)}</span>` : ''}
             ${rating}
           </div>
 
@@ -493,12 +476,12 @@ function renderCandidatePanel(c) {
 
           <!-- Details grid -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;margin-bottom:20px;padding:12px;background:#f9f9f9;border-radius:8px">
-            ${c.firm_size_tier ? `<div><span style="color:#888">Firm Size:</span> ${_escPanel(c.firm_size_tier)}</div>` : ''}
-            ${c.company_revenue_tier ? `<div><span style="color:#888">Revenue Tier:</span> ${_escPanel(c.company_revenue_tier)}</div>` : ''}
-            ${c.operator_background ? `<div><span style="color:#888">Background:</span> ${_escPanel(Array.isArray(c.operator_background) ? c.operator_background.join(', ') : c.operator_background)}</div>` : ''}
+            ${c.firm_size_tier ? `<div><span style="color:#888">Firm Size:</span> ${escapeHtml(c.firm_size_tier)}</div>` : ''}
+            ${c.company_revenue_tier ? `<div><span style="color:#888">Revenue Tier:</span> ${escapeHtml(c.company_revenue_tier)}</div>` : ''}
+            ${c.operator_background ? `<div><span style="color:#888">Background:</span> ${escapeHtml(Array.isArray(c.operator_background) ? c.operator_background.join(', ') : c.operator_background)}</div>` : ''}
             ${c.owned_pl ? `<div><span style="color:#888">Owned P&L:</span> Yes</div>` : ''}
-            ${c.last_contact_date ? `<div><span style="color:#888">Last Contact:</span> ${_escPanel(c.last_contact_date)}</div>` : ''}
-            ${c.date_added ? `<div><span style="color:#888">Added:</span> ${_escPanel(c.date_added)}</div>` : ''}
+            ${c.last_contact_date ? `<div><span style="color:#888">Last Contact:</span> ${escapeHtml(c.last_contact_date)}</div>` : ''}
+            ${c.date_added ? `<div><span style="color:#888">Added:</span> ${escapeHtml(c.date_added)}</div>` : ''}
           </div>
         </div>
 
@@ -524,7 +507,7 @@ function renderCandidatePanel(c) {
         <!-- Notes -->
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:8px">Notes</div>
-          <div style="font-size:12px;color:#444;white-space:pre-wrap;line-height:1.5">${_escPanel(c.notes || 'No notes')}</div>
+          <div style="font-size:12px;color:#444;white-space:pre-wrap;line-height:1.5">${escapeHtml(c.notes || 'No notes')}</div>
         </div>
       </div>
     </div>`;
@@ -700,10 +683,10 @@ async function openMergeModal(candidateId) {
     const rows = dupes.map(d => `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer" onclick="renderMergeComparison(JSON.parse(atob('${btoa(JSON.stringify(target))}')), JSON.parse(atob('${btoa(JSON.stringify(d))}')))">
         <div>
-          <div style="font-weight:600;font-size:13px">${_escPanel(d.name)}</div>
-          <div style="font-size:12px;color:#666">${_escPanel(d.current_title||'')} @ ${_escPanel(d.current_firm||'')}</div>
+          <div style="font-weight:600;font-size:13px">${escapeHtml(d.name)}</div>
+          <div style="font-size:12px;color:#666">${escapeHtml(d.current_title||'')} @ ${escapeHtml(d.current_firm||'')}</div>
         </div>
-        <span style="color:#5C2D91;font-size:12px;font-weight:600">Select →</span>
+        <span style="color:#6B2D5B;font-size:12px;font-weight:600">Select →</span>
       </div>`).join('');
 
     overlay.innerHTML = `
@@ -752,13 +735,13 @@ function renderMergeComparison(a, b) {
         <td style="padding:8px;font-size:12px;vertical-align:top">
           <label style="cursor:pointer;display:flex;align-items:flex-start;gap:6px">
             <input type="radio" name="merge-${f.key}" value="a" ${aSelected ? 'checked' : ''} style="margin-top:2px">
-            <span style="word-break:break-all">${_escPanel(va) || '<span style="color:#ccc">—</span>'}</span>
+            <span style="word-break:break-all">${escapeHtml(va) || '<span style="color:#ccc">—</span>'}</span>
           </label>
         </td>
         <td style="padding:8px;font-size:12px;vertical-align:top">
           <label style="cursor:pointer;display:flex;align-items:flex-start;gap:6px">
             <input type="radio" name="merge-${f.key}" value="b" ${!aSelected ? 'checked' : ''} style="margin-top:2px">
-            <span style="word-break:break-all">${_escPanel(vb) || '<span style="color:#ccc">—</span>'}</span>
+            <span style="word-break:break-all">${escapeHtml(vb) || '<span style="color:#ccc">—</span>'}</span>
           </label>
         </td>
       </tr>`;
@@ -773,7 +756,7 @@ function renderMergeComparison(a, b) {
   overlay.style.zIndex = '3000';
   overlay.innerHTML = `
     <div class="modal" style="max-width:780px;max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
-      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:18px 24px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:18px 24px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center">
         <div>
           <h2 style="margin:0;font-size:1rem;font-weight:800;color:#fff">Merge Candidates</h2>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px">Choose which value to keep for each field. Work histories will be combined.</div>
@@ -785,8 +768,8 @@ function renderMergeComparison(a, b) {
           <thead>
             <tr style="border-bottom:2px solid #e0e0e0">
               <th style="padding:8px;font-size:11px;color:#999;text-align:left">Field</th>
-              <th style="padding:8px;font-size:11px;color:#5C2D91;text-align:left">Profile A <span style="color:#999;font-weight:400">(${_escPanel(a.candidate_id).slice(0,20)}...)</span></th>
-              <th style="padding:8px;font-size:11px;color:#5C2D91;text-align:left">Profile B <span style="color:#999;font-weight:400">(${_escPanel(b.candidate_id).slice(0,20)}...)</span></th>
+              <th style="padding:8px;font-size:11px;color:#6B2D5B;text-align:left">Profile A <span style="color:#999;font-weight:400">(${escapeHtml(a.candidate_id).slice(0,20)}...)</span></th>
+              <th style="padding:8px;font-size:11px;color:#6B2D5B;text-align:left">Profile B <span style="color:#999;font-weight:400">(${escapeHtml(b.candidate_id).slice(0,20)}...)</span></th>
             </tr>
           </thead>
           <tbody>${fieldRows}</tbody>
@@ -803,7 +786,7 @@ function renderMergeComparison(a, b) {
 
         <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid #f0f0f0;margin-top:16px">
           <button class="btn btn-ghost" onclick="closeMergeModal()">Cancel</button>
-          <button class="btn btn-primary" id="merge-submit-btn" onclick="_submitMerge('${_escPanel(a.candidate_id)}','${_escPanel(b.candidate_id)}')">Merge Candidates</button>
+          <button class="btn btn-primary" id="merge-submit-btn" onclick="_submitMerge('${escapeHtml(a.candidate_id)}','${escapeHtml(b.candidate_id)}')">Merge Candidates</button>
         </div>
       </div>
     </div>`;
@@ -901,7 +884,7 @@ async function openAddToPipelineModal(candidateInfo, opts) {
     const preSelect = opts.preSelectSearchId || (typeof currentSearchId !== 'undefined' ? currentSearchId : '');
     searchesHTML += _atpSearches.map(s => {
       const sel = preSelect === s.search_id ? ' selected' : '';
-      return `<option value="${_escPanel(s.search_id)}"${sel}>${_escPanel(s.client_name)} — ${_escPanel(s.role_title)}</option>`;
+      return `<option value="${escapeHtml(s.search_id)}"${sel}>${escapeHtml(s.client_name)} — ${escapeHtml(s.role_title)}</option>`;
     }).join('');
   } catch (e) {
     searchesHTML = '<option value="">Error loading searches</option>';
@@ -915,7 +898,7 @@ async function openAddToPipelineModal(candidateInfo, opts) {
   const preSelectedSearch = _atpSearches.find(s => s.search_id === preSelectedId);
   const initialStageHTML = preSelectedSearch
     ? (preSelectedSearch.pipeline_stages || []).map(s =>
-        `<option value="${_escPanel(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${_escPanel(s.name)}</option>`
+        `<option value="${escapeHtml(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
       ).join('')
     : '<option value="">— Select a search first —</option>';
 
@@ -925,7 +908,7 @@ async function openAddToPipelineModal(candidateInfo, opts) {
   overlay.style.zIndex = '3000';
   overlay.innerHTML = `
     <div class="modal" style="max-width:540px;max-height:90vh;overflow-y:auto;padding:0;border-radius:14px">
-      <div style="background:linear-gradient(135deg,#5C2D91,#7b52a8);padding:18px 24px 14px;border-radius:14px 14px 0 0">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:18px 24px 14px;border-radius:14px 14px 0 0">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <h2 style="margin:0;font-size:1rem;font-weight:800;color:#fff">Add to Pipeline</h2>
           <button onclick="closePipelineModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center">&#10005;</button>
@@ -933,10 +916,10 @@ async function openAddToPipelineModal(candidateInfo, opts) {
       </div>
       <div style="padding:20px 24px">
         <!-- Candidate info (read-only) -->
-        <div style="background:#f9f6fd;border-radius:8px;padding:12px 14px;margin-bottom:16px">
-          <div style="font-weight:700;font-size:14px;color:#1a1a1a">${_escPanel(candidateInfo.name)}</div>
-          <div style="font-size:12px;color:#666;margin-top:2px">${_escPanel(candidateInfo.current_title || '')}${candidateInfo.current_firm ? ' @ ' + _escPanel(candidateInfo.current_firm) : ''}</div>
-          ${candidateInfo.location ? `<div style="font-size:11px;color:#999;margin-top:2px">${_escPanel(candidateInfo.location)}</div>` : ''}
+        <div style="background:#faf6f9;border-radius:8px;padding:12px 14px;margin-bottom:16px">
+          <div style="font-weight:700;font-size:14px;color:#1a1a1a">${escapeHtml(candidateInfo.name)}</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">${escapeHtml(candidateInfo.current_title || '')}${candidateInfo.current_firm ? ' @ ' + escapeHtml(candidateInfo.current_firm) : ''}</div>
+          ${candidateInfo.location ? `<div style="font-size:11px;color:#999;margin-top:2px">${escapeHtml(candidateInfo.location)}</div>` : ''}
         </div>
 
         <div class="form-group">
@@ -986,7 +969,7 @@ function onAtpSearchChange() {
     stageEl.innerHTML = '<option value="Pursuing">Pursuing</option>';
   } else {
     stageEl.innerHTML = stages.map(s =>
-      `<option value="${_escPanel(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${_escPanel(s.name)}</option>`
+      `<option value="${escapeHtml(s.name)}" ${s.name === 'Pursuing' ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
     ).join('');
   }
   stageEl.disabled = false;

@@ -13,6 +13,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { slugify, normCompanyName: normalizeName, extractLinkedInCompanySlug: extractLinkedInSlug } = require('../server/utils/shared');
 
 const candidatePoolPath = path.join(__dirname, '../data/candidate_pool.json');
 const companyPoolPath   = path.join(__dirname, '../data/company_pool.json');
@@ -20,19 +21,6 @@ const companyPoolPath   = path.join(__dirname, '../data/company_pool.json');
 const dryRun = process.argv.includes('--dry-run');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function slugify(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-}
-
-function normalizeName(s) {
-  return (s || '')
-    .replace(/\s*[·•]\s*(Full-time|Part-time|Contract|Freelance|Self-employed|Seasonal|Internship).*$/i, '')
-    .replace(/\s*\(.*?\)\s*/g, '')
-    .replace(/,?\s+(Inc\.?|LLC|LP|L\.P\.|Corp\.?|Ltd\.?|Co\.?|PLC|SA|AG|GmbH|NV|BV)\.?\s*$/i, '')
-    .trim()
-    .toLowerCase();
-}
 
 function isCorruptedName(s) {
   if (!s || s.trim().length < 2) return true;
@@ -76,12 +64,6 @@ console.log(`  Marked ${peEnrichedCount} existing PE firms as enriched`);
 const nameIndex = new Map();
 // Map of LinkedIn company URL slug -> company record
 const urlIndex = new Map();
-
-function extractLinkedInSlug(url) {
-  if (!url) return null;
-  const m = url.match(/linkedin\.com\/company\/([a-zA-Z0-9_-]+)/i);
-  return m ? m[1].toLowerCase() : null;
-}
 
 existingCompanies.forEach(c => {
   const norm = normalizeName(c.name);

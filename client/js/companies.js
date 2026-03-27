@@ -36,18 +36,10 @@ const CP_SECTORS = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function cpEscape(s) {
-  if (!s) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function companyTypePill(type) {
   const map = {
-    'PE Firm':              { bg: '#EDE7F6', color: '#5C2D91' },
+    'PE Firm':              { bg: '#F3E8EF', color: '#6B2D5B' },
     'Private Company':      { bg: '#e3f2fd', color: '#1565c0' },
     'Public Company':       { bg: '#e8f5e9', color: '#2e7d32' },
     'Portfolio Company':    { bg: '#fff3e0', color: '#e65100' },
@@ -59,18 +51,18 @@ function companyTypePill(type) {
     'Nonprofit / Education':{ bg: '#fff8e1', color: '#f57f17' }
   };
   const c = map[type] || { bg: '#f5f5f5', color: '#555' };
-  return `<span style="background:${c.bg};color:${c.color};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap">${cpEscape(type) || 'Unclassified'}</span>`;
+  return `<span style="background:${c.bg};color:${c.color};padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap">${escapeHtml(type) || 'Unclassified'}</span>`;
 }
 
 function sizeTierPillCP(tier) {
   const map = {
     'Mega':               { bg: '#f3e5f5', color: '#6a1b9a' },
-    'Large':              { bg: '#ede7f6', color: '#7b1fa2' },
+    'Large':              { bg: '#F3E8EF', color: '#7b1fa2' },
     'Middle Market':      { bg: '#e8eaf6', color: '#283593' },
     'Lower Middle Market':{ bg: '#e3f2fd', color: '#1565c0' }
   };
   const c = map[tier] || { bg: '#f5f5f5', color: '#888' };
-  return `<span style="background:${c.bg};color:${c.color};padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">${cpEscape(tier) || '—'}</span>`;
+  return `<span style="background:${c.bg};color:${c.color};padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600">${escapeHtml(tier) || '—'}</span>`;
 }
 
 function cpSectorTags(tags) {
@@ -79,13 +71,6 @@ function cpSectorTags(tags) {
   return tags.slice(0, 4).map(t =>
     `<span style="background:#f5f5f5;color:#555;padding:2px 6px;border-radius:4px;font-size:10px;margin-right:3px">${abbrs[t] || t}</span>`
   ).join('') + (tags.length > 4 ? `<span style="color:#aaa;font-size:10px">+${tags.length-4}</span>` : '');
-}
-
-function formatCPDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // ── Filters & Sort ────────────────────────────────────────────────────────────
@@ -195,7 +180,7 @@ async function renderCompanies() {
     cpAllCompanies = data.companies || [];
     renderCompanyView();
   } catch (err) {
-    content.innerHTML = `<div class="error-banner">Failed to load companies: ${cpEscape(err.message)}</div>`;
+    content.innerHTML = `<div class="error-banner">Failed to load companies: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -219,7 +204,7 @@ function renderCompanyView() {
     'Government / Military', 'Nonprofit / Education', 'Other', 'Unclassified'];
   const typePills = typeOrder
     .filter(t => typeCounts[t] > 0)
-    .map(t => `<button class="${pillClass(t)}" data-type="${cpEscape(t)}" onclick="setCpTypeFilter('${cpEscape(t)}')">${cpEscape(t === 'Unclassified' ? 'Unclassified' : t)} (${typeCounts[t].toLocaleString()})</button>`)
+    .map(t => `<button class="${pillClass(t)}" data-type="${escapeHtml(t)}" onclick="setCpTypeFilter('${escapeHtml(t)}')">${escapeHtml(t === 'Unclassified' ? 'Unclassified' : t)} (${typeCounts[t].toLocaleString()})</button>`)
     .join('');
 
   // Collect unique industry sectors for filter dropdown (high-level categories)
@@ -262,7 +247,7 @@ function renderCompanyView() {
       <!-- Hidden type select for onCpFilterChange compatibility -->
       <select id="cp-filter-type" style="display:none" onchange="onCpFilterChange()">
         <option value="all">All</option>
-        ${typeOrder.filter(t => typeCounts[t] > 0).map(t => `<option value="${cpEscape(t)}">${cpEscape(t)}</option>`).join('')}
+        ${typeOrder.filter(t => typeCounts[t] > 0).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
       </select>
 
       <select id="cp-filter-tier" class="pool-filter-select" onchange="onCpFilterChange()">
@@ -277,11 +262,11 @@ function renderCompanyView() {
       ${industries.length > 0 ? `
       <select id="cp-filter-industry" class="pool-filter-select" onchange="onCpFilterChange()">
         <option value="all">All Industries</option>
-        ${industries.map(i => `<option value="${cpEscape(i)}" ${cpFilters.industry===i?'selected':''}>${cpEscape(i)}</option>`).join('')}
+        ${industries.map(i => `<option value="${escapeHtml(i)}" ${cpFilters.industry===i?'selected':''}>${escapeHtml(i)}</option>`).join('')}
       </select>` : ''}
 
       <input id="cp-filter-text" class="pool-filter-text" placeholder="Search companies…"
-             value="${cpEscape(cpFilters.text)}" oninput="onCpFilterChange()">
+             value="${escapeHtml(cpFilters.text)}" oninput="onCpFilterChange()">
     </div>
 
     <div id="cp-table-container">${renderCompanyTable(sorted)}</div>
@@ -339,11 +324,11 @@ function renderCompanyTable(companies) {
 function renderCompanyRow(c, isAll, isPE, isNonPE) {
   const nameCell = `
     <div style="display:flex;align-items:center;gap:6px">
-      <span style="font-weight:600;font-size:13px">${cpEscape(c.name)}</span>
-      ${c.website_url ? `<a href="${cpEscape(c.website_url)}" target="_blank" rel="noopener"
+      <span style="font-weight:600;font-size:13px">${escapeHtml(c.name)}</span>
+      ${c.website_url ? `<a href="${escapeHtml(c.website_url)}" target="_blank" rel="noopener"
           onclick="event.stopPropagation()" title="Open website"
-          style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#5C2D91;border-radius:3px;color:#fff;text-decoration:none;font-size:10px;font-weight:800;flex-shrink:0">W</a>` : ''}
-      ${c.linkedin_company_url ? `<a href="${cpEscape(c.linkedin_company_url)}" target="_blank" rel="noopener"
+          style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#6B2D5B;border-radius:3px;color:#fff;text-decoration:none;font-size:10px;font-weight:800;flex-shrink:0">W</a>` : ''}
+      ${c.linkedin_company_url ? `<a href="${escapeHtml(c.linkedin_company_url)}" target="_blank" rel="noopener"
           onclick="event.stopPropagation()" title="LinkedIn"
           style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#0a66c2;border-radius:3px;color:#fff;text-decoration:none;font-size:9px;font-weight:800;flex-shrink:0">in</a>` : ''}
     </div>
@@ -361,26 +346,26 @@ function renderCompanyRow(c, isAll, isPE, isNonPE) {
   };
 
   return `
-    <tr onclick="openCompanyDetail('${cpEscape(c.company_id)}')" style="cursor:pointer">
+    <tr onclick="openCompanyDetail('${escapeHtml(c.company_id)}')" style="cursor:pointer">
       <td>${nameCell}</td>
-      <td style="color:#666;font-size:12px">${cpEscape(c.hq || '—')}</td>
+      <td style="color:#666;font-size:12px">${escapeHtml(c.hq || '—')}</td>
       <td>${companyTypePill(c.company_type)}</td>
       ${isPE ? `
         <td>${sizeTierPillCP(c.size_tier)}</td>
-        <td style="color:#666;font-size:12px">${cpEscape(c.strategy || '—')}</td>
+        <td style="color:#666;font-size:12px">${escapeHtml(c.strategy || '—')}</td>
         <td>${cpSectorTags(c.sector_focus_tags)}</td>
       ` : ''}
       ${isNonPE ? `
-        <td style="color:#666;font-size:12px" title="${cpEscape(c.industry || '')}">${cpEscape(c.industry_sector || c.industry || '—')}</td>
-        <td style="color:#666;font-size:12px">${cpEscape(c.revenue_tier || '—')}</td>
-        <td style="color:#666;font-size:12px">${cpEscape(c.ownership_type || '—')}</td>
+        <td style="color:#666;font-size:12px" title="${escapeHtml(c.industry || '')}">${escapeHtml(c.industry_sector || c.industry || '—')}</td>
+        <td style="color:#666;font-size:12px">${escapeHtml(c.revenue_tier || '—')}</td>
+        <td style="color:#666;font-size:12px">${escapeHtml(c.ownership_type || '—')}</td>
         <td style="color:#666;font-size:12px">${fmtEmployees(c.employee_count)}</td>
       ` : ''}
       ${isAll ? `
-        <td style="color:#666;font-size:12px">${cpEscape(sizeDisplay)}</td>
-        <td style="color:#666;font-size:12px" title="${cpEscape(c.industry || '')}">${cpEscape(c.industry_sector || c.industry || '—')}</td>
+        <td style="color:#666;font-size:12px">${escapeHtml(sizeDisplay)}</td>
+        <td style="color:#666;font-size:12px" title="${escapeHtml(c.industry || '')}">${escapeHtml(c.industry_sector || c.industry || '—')}</td>
       ` : ''}
-      <td style="color:#888;font-size:12px;max-width:200px">${cpEscape(desc)}</td>
+      <td style="color:#888;font-size:12px;max-width:200px">${escapeHtml(desc)}</td>
     </tr>
   `;
 }
@@ -435,16 +420,16 @@ function renderCompanyFullPage(company, allCandidates) {
 
   function personRow(c, showCurrentRole) {
     const linkedinIcon = c.linkedin_url
-      ? `<a href="${cpEscape(c.linkedin_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;margin-left:6px;color:#0077B5" title="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>`
+      ? `<a href="${escapeHtml(c.linkedin_url)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;margin-left:6px;color:#0077B5" title="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>`
       : '';
     const subtitle = showCurrentRole
-      ? cpEscape(c.current_title || '')
-      : cpEscape((c.current_title || '') + (c.current_firm ? ' @ ' + c.current_firm : ''));
-    const location = cpEscape(c.home_location || c.location || '');
+      ? escapeHtml(c.current_title || '')
+      : escapeHtml((c.current_title || '') + (c.current_firm ? ' @ ' + c.current_firm : ''));
+    const location = escapeHtml(c.home_location || c.location || '');
     return `
       <tr style="border-bottom:1px solid #f0f0f0">
         <td style="padding:10px 12px">
-          <div style="font-weight:600;font-size:13px;color:#5C2D91"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${cpEscape(c.candidate_id)}')">${cpEscape(c.name)}</span>${linkedinIcon}</div>
+          <div style="font-weight:600;font-size:13px;color:#6B2D5B"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(c.candidate_id)}')">${escapeHtml(c.name)}</span>${linkedinIcon}</div>
           <div style="font-size:12px;color:#777;margin-top:2px">${subtitle}</div>
         </td>
         <td style="padding:10px 12px;font-size:13px;color:#666">${location}</td>
@@ -454,7 +439,7 @@ function renderCompanyFullPage(company, allCandidates) {
             return `<span style="background:#f3e8ff;color:#7c3aed;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-right:3px">${s ? s.label.slice(0,4) : t.slice(0,4)}</span>`;
           }).join('')}
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:#888">${cpEscape(c.archetype || '—')}</td>
+        <td style="padding:10px 12px;font-size:12px;color:#888">${escapeHtml(c.archetype || '—')}</td>
       </tr>`;
   }
 
@@ -485,23 +470,23 @@ function renderCompanyFullPage(company, allCandidates) {
 
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:24px">
         <div>
-          <h1 style="font-size:1.6rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${cpEscape(company.name)}</h1>
-          <div style="font-size:14px;color:#555;margin-bottom:8px">${cpEscape(company.hq || '')}</div>
+          <h1 style="font-size:1.6rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${escapeHtml(company.name)}</h1>
+          <div style="font-size:14px;color:#555;margin-bottom:8px">${escapeHtml(company.hq || '')}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             ${companyTypePill(company.company_type)}
             ${isPE && company.size_tier ? sizeTierPillCP(company.size_tier) : ''}
-            ${isPE && company.strategy ? `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${cpEscape(company.strategy)}</span>` : ''}
-            ${company.website_url ? `<a href="${cpEscape(company.website_url)}" target="_blank" rel="noopener" style="font-size:12px;color:#5C2D91;text-decoration:none">Website →</a>` : ''}
-            ${isPE && company.sector_focus_tags && company.sector_focus_tags.length ? `<button onclick="openFirmInPlaybook('${cpEscape(company.company_id)}','${cpEscape(company.sector_focus_tags[0])}')" style="background:#fff;border:1px solid #5C2D91;color:#5C2D91;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer">View in Playbook →</button>` : ''}
+            ${isPE && company.strategy ? `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(company.strategy)}</span>` : ''}
+            ${company.website_url ? `<a href="${escapeHtml(company.website_url)}" target="_blank" rel="noopener" style="font-size:12px;color:#6B2D5B;text-decoration:none">Website →</a>` : ''}
+            ${isPE && company.sector_focus_tags && company.sector_focus_tags.length ? `<button onclick="openFirmInPlaybook('${escapeHtml(company.company_id)}','${escapeHtml(company.sector_focus_tags[0])}')" style="background:#fff;border:1px solid #6B2D5B;color:#6B2D5B;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer">View in Playbook →</button>` : ''}
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${cpEscape(company.company_id)}')">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${escapeHtml(company.company_id)}')">Edit</button>
       </div>
 
       ${company.description ? `
       <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:8px">Description</div>
-        <div style="font-size:13px;color:#444;line-height:1.6">${cpEscape(company.description)}</div>
+        <div style="font-size:13px;color:#444;line-height:1.6">${escapeHtml(company.description)}</div>
       </div>` : ''}
 
       <div style="display:grid;grid-template-columns:${isPE ? '1fr 1fr' : '1fr'};gap:16px;margin-bottom:24px">
@@ -509,22 +494,22 @@ function renderCompanyFullPage(company, allCandidates) {
         <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Firm Details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
-            ${company.entity_type ? `<div><span style="color:#888">Type:</span> ${cpEscape(company.entity_type)}</div>` : ''}
-            ${company.year_founded ? `<div><span style="color:#888">Founded:</span> ${cpEscape(String(company.year_founded))}</div>` : ''}
-            ${company.investment_professionals ? `<div><span style="color:#888">Investment Pros:</span> ${cpEscape(String(company.investment_professionals))}</div>` : ''}
-            ${company.preferred_geography ? `<div><span style="color:#888">Geography:</span> ${cpEscape(company.preferred_geography)}</div>` : ''}
-            ${company.preferred_ebitda_min || company.preferred_ebitda_max ? `<div><span style="color:#888">EBITDA:</span> $${cpEscape(String(company.preferred_ebitda_min||''))}M – $${cpEscape(String(company.preferred_ebitda_max||''))}M</div>` : ''}
-            ${company.active_portfolio_count ? `<div><span style="color:#888">Portfolio Cos:</span> ${cpEscape(String(company.active_portfolio_count))}</div>` : ''}
+            ${company.entity_type ? `<div><span style="color:#888">Type:</span> ${escapeHtml(company.entity_type)}</div>` : ''}
+            ${company.year_founded ? `<div><span style="color:#888">Founded:</span> ${escapeHtml(String(company.year_founded))}</div>` : ''}
+            ${company.investment_professionals ? `<div><span style="color:#888">Investment Pros:</span> ${escapeHtml(String(company.investment_professionals))}</div>` : ''}
+            ${company.preferred_geography ? `<div><span style="color:#888">Geography:</span> ${escapeHtml(company.preferred_geography)}</div>` : ''}
+            ${company.preferred_ebitda_min || company.preferred_ebitda_max ? `<div><span style="color:#888">EBITDA:</span> $${escapeHtml(String(company.preferred_ebitda_min||''))}M – $${escapeHtml(String(company.preferred_ebitda_max||''))}M</div>` : ''}
+            ${company.active_portfolio_count ? `<div><span style="color:#888">Portfolio Cos:</span> ${escapeHtml(String(company.active_portfolio_count))}</div>` : ''}
           </div>
         </div>
         ${(company.last_fund_name || company.last_fund_size || company.last_fund_vintage) ? `
         <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Latest Fund</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
-            ${company.last_fund_name ? `<div><span style="color:#888">Fund:</span> ${cpEscape(company.last_fund_name)}</div>` : ''}
-            ${company.last_fund_size ? `<div><span style="color:#888">Size:</span> $${cpEscape(String(company.last_fund_size))}M</div>` : ''}
-            ${company.last_fund_vintage ? `<div><span style="color:#888">Vintage:</span> ${cpEscape(String(company.last_fund_vintage))}</div>` : ''}
-            ${company.dry_powder ? `<div><span style="color:#888">Dry Powder:</span> $${cpEscape(String(company.dry_powder))}M</div>` : ''}
+            ${company.last_fund_name ? `<div><span style="color:#888">Fund:</span> ${escapeHtml(company.last_fund_name)}</div>` : ''}
+            ${company.last_fund_size ? `<div><span style="color:#888">Size:</span> $${escapeHtml(String(company.last_fund_size))}M</div>` : ''}
+            ${company.last_fund_vintage ? `<div><span style="color:#888">Vintage:</span> ${escapeHtml(String(company.last_fund_vintage))}</div>` : ''}
+            ${company.dry_powder ? `<div><span style="color:#888">Dry Powder:</span> $${escapeHtml(String(company.dry_powder))}M</div>` : ''}
           </div>
         </div>` : `
         <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
@@ -533,7 +518,7 @@ function renderCompanyFullPage(company, allCandidates) {
             ${(company.sector_focus_tags || []).length
               ? company.sector_focus_tags.map(t => {
                   const s = CP_SECTORS.find(s => s.id === t);
-                  return `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
+                  return `<span style="background:#F3E8EF;color:#6B2D5B;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
                 }).join('')
               : '<span style="color:#aaa;font-size:13px">None specified</span>'
             }
@@ -545,13 +530,13 @@ function renderCompanyFullPage(company, allCandidates) {
         <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Company Details</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;font-size:13px">
-            ${company.revenue_tier ? `<div><span style="color:#888">Revenue Tier:</span> ${cpEscape(company.revenue_tier)}</div>` : ''}
-            ${company.ownership_type ? `<div><span style="color:#888">Ownership:</span> ${cpEscape(company.ownership_type)}</div>` : ''}
-            ${company.industry ? `<div><span style="color:#888">Industry:</span> ${cpEscape(company.industry)}</div>` : ''}
-            ${company.year_founded ? `<div><span style="color:#888">Founded:</span> ${cpEscape(String(company.year_founded))}</div>` : ''}
-            ${company.employee_count ? `<div><span style="color:#888">Employees:</span> ${cpEscape(String(company.employee_count))}</div>` : ''}
-            ${company.parent_company ? `<div><span style="color:#888">Parent Co:</span> ${cpEscape(company.parent_company)}</div>` : ''}
-            ${isPub && company.ticker ? `<div><span style="color:#888">Ticker:</span> <strong style="color:#1565c0">${cpEscape(company.ticker)}</strong></div>` : ''}
+            ${company.revenue_tier ? `<div><span style="color:#888">Revenue Tier:</span> ${escapeHtml(company.revenue_tier)}</div>` : ''}
+            ${company.ownership_type ? `<div><span style="color:#888">Ownership:</span> ${escapeHtml(company.ownership_type)}</div>` : ''}
+            ${company.industry ? `<div><span style="color:#888">Industry:</span> ${escapeHtml(company.industry)}</div>` : ''}
+            ${company.year_founded ? `<div><span style="color:#888">Founded:</span> ${escapeHtml(String(company.year_founded))}</div>` : ''}
+            ${company.employee_count ? `<div><span style="color:#888">Employees:</span> ${escapeHtml(String(company.employee_count))}</div>` : ''}
+            ${company.parent_company ? `<div><span style="color:#888">Parent Co:</span> ${escapeHtml(company.parent_company)}</div>` : ''}
+            ${isPub && company.ticker ? `<div><span style="color:#888">Ticker:</span> <strong style="color:#1565c0">${escapeHtml(company.ticker)}</strong></div>` : ''}
           </div>
         </div>` : ''}
       </div>
@@ -562,7 +547,7 @@ function renderCompanyFullPage(company, allCandidates) {
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${company.sector_focus_tags.map(t => {
             const s = CP_SECTORS.find(s => s.id === t);
-            return `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
+            return `<span style="background:#F3E8EF;color:#6B2D5B;padding:4px 12px;border-radius:10px;font-size:12px;font-weight:600">${s ? s.label : t}</span>`;
           }).join('')}
         </div>
       </div>` : ''}
@@ -572,11 +557,11 @@ function renderCompanyFullPage(company, allCandidates) {
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:8px">Also Known As</div>
         <div id="company-aliases-container">
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center" id="company-alias-tags">
-            ${(company.aliases || []).map((a, i) => `<span style="background:#EDE7F6;color:#5C2D91;padding:4px 10px;border-radius:10px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px">${cpEscape(a)}<button onclick="removeCompanyAlias('${cpEscape(company.company_id)}',${i})" style="background:none;border:none;cursor:pointer;color:#5C2D91;font-size:12px;padding:0;line-height:1">&#10005;</button></span>`).join('')}
+            ${(company.aliases || []).map((a, i) => `<span style="background:#F3E8EF;color:#6B2D5B;padding:4px 10px;border-radius:10px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px">${escapeHtml(a)}<button onclick="removeCompanyAlias('${escapeHtml(company.company_id)}',${i})" style="background:none;border:none;cursor:pointer;color:#6B2D5B;font-size:12px;padding:0;line-height:1">&#10005;</button></span>`).join('')}
             <div style="display:inline-flex;gap:4px;align-items:center">
               <input type="text" id="new-alias-input" placeholder="Add alias..." style="padding:4px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;width:140px"
-                onkeydown="if(event.key==='Enter'){event.preventDefault();addCompanyAlias('${cpEscape(company.company_id)}');}">
-              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="addCompanyAlias('${cpEscape(company.company_id)}')">Add</button>
+                onkeydown="if(event.key==='Enter'){event.preventDefault();addCompanyAlias('${escapeHtml(company.company_id)}');}">
+              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="addCompanyAlias('${escapeHtml(company.company_id)}')">Add</button>
             </div>
           </div>
         </div>
@@ -602,12 +587,12 @@ function renderCompanyFullPage(company, allCandidates) {
       <div style="background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:16px 20px;margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#999;letter-spacing:0.8px;margin-bottom:10px">Notes</div>
         <textarea style="width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box"
-          onblur="saveCompanyField('${cpEscape(company.company_id)}', 'notes', this.value)">${cpEscape(company.notes || '')}</textarea>
+          onblur="saveCompanyField('${escapeHtml(company.company_id)}', 'notes', this.value)">${escapeHtml(company.notes || '')}</textarea>
       </div>
 
       <div style="font-size:11px;color:#aaa;margin-bottom:40px">
-        Added ${formatCPDate(company.date_added)}
-        ${company.source ? ' &bull; Source: ' + cpEscape(company.source) : ''}
+        Added ${formatDate(company.date_added)}
+        ${company.source ? ' &bull; Source: ' + escapeHtml(company.source) : ''}
       </div>
     </div>`;
 }
@@ -676,15 +661,15 @@ function _renderCompanyForm(company) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group">
             <label class="form-label">Name *</label>
-            <input id="cf-name" class="form-control" value="${cpEscape(c.name||'')}">
+            <input id="cf-name" class="form-control" value="${escapeHtml(c.name||'')}">
           </div>
           <div class="form-group">
             <label class="form-label">HQ</label>
-            <input id="cf-hq" class="form-control" value="${cpEscape(c.hq||'')}">
+            <input id="cf-hq" class="form-control" value="${escapeHtml(c.hq||'')}">
           </div>
           <div class="form-group">
             <label class="form-label">Website URL</label>
-            <input id="cf-website" class="form-control" value="${cpEscape(c.website_url||'')}">
+            <input id="cf-website" class="form-control" value="${escapeHtml(c.website_url||'')}">
           </div>
           <div class="form-group">
             <label class="form-label">Year Founded</label>
@@ -694,7 +679,7 @@ function _renderCompanyForm(company) {
 
         <div class="form-group">
           <label class="form-label">Description</label>
-          <textarea id="cf-description" class="form-control" rows="2">${cpEscape(c.description||'')}</textarea>
+          <textarea id="cf-description" class="form-control" rows="2">${escapeHtml(c.description||'')}</textarea>
         </div>
 
         <!-- PE Firm fields -->
@@ -716,11 +701,11 @@ function _renderCompanyForm(company) {
             </div>
             <div class="form-group">
               <label class="form-label">Entity Type</label>
-              <input id="cf-entity" class="form-control" value="${cpEscape(c.entity_type||'')}">
+              <input id="cf-entity" class="form-control" value="${escapeHtml(c.entity_type||'')}">
             </div>
             <div class="form-group">
               <label class="form-label">Preferred Geography</label>
-              <input id="cf-geo" class="form-control" value="${cpEscape(c.preferred_geography||'')}">
+              <input id="cf-geo" class="form-control" value="${escapeHtml(c.preferred_geography||'')}">
             </div>
           </div>
           <div class="form-group">
@@ -750,24 +735,24 @@ function _renderCompanyForm(company) {
             </div>
             <div class="form-group">
               <label class="form-label">Industry</label>
-              <input id="cf-industry" class="form-control" value="${cpEscape(c.industry||'')}">
+              <input id="cf-industry" class="form-control" value="${escapeHtml(c.industry||'')}">
             </div>
             <div class="form-group" id="cf-ticker-group" style="display:none">
               <label class="form-label">Ticker Symbol</label>
-              <input id="cf-ticker" class="form-control" value="${cpEscape(c.ticker||'')}">
+              <input id="cf-ticker" class="form-control" value="${escapeHtml(c.ticker||'')}">
             </div>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Notes</label>
-          <textarea id="cf-notes" class="form-control" rows="2">${cpEscape(c.notes||'')}</textarea>
+          <textarea id="cf-notes" class="form-control" rows="2">${escapeHtml(c.notes||'')}</textarea>
         </div>
 
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
           <button class="btn btn-ghost" onclick="document.getElementById('cp-form-overlay').remove()">Cancel</button>
-          ${isEdit ? `<button class="btn btn-danger btn-sm" onclick="_deleteCompany('${cpEscape(c.company_id)}')">Delete</button>` : ''}
-          <button class="btn btn-primary" onclick="_submitCompanyForm('${cpEscape(c.company_id || '')}')">
+          ${isEdit ? `<button class="btn btn-danger btn-sm" onclick="_deleteCompany('${escapeHtml(c.company_id)}')">Delete</button>` : ''}
+          <button class="btn btn-primary" onclick="_submitCompanyForm('${escapeHtml(c.company_id || '')}')">
             ${isEdit ? 'Save Changes' : 'Add Company'}
           </button>
         </div>

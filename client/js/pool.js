@@ -83,22 +83,6 @@ function sectorAbbr(sectorId) {
   return map[sectorId] || sectorId;
 }
 
-function formatPoolDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function poolEscape(s) {
-  if (!s) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 // ── renderPool — main entry point ─────────────────────────────────────────────
 
 async function renderPool() {
@@ -110,7 +94,7 @@ async function renderPool() {
     poolAllCandidates = data.candidates || [];
     renderPoolView();
   } catch (err) {
-    content.innerHTML = `<div class="error-banner">Failed to load pool: ${poolEscape(err.message)}</div>`;
+    content.innerHTML = `<div class="error-banner">Failed to load pool: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -136,7 +120,7 @@ function renderPoolView() {
       <div class="pool-filter-bar">
         <select id="pf-sector" onchange="onPoolFilterChange()">
           <option value="all">All Sectors</option>
-          ${POOL_SECTORS.map(s => `<option value="${s.id}" ${poolFilters.sector === s.id ? 'selected' : ''}>${poolEscape(s.label)}</option>`).join('')}
+          ${POOL_SECTORS.map(s => `<option value="${s.id}" ${poolFilters.sector === s.id ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('')}
         </select>
         <select id="pf-archetype" onchange="onPoolFilterChange()">
           <option value="all">All Archetypes</option>
@@ -180,7 +164,7 @@ function renderPoolView() {
           <option value="1" ${poolFilters.rating === '1' ? 'selected' : ''}>★</option>
           <option value="0" ${poolFilters.rating === '0' ? 'selected' : ''}>Unrated</option>
         </select>
-        <input type="text" id="pf-text" placeholder="Search name, title, firm..." value="${poolEscape(poolFilters.text)}" oninput="onPoolFilterChange()" style="min-width:180px">
+        <input type="text" id="pf-text" placeholder="Search name, title, firm..." value="${escapeHtml(poolFilters.text)}" oninput="onPoolFilterChange()" style="min-width:180px">
       </div>
 
       <!-- Table or empty state -->
@@ -216,25 +200,25 @@ function renderPoolTable(candidates) {
     const searchCount = (c.search_history || []).length;
 
     return `
-      <tr onclick="openCandidateDetail('${poolEscape(c.candidate_id)}')">
+      <tr onclick="openCandidateDetail('${escapeHtml(c.candidate_id)}')">
         <td>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span class="candidate-name-link">${poolEscape(c.name)}</span>
-            ${c.linkedin_url ? `<a href="${poolEscape(c.linkedin_url)}" target="_blank" rel="noopener"
+            <span class="candidate-name-link">${escapeHtml(c.name)}</span>
+            ${c.linkedin_url ? `<a href="${escapeHtml(c.linkedin_url)}" target="_blank" rel="noopener"
                 onclick="event.stopPropagation()"
                 title="Open LinkedIn profile"
                 style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:#0A66C2;border-radius:4px;color:#fff;text-decoration:none;font-size:11px;font-weight:800;flex-shrink:0;">in</a>` : ''}
           </div>
-          <div style="font-size:11px;color:#888;margin-top:2px">${poolEscape(c.current_title || '')}${c.current_firm ? ' @ ' + poolEscape(c.current_firm) : ''}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(c.current_title || '')}${c.current_firm ? ' @ ' + escapeHtml(c.current_firm) : ''}</div>
         </td>
-        <td style="color:#666;font-size:12px">${poolEscape(c.home_location || '—')}</td>
+        <td style="color:#666;font-size:12px">${escapeHtml(c.home_location || '—')}</td>
         <td>${sectorPills || '<span style="color:#ccc">—</span>'}</td>
         <td>${archetypePill(c.archetype)}</td>
-        <td style="font-size:12px;color:#555">${Array.isArray(c.operator_background) ? (c.operator_background.length ? poolEscape(c.operator_background.join(', ')) : '—') : poolEscape(c.operator_background || '—')}</td>
-        <td style="font-size:12px;color:#555">${poolEscape(sizeTier)}</td>
+        <td style="font-size:12px;color:#555">${Array.isArray(c.operator_background) ? (c.operator_background.length ? escapeHtml(c.operator_background.join(', ')) : '—') : escapeHtml(c.operator_background || '—')}</td>
+        <td style="font-size:12px;color:#555">${escapeHtml(sizeTier)}</td>
         <td>${ratingStars(c.quality_rating)}</td>
         <td>${availabilityPill(c.availability)}</td>
-        <td style="font-size:12px;color:#888">${formatPoolDate(c.last_contact_date)}</td>
+        <td style="font-size:12px;color:#888">${formatDate(c.last_contact_date)}</td>
         <td style="text-align:center;font-size:12px;color:#888">${searchCount}</td>
       </tr>
     `;
@@ -365,15 +349,15 @@ function renderCandidateDetailPanel(candidate) {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeCandidateDetail(); });
 
   const sectorPills = (candidate.sector_tags || []).map(sid =>
-    `<span class="sector-tag-pill">${poolEscape(sectorAbbr(sid))}</span>`
+    `<span class="sector-tag-pill">${escapeHtml(sectorAbbr(sid))}</span>`
   ).join(' ');
 
   const searchHistoryRows = [...(candidate.search_history || [])].reverse().map(h => `
     <tr>
-      <td>${poolEscape(h.client_name || h.search_id)}</td>
-      <td>${poolEscape(h.stage_reached || '—')}</td>
-      <td>${poolEscape(h.outcome || '—')}</td>
-      <td style="color:#888">${poolEscape(h.notes || '')}</td>
+      <td>${escapeHtml(h.client_name || h.search_id)}</td>
+      <td>${escapeHtml(h.stage_reached || '—')}</td>
+      <td>${escapeHtml(h.outcome || '—')}</td>
+      <td style="color:#888">${escapeHtml(h.notes || '')}</td>
     </tr>
   `).join('');
 
@@ -388,8 +372,8 @@ function renderCandidateDetailPanel(candidate) {
           <tbody>
             ${(candidate.dq_reasons).map(d => `
               <tr>
-                <td>${poolEscape(d.search_id)}</td>
-                <td>${poolEscape(d.reason)}</td>
+                <td>${escapeHtml(d.search_id)}</td>
+                <td>${escapeHtml(d.reason)}</td>
                 <td>${d.permanent ? 'Yes' : 'No'}</td>
               </tr>
             `).join('')}
@@ -400,11 +384,11 @@ function renderCandidateDetailPanel(candidate) {
   ` : '';
 
   const linkedinLink = candidate.linkedin_url
-    ? `<a href="${poolEscape(candidate.linkedin_url)}" target="_blank" style="font-size:12px;color:#1565c0;text-decoration:none">&#128279; LinkedIn</a>`
+    ? `<a href="${escapeHtml(candidate.linkedin_url)}" target="_blank" style="font-size:12px;color:#1565c0;text-decoration:none">&#128279; LinkedIn</a>`
     : '';
 
   const photoHtml = candidate.photo_url
-    ? `<img src="${poolEscape(candidate.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0">`
+    ? `<img src="${escapeHtml(candidate.photo_url)}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e0e0e0">`
     : `<div style="width:52px;height:52px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:700;color:#888">${(candidate.name || '?')[0].toUpperCase()}</div>`;
 
   overlay.innerHTML = `
@@ -413,12 +397,12 @@ function renderCandidateDetailPanel(candidate) {
       <div class="detail-panel-header">
         ${photoHtml}
         <div style="flex:1;min-width:0;margin-left:12px">
-          <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${poolEscape(candidate.name)}</h2>
-          <div style="font-size:13px;color:#555">${poolEscape(candidate.current_title || '')}${candidate.current_firm ? ' <span style="color:#aaa">@</span> ' + poolEscape(candidate.current_firm) : ''}</div>
+          <h2 style="font-size:1.3rem;font-weight:800;margin:0 0 4px;color:#1a1a1a">${escapeHtml(candidate.name)}</h2>
+          <div style="font-size:13px;color:#555">${escapeHtml(candidate.current_title || '')}${candidate.current_firm ? ' <span style="color:#aaa">@</span> ' + escapeHtml(candidate.current_firm) : ''}</div>
           ${linkedinLink ? '<div style="margin-top:4px">' + linkedinLink + '</div>' : ''}
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;margin-left:12px">
-          <button class="btn btn-ghost btn-sm" onclick="openEditCandidateForm('${poolEscape(candidate.candidate_id)}')">&#9998; Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditCandidateForm('${escapeHtml(candidate.candidate_id)}')">&#9998; Edit</button>
           <button class="detail-panel-close" onclick="closeCandidateDetail()">&#10005;</button>
         </div>
       </div>
@@ -426,7 +410,7 @@ function renderCandidateDetailPanel(candidate) {
       <!-- Location -->
       <div class="detail-section">
         <div class="detail-label">Location</div>
-        <div class="detail-value">${poolEscape(candidate.home_location || '—')}</div>
+        <div class="detail-value">${escapeHtml(candidate.home_location || '—')}</div>
       </div>
 
       <!-- Tags row -->
@@ -438,7 +422,7 @@ function renderCandidateDetailPanel(candidate) {
           ${(() => {
             const bg = candidate.operator_background;
             const list = Array.isArray(bg) ? bg : (bg ? [bg] : []);
-            return list.map(b => `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${poolEscape(b)}</span>`).join('');
+            return list.map(b => `<span style="background:#f5f5f5;color:#555;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(b)}</span>`).join('');
           })()}
           ${candidate.owned_pl ? `<span style="background:#e8f5e9;color:#2e7d32;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">P&amp;L Owner</span>` : ''}
         </div>
@@ -449,7 +433,7 @@ function renderCandidateDetailPanel(candidate) {
         <div class="detail-label">Availability</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
           ${availabilityPill(candidate.availability)}
-          <select id="detail-avail-select" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" onchange="saveDetailField('${poolEscape(candidate.candidate_id)}', 'availability', this.value)">
+          <select id="detail-avail-select" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" onchange="saveDetailField('${escapeHtml(candidate.candidate_id)}', 'availability', this.value)">
             <option value="Open" ${candidate.availability === 'Open' ? 'selected' : ''}>Open</option>
             <option value="Passive" ${candidate.availability === 'Passive' ? 'selected' : ''}>Passive</option>
             <option value="Unknown" ${candidate.availability === 'Unknown' ? 'selected' : ''}>Unknown</option>
@@ -464,7 +448,7 @@ function renderCandidateDetailPanel(candidate) {
         <div class="detail-label">Rating</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
           ${ratingStars(candidate.quality_rating)}
-          <select id="detail-rating-select" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" onchange="saveDetailField('${poolEscape(candidate.candidate_id)}', 'quality_rating', this.value ? parseInt(this.value) : null)">
+          <select id="detail-rating-select" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" onchange="saveDetailField('${escapeHtml(candidate.candidate_id)}', 'quality_rating', this.value ? parseInt(this.value) : null)">
             <option value="" ${!candidate.quality_rating ? 'selected' : ''}>— Unrated</option>
             <option value="1" ${candidate.quality_rating === 1 ? 'selected' : ''}>★ (1)</option>
             <option value="2" ${candidate.quality_rating === 2 ? 'selected' : ''}>★★ (2)</option>
@@ -477,14 +461,14 @@ function renderCandidateDetailPanel(candidate) {
       ${(candidate.firm_size_tier || candidate.company_revenue_tier) ? `
       <div class="detail-section">
         <div class="detail-label">Size / Revenue Tier</div>
-        <div class="detail-value">${poolEscape([candidate.firm_size_tier, candidate.company_revenue_tier].filter(Boolean).join(' / '))}</div>
+        <div class="detail-value">${escapeHtml([candidate.firm_size_tier, candidate.company_revenue_tier].filter(Boolean).join(' / '))}</div>
       </div>
       ` : ''}
 
       <!-- Notes inline edit -->
       <div class="detail-section">
         <div class="detail-label">Notes</div>
-        <textarea id="detail-notes-ta" style="width:100%;min-height:70px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box" onblur="saveDetailField('${poolEscape(candidate.candidate_id)}', 'notes', this.value)">${poolEscape(candidate.notes || '')}</textarea>
+        <textarea id="detail-notes-ta" style="width:100%;min-height:70px;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;resize:vertical;box-sizing:border-box" onblur="saveDetailField('${escapeHtml(candidate.candidate_id)}', 'notes', this.value)">${escapeHtml(candidate.notes || '')}</textarea>
       </div>
 
       <!-- Work History -->
@@ -496,16 +480,16 @@ function renderCandidateDetailPanel(candidate) {
           ${candidate.work_history.map((j, idx) => {
             const isPrimary = candidate.primary_experience_index === idx;
             return `<div
-              onclick="setPrimaryExperience('${poolEscape(candidate.candidate_id)}', ${idx})"
-              style="border-left:3px solid ${isPrimary ? '#5C2D91' : '#e0d4f5'};padding:6px 10px;background:${isPrimary ? '#f3ebff' : '#faf8ff'};border-radius:0 6px 6px 0;cursor:pointer;transition:background 0.15s"
-              onmouseover="this.style.background='${isPrimary ? '#ecdeff' : '#f0ebff'}'"
-              onmouseout="this.style.background='${isPrimary ? '#f3ebff' : '#faf8ff'}'">
+              onclick="setPrimaryExperience('${escapeHtml(candidate.candidate_id)}', ${idx})"
+              style="border-left:3px solid ${isPrimary ? '#6B2D5B' : '#e0d4f5'};padding:6px 10px;background:${isPrimary ? '#f5ebf2' : '#faf8ff'};border-radius:0 6px 6px 0;cursor:pointer;transition:background 0.15s"
+              onmouseover="this.style.background='${isPrimary ? '#f0dfe9' : '#f0ebff'}'"
+              onmouseout="this.style.background='${isPrimary ? '#f5ebf2' : '#faf8ff'}'">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <div style="font-weight:600;font-size:13px;color:#1a1a1a">${poolEscape(j.title||'')}</div>
-                ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#5C2D91;background:#e8d5ff;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
+                <div style="font-weight:600;font-size:13px;color:#1a1a1a">${escapeHtml(j.title||'')}</div>
+                ${isPrimary ? `<span style="font-size:10px;font-weight:700;color:#6B2D5B;background:#ebd5e6;padding:2px 7px;border-radius:8px;flex-shrink:0">PRIMARY</span>` : ''}
               </div>
-              <div style="font-size:12px;color:#555;margin-top:1px">${poolEscape(j.company||'')}</div>
-              ${(j.dates||j.dateRange) ? `<div style="font-size:11px;color:#999;margin-top:2px">${poolEscape(j.dates||j.dateRange)}</div>` : ''}
+              <div style="font-size:12px;color:#555;margin-top:1px">${escapeHtml(j.company||'')}</div>
+              ${(j.dates||j.dateRange) ? `<div style="font-size:11px;color:#999;margin-top:2px">${escapeHtml(j.dates||j.dateRange)}</div>` : ''}
             </div>`;
           }).join('')}
         </div>
@@ -528,8 +512,8 @@ function renderCandidateDetailPanel(candidate) {
       <!-- Meta -->
       <div class="detail-section">
         <div style="font-size:11px;color:#aaa">
-          Added ${formatPoolDate(candidate.date_added)}
-          ${candidate.added_from_search ? ' &bull; From search: ' + poolEscape(candidate.added_from_search) : ''}
+          Added ${formatDate(candidate.date_added)}
+          ${candidate.added_from_search ? ' &bull; From search: ' + escapeHtml(candidate.added_from_search) : ''}
         </div>
       </div>
     </div>
@@ -622,7 +606,7 @@ async function openEditCandidateForm(candidateId) {
   const sectorCheckboxes = POOL_SECTORS.map(s => `
     <label style="display:inline-flex;align-items:center;gap:5px;margin:4px 8px 4px 0;font-size:13px;cursor:pointer">
       <input type="checkbox" name="edit-sector" value="${s.id}" ${(candidate.sector_tags || []).includes(s.id) ? 'checked' : ''}>
-      ${poolEscape(s.label)}
+      ${escapeHtml(s.label)}
     </label>
   `).join('');
 
@@ -633,7 +617,7 @@ async function openEditCandidateForm(candidateId) {
   const opBgCheckboxes = OP_BG_OPTIONS.map(opt => `
     <label style="display:inline-flex;align-items:center;gap:5px;margin:4px 12px 4px 0;font-size:13px;cursor:pointer">
       <input type="checkbox" name="edit-op-bg" value="${opt}" ${opBgSelected.includes(opt) ? 'checked' : ''}>
-      ${poolEscape(opt)}
+      ${escapeHtml(opt)}
     </label>
   `).join('');
 
@@ -646,26 +630,26 @@ async function openEditCandidateForm(candidateId) {
 
       <div class="form-group">
         <label class="form-label">Name</label>
-        <input class="form-control" id="ec-name" value="${poolEscape(candidate.name || '')}">
+        <input class="form-control" id="ec-name" value="${escapeHtml(candidate.name || '')}">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Current Title</label>
-          <input class="form-control" id="ec-title" value="${poolEscape(candidate.current_title || '')}">
+          <input class="form-control" id="ec-title" value="${escapeHtml(candidate.current_title || '')}">
         </div>
         <div class="form-group">
           <label class="form-label">Current Firm</label>
-          <input class="form-control" id="ec-firm" value="${poolEscape(candidate.current_firm || '')}">
+          <input class="form-control" id="ec-firm" value="${escapeHtml(candidate.current_firm || '')}">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label class="form-label">Home Location (City, State)</label>
-          <input class="form-control" id="ec-location" value="${poolEscape(candidate.home_location || '')}">
+          <input class="form-control" id="ec-location" value="${escapeHtml(candidate.home_location || '')}">
         </div>
         <div class="form-group">
           <label class="form-label">LinkedIn URL</label>
-          <input class="form-control" id="ec-linkedin" value="${poolEscape(candidate.linkedin_url || '')}">
+          <input class="form-control" id="ec-linkedin" value="${escapeHtml(candidate.linkedin_url || '')}">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -679,7 +663,7 @@ async function openEditCandidateForm(candidateId) {
         </div>
         <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end">
           <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;padding:10px 0 2px">
-            <input type="checkbox" id="ec-owned-pl" ${candidate.owned_pl ? 'checked' : ''} style="width:15px;height:15px;accent-color:#5C2D91">
+            <input type="checkbox" id="ec-owned-pl" ${candidate.owned_pl ? 'checked' : ''} style="width:15px;height:15px;accent-color:#6B2D5B">
             <span class="form-label" style="margin:0;text-transform:none;font-size:13px;font-weight:600;letter-spacing:0">Has Owned a P&amp;L</span>
           </label>
         </div>
@@ -720,11 +704,11 @@ async function openEditCandidateForm(candidateId) {
       </div>
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <textarea class="form-control" id="ec-notes" rows="3">${poolEscape(candidate.notes || '')}</textarea>
+        <textarea class="form-control" id="ec-notes" rows="3">${escapeHtml(candidate.notes || '')}</textarea>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
         <button class="btn btn-ghost" onclick="closeEditCandidateForm()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveEditCandidate('${poolEscape(candidate.candidate_id)}')">Save Changes</button>
+        <button class="btn btn-primary" onclick="saveEditCandidate('${escapeHtml(candidate.candidate_id)}')">Save Changes</button>
       </div>
     </div>
   `;
@@ -796,7 +780,7 @@ async function openRunDebriefPicker() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px';
 
   const options = closedSearches.map(s =>
-    `<option value="${poolEscape(s.search_id)}">${poolEscape(s.client_name)} — ${poolEscape(s.role_title || s.search_id)}</option>`
+    `<option value="${escapeHtml(s.search_id)}">${escapeHtml(s.client_name)} — ${escapeHtml(s.role_title || s.search_id)}</option>`
   ).join('');
 
   overlay.innerHTML = `
@@ -865,7 +849,7 @@ async function openDebriefFlow(search) {
   if (toDebrief.length === 0) {
     overlay.innerHTML = `
       <div style="background:white;border-radius:10px;padding:28px;width:min(480px,95vw);box-shadow:0 8px 40px rgba(0,0,0,0.2)">
-        <h3 style="margin:0 0 12px;font-size:1.1rem;font-weight:700">Debrief: ${poolEscape(search.client_name)} — ${poolEscape(search.role_title || '')}</h3>
+        <h3 style="margin:0 0 12px;font-size:1.1rem;font-weight:700">Debrief: ${escapeHtml(search.client_name)} — ${escapeHtml(search.role_title || '')}</h3>
         <p style="color:#2e7d32;font-size:14px">&#10003; All candidates are already in the pool — nothing to debrief.</p>
         <div style="display:flex;justify-content:flex-end;margin-top:20px">
           <button class="btn btn-primary" onclick="document.getElementById('debrief-modal-overlay').remove()">Done</button>
@@ -885,10 +869,10 @@ async function openDebriefFlow(search) {
       <div class="debrief-candidate-row" id="debrief-row-${i}">
         <input type="checkbox" id="debrief-check-${i}" checked>
         <div>
-          <div class="debrief-name">${poolEscape(p.name)}</div>
-          <div class="debrief-sub">${poolEscape(p.current_title || '')}${p.current_firm ? ' @ ' + poolEscape(p.current_firm) : ''}</div>
-          <span style="background:#f5f5f5;color:${stageColor};border-radius:8px;padding:2px 8px;font-size:10px;font-weight:600">${poolEscape(p.stage)}</span>
-          <input type="hidden" id="debrief-cid-${i}" value="${poolEscape(p.candidate_id)}">
+          <div class="debrief-name">${escapeHtml(p.name)}</div>
+          <div class="debrief-sub">${escapeHtml(p.current_title || '')}${p.current_firm ? ' @ ' + escapeHtml(p.current_firm) : ''}</div>
+          <span style="background:#f5f5f5;color:${stageColor};border-radius:8px;padding:2px 8px;font-size:10px;font-weight:600">${escapeHtml(p.stage)}</span>
+          <input type="hidden" id="debrief-cid-${i}" value="${escapeHtml(p.candidate_id)}">
         </div>
         <select id="debrief-rating-${i}" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px">
           <option value="">— Rating</option>
@@ -911,7 +895,7 @@ async function openDebriefFlow(search) {
   overlay.innerHTML = `
     <div style="background:white;border-radius:10px;padding:28px;width:min(800px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.2)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <h3 style="margin:0;font-size:1.1rem;font-weight:700">Debrief: ${poolEscape(search.client_name)} — ${poolEscape(search.role_title || '')}</h3>
+        <h3 style="margin:0;font-size:1.1rem;font-weight:700">Debrief: ${escapeHtml(search.client_name)} — ${escapeHtml(search.role_title || '')}</h3>
         <button onclick="document.getElementById('debrief-modal-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666">&#10005;</button>
       </div>
       <p style="font-size:13px;color:#666;margin-bottom:16px">${toDebrief.length} candidate${toDebrief.length !== 1 ? 's' : ''} to debrief. Check those to add/update in pool, set ratings and availability.</p>
@@ -924,7 +908,7 @@ async function openDebriefFlow(search) {
 
       <div style="display:flex;justify-content:flex-end;gap:10px">
         <button class="btn btn-ghost" onclick="document.getElementById('debrief-modal-overlay').remove()">Cancel</button>
-        <button class="btn btn-primary" id="debrief-submit-btn" onclick="submitDebrief('${poolEscape(search.search_id)}', ${toDebrief.length})">
+        <button class="btn btn-primary" id="debrief-submit-btn" onclick="submitDebrief('${escapeHtml(search.search_id)}', ${toDebrief.length})">
           Add Selected to Pool
         </button>
         <button class="btn btn-ghost" id="debrief-done-btn" style="display:none" onclick="finishDebrief()">Done</button>

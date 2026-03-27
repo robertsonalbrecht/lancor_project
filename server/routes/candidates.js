@@ -4,6 +4,23 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const router = express.Router();
+const { slugify: slugifyShared, normCompanyName, extractLinkedInCompanySlug, readJsonFile, writeJsonFile, jsonFilePath } = require('../utils/shared');
+
+// ── Prefill helpers (used by the /prefill endpoint) ──────────────────────────
+
+const INVALID_NAMES = /^\d+\s*notification|^messaging$|^home$|^my network$|^jobs$/i;
+const normName = s => (s || '').toLowerCase().trim();
+const extractLinkedInSlug = s => {
+  if (!s) return '';
+  const m = s.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
+  return m ? m[1].toLowerCase() : '';
+};
+const normUrl  = s => (s || '').replace(/\?.*$/, '').replace(/\/$/, '').toLowerCase();
+const normFirm = s => (s || '').replace(/\s*[·•]\s*(full[- ]time|part[- ]time|contract|freelance|self[- ]employed).*$/i, '').toLowerCase().trim();
+const cleanFirm = s => (s || '').replace(/\s*[·•]\s*(Full[- ]time|Part[- ]time|Contract|Freelance|Self[- ]employed|Seasonal|Internship).*$/i, '').trim();
+const isCorruptedFirm = s => /^\d+\s*(yrs?|mos?|years?|months?)/i.test((s || '').trim());
+
+// ── Company pool helpers ─────────────────────────────────────────────────────
 
 function companyPoolFile() {
   return path.join(process.env.DATA_PATH, 'company_pool.json');
@@ -13,19 +30,6 @@ function readCompanyPool() {
   try {
     return JSON.parse(fs.readFileSync(companyPoolFile(), 'utf8'));
   } catch { return { companies: [] }; }
-}
-
-const normCompanyName = s => (s || '').replace(/\s*[·•]\s*(Full-time|Part-time|Contract|Freelance|Self-employed|Seasonal|Internship).*$/i, '')
-  .replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
-
-function extractLinkedInCompanySlug(url) {
-  if (!url) return null;
-  const m = url.match(/linkedin\.com\/company\/([a-zA-Z0-9_-]+)/i);
-  return m ? m[1].toLowerCase() : null;
-}
-
-function slugifyCompany(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 }
 
 // Fuzzy-match a firm name against the company pool
@@ -64,7 +68,7 @@ function findCompanyInPool(firmName, linkedinUrl, poolData) {
 function createCompanyStub(name, linkedinUrl, source) {
   const today = new Date().toISOString().slice(0, 10);
   return {
-    company_id:               slugifyCompany(name),
+    company_id:               slugifyShared(name),
     company_type:             null,
     name:                     name,
     aliases:                  [],
@@ -161,6 +165,79 @@ function enrichFromCompanyPool(candidate) {
   // Set sector_tags from company sectors
   if ((!candidate.sector_tags || candidate.sector_tags.length === 0) && company.sectors && company.sectors.length > 0) {
     candidate.sector_tags = [...company.sectors];
+  }
+}
+
+// Auto-add PE firms from work history to sector playbooks
+function autoAddPEFirmsToPlaybooks(workHistory) {
+  if (!Array.isArray(workHistory) || workHistory.length === 0) return;
+
+  const companyPool = readCompanyPool();
+  const peCompanies = [];
+
+  // Collect PE firms from work history
+  for (const entry of workHistory) {
+    if (!entry.company_id) continue;
+    const company = (companyPool.companies || []).find(c => c.company_id === entry.company_id);
+    if (!company || company.company_type !== 'PE Firm') continue;
+    if (!company.sector_focus_tags || company.sector_focus_tags.length === 0) continue;
+    peCompanies.push(company);
+  }
+
+  if (peCompanies.length === 0) return;
+
+  // Load playbooks
+  const playbooksPath = path.join(process.env.DATA_PATH, 'sector_playbooks.json');
+  let playbooks;
+  try { playbooks = JSON.parse(fs.readFileSync(playbooksPath, 'utf8')); } catch { return; }
+
+  let added = 0;
+  for (const company of peCompanies) {
+    for (const sectorId of company.sector_focus_tags) {
+      const sector = (playbooks.sectors || []).find(s => s.sector_id === sectorId);
+      if (!sector) continue;
+      if (!sector.pe_firms) sector.pe_firms = [];
+
+      // Check if already in this sector's playbook
+      const exists = sector.pe_firms.some(f =>
+        f.firm_id === company.company_id || normCompanyName(f.name) === normCompanyName(company.name)
+      );
+      if (exists) continue;
+
+      // Add new entry
+      sector.pe_firms.push({
+        firm_id:                 company.company_id,
+        name:                    company.name,
+        hq:                      company.hq || '',
+        website_url:             company.website_url || '',
+        description:             company.description || '',
+        year_founded:            company.year_founded || null,
+        size_tier:               company.size_tier || null,
+        strategy:                company.strategy || null,
+        entity_type:             company.entity_type || null,
+        sector_focus:            'Opportunistic',
+        investment_professionals: company.investment_professionals || null,
+        last_fund_name:          company.last_fund_name || null,
+        last_fund_size:          company.last_fund_size || null,
+        last_fund_vintage:       company.last_fund_vintage || null,
+        dry_powder:              company.dry_powder || null,
+        preferred_ebitda_min:    company.preferred_ebitda_min || null,
+        preferred_ebitda_max:    company.preferred_ebitda_max || null,
+        preferred_geography:     company.preferred_geography || '',
+        active_portfolio_count:  company.active_portfolio_count || null,
+        roster:                  [],
+        expected_roster_size:    company.size_tier === 'Mega' ? 22 : company.size_tier === 'Large' ? 11 : 6,
+        roster_completeness:     'auto',
+        why_target:              '',
+        last_roster_audit:       null
+      });
+      added++;
+      console.log(`[prefill] Auto-added PE firm "${company.name}" to sector "${sectorId}" playbook`);
+    }
+  }
+
+  if (added > 0) {
+    fs.writeFileSync(playbooksPath, JSON.stringify(playbooks, null, 2), 'utf8');
   }
 }
 
@@ -350,26 +427,7 @@ router.post('/prefill', (req, res) => {
       return res.status(400).json({ error: 'Name or LinkedIn URL is required' });
     }
 
-    // If we have a LinkedIn URL but no name, only allow update of existing candidates (not creation)
-    // Also reject names that are clearly scraper artifacts
-    const INVALID_NAMES = /^\d+\s*notification|^messaging$|^home$|^my network$|^jobs$/i;
     const nameProvided = fullName && fullName.trim() && !INVALID_NAMES.test(fullName.trim());
-
-    const normName = s => (s || '').toLowerCase().trim();
-    // Extract LinkedIn slug for matching: /in/XXXXX -> xxxxx (ignore trailing variations)
-    const extractLinkedInSlug = s => {
-      if (!s) return '';
-      const m = s.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/i);
-      return m ? m[1].toLowerCase() : '';
-    };
-    // Legacy URL normalization as fallback
-    const normUrl  = s => (s || '').replace(/\?.*$/, '').replace(/\/$/, '').toLowerCase();
-    // Normalize firm: strip LinkedIn suffixes like "· Full-time", "· Part-time", "· Contract"
-    const normFirm = s => (s || '').replace(/\s*[·•]\s*(full[- ]time|part[- ]time|contract|freelance|self[- ]employed).*$/i, '').toLowerCase().trim();
-    // Clean firm name for storage: strip suffix but keep original casing
-    const cleanFirm = s => (s || '').replace(/\s*[·•]\s*(Full[- ]time|Part[- ]time|Contract|Freelance|Self[- ]employed|Seasonal|Internship).*$/i, '').trim();
-    // Detect corrupted company field (contains duration instead of company name)
-    const isCorruptedFirm = s => /^\d+\s*(yrs?|mos?|years?|months?)/i.test((s || '').trim());
 
     // Clean company field if corrupted
     let safeCompany = currentCompany;
@@ -447,6 +505,9 @@ router.post('/prefill', (req, res) => {
         fs.writeFileSync(companyPoolFile(), JSON.stringify(companyPool, null, 2), 'utf8');
       }
 
+      // Auto-add PE firms to sector playbooks
+      autoAddPEFirmsToPlaybooks(existing.work_history);
+
       writePool(pool);
       return res.json({ action: 'updated', id: existing.candidate_id });
     }
@@ -455,8 +516,7 @@ router.post('/prefill', (req, res) => {
     if (!nameProvided) {
       return res.status(400).json({ error: 'Cannot create new candidate without a name' });
     }
-    const slugify = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
-    const candidate_id = `cand-${slugify(fullName || 'unknown')}-${Date.now()}`;
+    const candidate_id = `cand-${slugifyShared(fullName || 'unknown')}-${Date.now()}`;
 
     const newCandidate = {
       candidate_id,
@@ -497,6 +557,9 @@ router.post('/prefill', (req, res) => {
     if (companiesAdded) {
       fs.writeFileSync(companyPoolFile(), JSON.stringify(companyPool, null, 2), 'utf8');
     }
+
+    // Auto-add PE firms to sector playbooks
+    autoAddPEFirmsToPlaybooks(newCandidate.work_history);
 
     pool.candidates.push(newCandidate);
     writePool(pool);

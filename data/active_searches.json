@@ -4518,6 +4518,69 @@
                 "last_updated": "2026-03-22",
                 "searches_appeared_in": [],
                 "location": "Houston, TX"
+              },
+              {
+                "candidate_id": "cand-lilly-cullen-1774559308393",
+                "name": "Lilly Cullen",
+                "title": "Vice President, Sourcing",
+                "linkedin_url": "https://www.linkedin.com/in/lilly-cullen-a8378840/",
+                "location": "Vice President, Sourcing at The Sterling Group",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-murray-manley-hoffman-1774559417154",
+                "name": "Murray (Manley) Hoffman",
+                "title": "Senior Associate, Human Capital",
+                "linkedin_url": "https://www.linkedin.com/in/murray-manley-hoffman-211586105/",
+                "location": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-matthew-mouer-1774559489245",
+                "name": "Matthew Mouer",
+                "title": "Senior Counsel",
+                "linkedin_url": "https://www.linkedin.com/in/matthew-mouer-150910134/",
+                "location": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-nikhil-nayak-1774559513884",
+                "name": "Nikhil Nayak",
+                "title": "Principal, Commercial Diligence & Strategy",
+                "linkedin_url": "https://www.linkedin.com/in/nknayak/",
+                "location": "Houston, Texas, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-jared-north-1774559586882",
+                "name": "Jared North",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/jared-north-3b9501a/",
+                "location": "New York, New York, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-aryan-sameri-1774559676018",
+                "name": "Aryan Sameri",
+                "title": "Director, Commercial Diligence and Strategy",
+                "linkedin_url": "https://www.linkedin.com/in/aryansameri/",
+                "location": "Houston, Texas, United States",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-jason-taibel-cpa-1774559704275",
+                "name": "Jason Taibel, CPA",
+                "title": "Operating Partner, Financial Operations",
+                "linkedin_url": "https://www.linkedin.com/in/jasontaibel/",
+                "location": "Jason Taibel, CPA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
               }
             ]
           },
@@ -5405,6 +5468,96 @@
             ],
             "last_verified": "2026-03-26",
             "verified_by": "RA"
+          },
+          {
+            "firm_id": "ae-industrial-partners",
+            "name": "AE Industrial Partners",
+            "hq": "Boca Raton, Florida",
+            "size_tier": "Large",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Technology, tech-enabled-services, Financial Services, infrastructure-energy",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "aea-investors",
+            "name": "AEA Investors",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "strategy": "Buyout",
+            "sector_focus": "Industrials, Consumer, Business Services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "jeff-nagel-aea-investors",
+                "name": "Jeff Nagel",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jeff-nagel-a117933",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "fred-lynch-aea-investors",
+                "name": "Fred Lynch",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/fred-lynch-500623a9",
+                "location": "Tampa, FL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "graham-sayers-aea-investors",
+                "name": "Graham Sayers",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/graham-sayers-5518401",
+                "location": "Atlanta, GA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "riz-chand-aea-investors",
+                "name": "Riz Chand",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/rizchand",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "chuck-dougherty-aea-investors",
+                "name": "Chuck Dougherty",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/chuck-dougherty",
+                "location": "Ambler, PA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "james-coleman-aea-investors",
+                "name": "James Coleman",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/james-coleman-5a350b",
+                "location": "Chicago, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "adam-goetsch-aea-investors",
+                "name": "Adam Goetsch",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/agoetsch",
+                "location": "Spokane, WA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
           }
         ],
         "companies": [
@@ -5678,6 +5831,108 @@
           "name": "DQ/Not Interested",
           "color_bg": "rgba(198,40,40,0.1)",
           "color_text": "#c62828"
+        }
+      ]
+    },
+    {
+      "search_id": "patient-square-capital-2026",
+      "date_opened": "2026-03-26",
+      "date_closed": null,
+      "status": "active",
+      "pipeline": [],
+      "pipeline_stages": [
+        {
+          "name": "Pursuing",
+          "color_bg": "#eeeeee",
+          "color_text": "#616161"
+        },
+        {
+          "name": "Outreach Sent",
+          "color_bg": "#f3e5f5",
+          "color_text": "#7b1fa2"
+        },
+        {
+          "name": "Scheduling",
+          "color_bg": "#fff3e0",
+          "color_text": "#e65100"
+        },
+        {
+          "name": "Interviewing",
+          "color_bg": "#e3f2fd",
+          "color_text": "#1565c0"
+        },
+        {
+          "name": "Qualifying",
+          "color_bg": "#e8f5e9",
+          "color_text": "#2e7d32"
+        },
+        {
+          "name": "Hold",
+          "color_bg": "#efebe9",
+          "color_text": "#4e342e"
+        },
+        {
+          "name": "DQ",
+          "color_bg": "#ffebee",
+          "color_text": "#c62828"
+        },
+        {
+          "name": "NI",
+          "color_bg": "#fffde7",
+          "color_text": "#f57f17"
+        }
+      ],
+      "weekly_updates": [],
+      "sourcing_coverage": {
+        "pe_firms": [],
+        "companies": []
+      },
+      "client_name": "Patient Square Capital",
+      "role_title": "Operating Partner",
+      "lead_recruiter": "Robby Albrecht",
+      "archetypes_requested": [
+        "PE Lateral",
+        "Industry Operator"
+      ],
+      "ideal_candidate_profile": "",
+      "sectors": [
+        "healthcare"
+      ],
+      "client_contacts": [
+        {
+          "name": "Karr Narula",
+          "title": "Founding Partner",
+          "display_in_matrix": true,
+          "abbreviation": "KN"
+        },
+        {
+          "name": "Ken Michalzuk",
+          "title": "Managing Director",
+          "display_in_matrix": true,
+          "abbreviation": "KM"
+        },
+        {
+          "name": "Bhavna Katkar",
+          "title": "Human Capital Partner",
+          "display_in_matrix": true,
+          "abbreviation": "BK"
+        }
+      ],
+      "lancor_team": [
+        {
+          "initials": "CC",
+          "full_name": "Chris Conti",
+          "role": "Partner"
+        },
+        {
+          "initials": "SM",
+          "full_name": "Shannon Mace",
+          "role": "Consultant"
+        },
+        {
+          "initials": "RA",
+          "full_name": "Robby Albrecht",
+          "role": "Partner"
         }
       ]
     }

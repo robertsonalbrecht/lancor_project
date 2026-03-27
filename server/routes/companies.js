@@ -4,6 +4,7 @@ const express = require('express');
 const path    = require('path');
 const fs      = require('fs');
 const router  = express.Router();
+const { slugify } = require('../utils/shared');
 
 function companiesFile() {
   return path.join(process.env.DATA_PATH, 'company_pool.json');
@@ -66,7 +67,6 @@ router.post('/', (req, res) => {
     const body = req.body;
     const today = new Date().toISOString().slice(0, 10);
 
-    const slugify = s => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
     const newCompany = Object.assign({
       company_id:   body.company_id || slugify(body.name || 'company') + '-' + Date.now(),
       date_added:   today,

@@ -53,7 +53,7 @@ function setupTypeahead(inputId, opts) {
       matches.forEach((c, i) => {
         const item = document.createElement('div');
         item.className = 'typeahead-item';
-        item.innerHTML = `<span>${escCov(c.name)}</span><span class="ta-meta">${escCov(c.hq || c.company_type || '')}</span>`;
+        item.innerHTML = `<span>${escapeHtml(c.name)}</span><span class="ta-meta">${escapeHtml(c.hq || c.company_type || '')}</span>`;
         item.addEventListener('click', () => {
           removeDropdown();
           if (opts.onSelect) opts.onSelect(c);
@@ -117,20 +117,6 @@ let openAccordionId = null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function covSlugify(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-}
-
-function escCov(s) {
-  if (s == null) return '';
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -170,8 +156,8 @@ function coverageBar(pct, manual_complete, entity) {
   }
   if (manual_complete) {
     return `<div style="display:flex;align-items:center;gap:6px">
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#EDE7F6;color:#5C2D91;font-size:13px;font-weight:700">&#10003;</span>
-      <span style="font-size:11px;font-weight:700;color:#5C2D91">Complete</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#F3E8EF;color:#6B2D5B;font-size:13px;font-weight:700">&#10003;</span>
+      <span style="font-size:11px;font-weight:700;color:#6B2D5B">Complete</span>
     </div>`;
   }
   let color, label;
@@ -213,27 +199,27 @@ function reviewedBar(entity) {
 
 function rosterStatusSelect(entityId, candidateId, currentStatus, searchId, type) {
   const opts = ROSTER_STATUSES.map(s =>
-    `<option value="${escCov(s)}" ${s === currentStatus ? 'selected' : ''}>${escCov(s)}</option>`
+    `<option value="${escapeHtml(s)}" ${s === currentStatus ? 'selected' : ''}>${escapeHtml(s)}</option>`
   ).join('');
-  return `<select class="roster-status-select" onchange="updateRosterPersonStatus('${escCov(searchId)}','${type}','${escCov(entityId)}','${escCov(candidateId)}',this.value)">${opts}</select>`;
+  return `<select class="roster-status-select" onchange="updateRosterPersonStatus('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}','${escapeHtml(candidateId)}',this.value)">${opts}</select>`;
 }
 
 function addPersonFormHTML(entityId, searchId, type) {
   const statusOpts = ROSTER_STATUSES.map(s =>
-    `<option value="${escCov(s)}" ${s === 'Identified' ? 'selected' : ''}>${escCov(s)}</option>`
+    `<option value="${escapeHtml(s)}" ${s === 'Identified' ? 'selected' : ''}>${escapeHtml(s)}</option>`
   ).join('');
   return `
-  <div class="add-person-form" id="add-form-${escCov(entityId)}">
-    <input type="text" id="add-name-${escCov(entityId)}" placeholder="Name (required)" />
-    <input type="text" id="add-title-${escCov(entityId)}" placeholder="Title" />
-    <input type="text" id="add-linkedin-${escCov(entityId)}" placeholder="LinkedIn URL" style="min-width:160px" />
-    <button class="btn btn-primary btn-sm" onclick="addRosterPerson('${escCov(searchId)}','${type}','${escCov(entityId)}')">Add</button>
+  <div class="add-person-form" id="add-form-${escapeHtml(entityId)}">
+    <input type="text" id="add-name-${escapeHtml(entityId)}" placeholder="Name (required)" />
+    <input type="text" id="add-title-${escapeHtml(entityId)}" placeholder="Title" />
+    <input type="text" id="add-linkedin-${escapeHtml(entityId)}" placeholder="LinkedIn URL" style="min-width:160px" />
+    <button class="btn btn-primary btn-sm" onclick="addRosterPerson('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">Add</button>
   </div>`;
 }
 
 function overrideSectionHTML(entity, entityId, searchId, type) {
   const isComplete = entity.manual_complete;
-  const note = escCov(entity.manual_complete_note || '');
+  const note = escapeHtml(entity.manual_complete_note || '');
   const lastVerified = entity.last_verified;
   const verifiedBy = entity.verified_by || '';
 
@@ -244,7 +230,7 @@ function overrideSectionHTML(entity, entityId, searchId, type) {
                     : daysAgo <= 730 ? { color: '#ff9800', label: 'Review soon' }
                     : { color: '#c62828', label: 'Stale' };
     verifiedDisplay = `<span style="font-size:12px;color:${freshness.color};font-weight:600">${freshness.label}</span>
-      <span style="font-size:11px;color:#888;margin-left:6px">Last verified: ${escCov(lastVerified)}${verifiedBy ? ' by ' + escCov(verifiedBy) : ''} (${daysAgo}d ago)</span>`;
+      <span style="font-size:11px;color:#888;margin-left:6px">Last verified: ${escapeHtml(lastVerified)}${verifiedBy ? ' by ' + escapeHtml(verifiedBy) : ''} (${daysAgo}d ago)</span>`;
   } else {
     verifiedDisplay = `<span style="font-size:12px;color:#bbb">Never verified</span>`;
   }
@@ -257,13 +243,13 @@ function overrideSectionHTML(entity, entityId, searchId, type) {
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="override-complete-${escCov(entityId)}" ${isComplete ? 'checked' : ''} style="width:16px;height:16px;accent-color:#5C2D91">
+        <input type="checkbox" id="override-complete-${escapeHtml(entityId)}" ${isComplete ? 'checked' : ''} style="width:16px;height:16px;accent-color:#6B2D5B">
         Mark as Complete
       </label>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input type="text" id="override-note-${escCov(entityId)}" value="${note}" placeholder="Note (optional)" style="padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1;min-width:160px" />
-      <button class="btn btn-primary btn-sm" onclick="verifyCoverage('${escCov(searchId)}','${type}','${escCov(entityId)}')">Verify Now</button>
+      <input type="text" id="override-note-${escapeHtml(entityId)}" value="${note}" placeholder="Note (optional)" style="padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1;min-width:160px" />
+      <button class="btn btn-primary btn-sm" onclick="verifyCoverage('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">Verify Now</button>
     </div>
   </div>`;
 }
@@ -289,7 +275,7 @@ function rosterTableHTML(roster, entityId, searchId, type) {
     const isPending = !isRelevant && !isNotRelevant;
 
     const linkedinBtn = p.linkedin_url
-      ? `<a href="${escCov(p.linkedin_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#0077B5;border-radius:4px;color:#fff;text-decoration:none;flex-shrink:0" title="Open LinkedIn"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>`
+      ? `<a href="${escapeHtml(p.linkedin_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#0077B5;border-radius:4px;color:#fff;text-decoration:none;flex-shrink:0" title="Open LinkedIn"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>`
       : `<span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#eee;border-radius:4px;color:#bbb;font-size:10px" title="No LinkedIn">—</span>`;
 
     // Row styling based on status
@@ -306,8 +292,8 @@ function rosterTableHTML(roster, entityId, searchId, type) {
     }
 
     // ✓ and ✗ buttons
-    const checkBtn = `<button onclick="setReviewStatus('${escCov(searchId)}','${type}','${escCov(entityId)}','${escCov(p.candidate_id)}','relevant')" title="Relevant" style="width:28px;height:28px;border-radius:6px;border:${isRelevant ? '2px solid #4caf50' : '1.5px solid #ccc'};background:${isRelevant ? '#e8f5e9' : '#fff'};color:${isRelevant ? '#4caf50' : '#bbb'};cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s">&#10003;</button>`;
-    const xBtn = `<button onclick="setReviewStatus('${escCov(searchId)}','${type}','${escCov(entityId)}','${escCov(p.candidate_id)}','not_relevant')" title="Not relevant" style="width:28px;height:28px;border-radius:6px;border:${isNotRelevant ? '2px solid #ef5350' : '1.5px solid #ccc'};background:${isNotRelevant ? '#ffebee' : '#fff'};color:${isNotRelevant ? '#ef5350' : '#bbb'};cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s">&#10005;</button>`;
+    const checkBtn = `<button onclick="setReviewStatus('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}','${escapeHtml(p.candidate_id)}','relevant')" title="Relevant" style="width:28px;height:28px;border-radius:6px;border:${isRelevant ? '2px solid #4caf50' : '1.5px solid #ccc'};background:${isRelevant ? '#e8f5e9' : '#fff'};color:${isRelevant ? '#4caf50' : '#bbb'};cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s">&#10003;</button>`;
+    const xBtn = `<button onclick="setReviewStatus('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}','${escapeHtml(p.candidate_id)}','not_relevant')" title="Not relevant" style="width:28px;height:28px;border-radius:6px;border:${isNotRelevant ? '2px solid #ef5350' : '1.5px solid #ccc'};background:${isNotRelevant ? '#ffebee' : '#fff'};color:${isNotRelevant ? '#ef5350' : '#bbb'};cursor:pointer;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s">&#10005;</button>`;
 
     return `<tr style="${rowStyle}">
       <td style="padding:6px 8px;width:70px">
@@ -315,12 +301,12 @@ function rosterTableHTML(roster, entityId, searchId, type) {
       </td>
       <td style="padding:6px 8px;width:30px">${linkedinBtn}</td>
       <td style="padding:6px 8px">
-        <div style="${nameStyle}"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escCov(p.candidate_id)}')" style="color:inherit">${escCov(p.name)}</span></div>
+        <div style="${nameStyle}"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(p.candidate_id)}')" style="color:inherit">${escapeHtml(p.name)}</span></div>
       </td>
-      <td style="padding:6px 8px;font-size:12px;color:#666">${escCov(p.title || '')}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#888">${escCov(p.location || '')}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#666">${escapeHtml(p.title || '')}</td>
+      <td style="padding:6px 8px;font-size:11px;color:#888">${escapeHtml(p.location || '')}</td>
       <td style="padding:6px 8px;width:36px">
-        <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${escCov(p.candidate_id).replace(/'/g,"\\'")}',name:'${escCov(p.name).replace(/'/g,"\\'")}',current_title:'${escCov(p.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${escCov(p.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{preSelectSearchId:'${escCov(searchId)}',source:'Sourcing Coverage'})" title="Add to Pipeline" style="background:#5C2D91;color:#fff;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
+        <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${escapeHtml(p.candidate_id).replace(/'/g,"\\'")}',name:'${escapeHtml(p.name).replace(/'/g,"\\'")}',current_title:'${escapeHtml(p.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${escapeHtml(p.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{preSelectSearchId:'${escapeHtml(searchId)}',source:'Sourcing Coverage'})" title="Add to Pipeline" style="background:#6B2D5B;color:#fff;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
       </td>
     </tr>`;
   }).join('');
@@ -350,14 +336,14 @@ function accordionHTML(entity, entityId, searchId, type) {
   const roster = entity.roster || [];
   const promoteSection = entity.search_specific
     ? `<div style="margin-top:12px">
-        <button class="btn btn-secondary btn-sm promote-btn" onclick="promoteToPlaybook('${escCov(searchId)}','${type}','${escCov(entityId)}')">&#8593; Promote to Playbook</button>
+        <button class="btn btn-secondary btn-sm promote-btn" onclick="promoteToPlaybook('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">&#8593; Promote to Playbook</button>
         <span style="font-size:12px;color:#888;margin-left:8px">Remove the "Search Only" flag and add to the sector playbook.</span>
        </div>`
     : '';
-  return `<tr class="accordion-tr" id="acc-${escCov(entityId)}">
+  return `<tr class="accordion-tr" id="acc-${escapeHtml(entityId)}">
     <td colspan="7">
       <div class="accordion-inner">
-        <div id="roster-section-${escCov(entityId)}">
+        <div id="roster-section-${escapeHtml(entityId)}">
           ${rosterTableHTML(roster, entityId, searchId, type)}
         </div>
         <div style="margin-top:4px">
@@ -395,14 +381,14 @@ function buildPEFirmsTableHTML(firms, searchId) {
 
   const filterBar = `
   <div class="filter-bar" id="coverage-filters" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-    <select id="cov-filter-size" onchange="applyCoverageFilters('${escCov(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+    <select id="cov-filter-size" onchange="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
       <option value="all" ${coverageFilters.size_tier === 'all' ? 'selected' : ''}>All Size Tiers</option>
       <option value="Mega" ${coverageFilters.size_tier === 'Mega' ? 'selected' : ''}>Mega</option>
       <option value="Large" ${coverageFilters.size_tier === 'Large' ? 'selected' : ''}>Large</option>
       <option value="Middle Market" ${coverageFilters.size_tier === 'Middle Market' ? 'selected' : ''}>Middle Market</option>
       <option value="Lower Middle Market" ${coverageFilters.size_tier === 'Lower Middle Market' ? 'selected' : ''}>Lower Middle Market</option>
     </select>
-    <input type="text" id="cov-filter-text" value="${escCov(coverageFilters.text)}" placeholder="Search firm name..." oninput="applyCoverageFilters('${escCov(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
+    <input type="text" id="cov-filter-text" value="${escapeHtml(coverageFilters.text)}" placeholder="Search firm name..." oninput="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
     <span style="font-size:12px;color:#888">${filtered.length} firm${filtered.length !== 1 ? 's' : ''}</span>
   </div>`;
 
@@ -414,22 +400,22 @@ function buildPEFirmsTableHTML(firms, searchId) {
     const { pct, manual } = getCoveragePct(f, 'pe_firms');
     const isOpen = openAccordionId === f.firm_id;
     const badge = f.search_specific
-      ? `<span class="badge-search-specific" id="badge-${escCov(f.firm_id)}">Search Only</span>`
+      ? `<span class="badge-search-specific" id="badge-${escapeHtml(f.firm_id)}">Search Only</span>`
       : '';
     const rosterCount = (f.roster || []).length;
     const poolRec = getCompanyPoolRecord(f.name);
     const webUrl = f.website_url || (poolRec && poolRec.website_url) || '';
-    const firmWebsite = webUrl ? `<a href="${escCov(webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
-    const firmRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escCov(f.firm_id)}" onclick="toggleCoverageAccordion('${escCov(searchId)}','pe_firms','${escCov(f.firm_id)}')">
-      <td><strong>${escCov(f.name)}</strong>${firmWebsite}</td>
-      <td>${escCov(f.hq || '—')}</td>
-      <td>${escCov(f.size_tier || '—')}</td>
+    const firmWebsite = webUrl ? `<a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
+    const firmRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escapeHtml(f.firm_id)}" onclick="toggleCoverageAccordion('${escapeHtml(searchId)}','pe_firms','${escapeHtml(f.firm_id)}')">
+      <td><strong>${escapeHtml(f.name)}</strong>${firmWebsite}</td>
+      <td>${escapeHtml(f.hq || '—')}</td>
+      <td>${escapeHtml(f.size_tier || '—')}</td>
       <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
-      <td id="revbar-${escCov(f.firm_id)}">${reviewedBar(f)}</td>
-      <td id="covbar-${escCov(f.firm_id)}">${coverageBar(pct, manual, f)}</td>
+      <td id="revbar-${escapeHtml(f.firm_id)}">${reviewedBar(f)}</td>
+      <td id="covbar-${escapeHtml(f.firm_id)}">${coverageBar(pct, manual, f)}</td>
     </tr>`;
-    const accRow = isOpen ? accordionHTML(f, f.firm_id, searchId, 'pe_firms') : `<tr class="accordion-tr" id="acc-${escCov(f.firm_id)}" style="display:none"><td colspan="7"></td></tr>`;
+    const accRow = isOpen ? accordionHTML(f, f.firm_id, searchId, 'pe_firms') : `<tr class="accordion-tr" id="acc-${escapeHtml(f.firm_id)}" style="display:none"><td colspan="7"></td></tr>`;
     return [firmRow, accRow];
   });
 
@@ -470,14 +456,14 @@ function buildCompaniesTableHTML(companies, searchId) {
 
   const filterBar = `
   <div class="filter-bar" id="coverage-filters" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-    <select id="cov-filter-rev" onchange="applyCoverageFilters('${escCov(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+    <select id="cov-filter-rev" onchange="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px">
       <option value="all" ${coverageFilters.revenue_tier === 'all' ? 'selected' : ''}>All Revenue Tiers</option>
       <option value="Large Cap" ${coverageFilters.revenue_tier === 'Large Cap' ? 'selected' : ''}>Large Cap</option>
       <option value="Upper Middle" ${coverageFilters.revenue_tier === 'Upper Middle' ? 'selected' : ''}>Upper Middle</option>
       <option value="Middle Market" ${coverageFilters.revenue_tier === 'Middle Market' ? 'selected' : ''}>Middle Market</option>
       <option value="Lower Middle" ${coverageFilters.revenue_tier === 'Lower Middle' ? 'selected' : ''}>Lower Middle</option>
     </select>
-    <input type="text" id="cov-filter-text" value="${escCov(coverageFilters.text)}" placeholder="Search company name..." oninput="applyCoverageFilters('${escCov(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
+    <input type="text" id="cov-filter-text" value="${escapeHtml(coverageFilters.text)}" placeholder="Search company name..." oninput="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
     <span style="font-size:12px;color:#888">${filtered.length} compan${filtered.length !== 1 ? 'ies' : 'y'}</span>
   </div>`;
 
@@ -489,22 +475,22 @@ function buildCompaniesTableHTML(companies, searchId) {
     const { pct, manual } = getCoveragePct(c, 'companies');
     const isOpen = openAccordionId === c.company_id;
     const badge = c.search_specific
-      ? `<span class="badge-search-specific" id="badge-${escCov(c.company_id)}">Search Only</span>`
+      ? `<span class="badge-search-specific" id="badge-${escapeHtml(c.company_id)}">Search Only</span>`
       : '';
     const rosterCount = (c.roster || []).length;
     const coPoolRec = getCompanyPoolRecord(c.name);
     const coWebUrl = c.website_url || (coPoolRec && coPoolRec.website_url) || '';
-    const coWebsite = coWebUrl ? `<a href="${escCov(coWebUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
-    const compRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escCov(c.company_id)}" onclick="toggleCoverageAccordion('${escCov(searchId)}','companies','${escCov(c.company_id)}')">
-      <td><strong>${escCov(c.name)}</strong>${coWebsite}</td>
-      <td>${escCov(c.hq || '—')}</td>
-      <td>${escCov(c.revenue_tier || '—')}</td>
+    const coWebsite = coWebUrl ? `<a href="${escapeHtml(coWebUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
+    const compRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escapeHtml(c.company_id)}" onclick="toggleCoverageAccordion('${escapeHtml(searchId)}','companies','${escapeHtml(c.company_id)}')">
+      <td><strong>${escapeHtml(c.name)}</strong>${coWebsite}</td>
+      <td>${escapeHtml(c.hq || '—')}</td>
+      <td>${escapeHtml(c.revenue_tier || '—')}</td>
       <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
-      <td id="revbar-${escCov(c.company_id)}">${reviewedBar(c)}</td>
-      <td id="covbar-${escCov(c.company_id)}">${coverageBar(pct, manual, c)}</td>
+      <td id="revbar-${escapeHtml(c.company_id)}">${reviewedBar(c)}</td>
+      <td id="covbar-${escapeHtml(c.company_id)}">${coverageBar(pct, manual, c)}</td>
     </tr>`;
-    const accRow = isOpen ? accordionHTML(c, c.company_id, searchId, 'companies') : `<tr class="accordion-tr" id="acc-${escCov(c.company_id)}" style="display:none"><td colspan="7"></td></tr>`;
+    const accRow = isOpen ? accordionHTML(c, c.company_id, searchId, 'companies') : `<tr class="accordion-tr" id="acc-${escapeHtml(c.company_id)}" style="display:none"><td colspan="7"></td></tr>`;
     return [compRow, accRow];
   });
 
@@ -672,13 +658,13 @@ function renderCoverageTabHTML(search) {
   <!-- Sub-tab bar + actions -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
     <div class="sub-tab-bar" style="margin-bottom:0">
-      <button class="sub-tab active" id="cov-tab-pe" onclick="switchCoverageTab('pe-firms','${escCov(searchId)}')">PE Firms (${firms.length})</button>
-      <button class="sub-tab" id="cov-tab-companies" onclick="switchCoverageTab('companies','${escCov(searchId)}')">Target Companies (${companies.length})</button>
+      <button class="sub-tab active" id="cov-tab-pe" onclick="switchCoverageTab('pe-firms','${escapeHtml(searchId)}')">PE Firms (${firms.length})</button>
+      <button class="sub-tab" id="cov-tab-companies" onclick="switchCoverageTab('companies','${escapeHtml(searchId)}')">Target Companies (${companies.length})</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap" id="cov-action-btns">
-      <button class="btn btn-secondary btn-sm" id="cov-add-btn" onclick="openAddFirmModal('${escCov(searchId)}')">+ Add PE Firm</button>
-      <button class="btn btn-ghost btn-sm" onclick="loadCoverageFromPlaybook('${escCov(searchId)}')">&#8627; Load from Playbook</button>
-      <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="toggleCovSelectMode('${escCov(searchId)}')">&#9744; Select &amp; Delete</button>
+      <button class="btn btn-secondary btn-sm" id="cov-add-btn" onclick="openAddFirmModal('${escapeHtml(searchId)}')">+ Add PE Firm</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadCoverageFromPlaybook('${escapeHtml(searchId)}')">&#8627; Load from Playbook</button>
+      <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="toggleCovSelectMode('${escapeHtml(searchId)}')">&#9744; Select &amp; Delete</button>
     </div>
   </div>
   <!-- Filter bar + table -->
@@ -715,14 +701,14 @@ async function switchCoverageTab(tab, searchId) {
     if (tab === 'pe-firms') {
       coverageFilters.revenue_tier = 'all';
       tableEl.innerHTML = buildPEFirmsTableHTML(firms, searchId);
-      if (addBtn) { addBtn.textContent = '+ Add PE Firm'; addBtn.setAttribute('onclick', `openAddFirmModal('${escCov(searchId)}')`); }
+      if (addBtn) { addBtn.textContent = '+ Add PE Firm'; addBtn.setAttribute('onclick', `openAddFirmModal('${escapeHtml(searchId)}')`); }
       // Update sub-tab counts
       if (peBtn) peBtn.textContent = `PE Firms (${firms.length})`;
       if (coBtn) coBtn.textContent = `Target Companies (${companies.length})`;
     } else {
       coverageFilters.size_tier = 'all';
       tableEl.innerHTML = buildCompaniesTableHTML(companies, searchId);
-      if (addBtn) { addBtn.textContent = '+ Add Target Company'; addBtn.setAttribute('onclick', `openAddCompanyModal('${escCov(searchId)}')`); }
+      if (addBtn) { addBtn.textContent = '+ Add Target Company'; addBtn.setAttribute('onclick', `openAddCompanyModal('${escapeHtml(searchId)}')`); }
       if (peBtn) peBtn.textContent = `PE Firms (${firms.length})`;
       if (coBtn) coBtn.textContent = `Target Companies (${companies.length})`;
     }
@@ -872,7 +858,7 @@ async function addRosterPerson(searchId, type, entityId) {
   const linkedin_url = linkedinEl ? linkedinEl.value.trim() : '';
   const roster_status = statusEl ? statusEl.value : 'Identified';
 
-  const candidate_id = covSlugify(name + '-' + entityId);
+  const candidate_id = slugify(name + '-' + entityId);
 
   const person = {
     candidate_id,
@@ -1140,7 +1126,7 @@ function openAddFirmModal(searchId) {
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="submitAddFirm('${escCov(searchId)}')">Add Firm</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAddFirm('${escapeHtml(searchId)}')">Add Firm</button>
       </div>
     </div>
   </div>`;
@@ -1175,7 +1161,7 @@ async function submitAddFirm(searchId) {
   const why_target = (document.getElementById('modal-firm-why').value || '').trim();
   const search_specific = document.getElementById('modal-firm-specific').checked;
 
-  const firm_id = covSlugify(name);
+  const firm_id = slugify(name);
   const newFirm = {
     firm_id,
     name,
@@ -1277,7 +1263,7 @@ function openAddCompanyModal(searchId) {
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="submitAddCompany('${escCov(searchId)}')">Add Company</button>
+        <button class="btn btn-primary btn-sm" onclick="submitAddCompany('${escapeHtml(searchId)}')">Add Company</button>
       </div>
     </div>
   </div>`;
@@ -1307,7 +1293,7 @@ async function submitAddCompany(searchId) {
   const why_target = (document.getElementById('modal-co-why').value || '').trim();
   const search_specific = document.getElementById('modal-co-specific').checked;
 
-  const company_id = covSlugify(name);
+  const company_id = slugify(name);
   const newCompany = {
     company_id,
     name,
@@ -1395,17 +1381,17 @@ async function loadCoverageFromPlaybook(searchId) {
 
     const firmRows = availFirms.map(f =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
-        <input type="checkbox" class="pb-pick-firm" value="${escCov(f.firm_id)}" style="width:16px;height:16px;accent-color:#5C2D91">
-        <strong>${escCov(f.name)}</strong>
-        <span style="color:#888;font-size:11px;margin-left:auto">${escCov(f.hq||'')} · ${escCov(f.size_tier||'')}</span>
+        <input type="checkbox" class="pb-pick-firm" value="${escapeHtml(f.firm_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
+        <strong>${escapeHtml(f.name)}</strong>
+        <span style="color:#888;font-size:11px;margin-left:auto">${escapeHtml(f.hq||'')} · ${escapeHtml(f.size_tier||'')}</span>
       </label>`
     ).join('');
 
     const coRows = availCos.map(c =>
       `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
-        <input type="checkbox" class="pb-pick-co" value="${escCov(c.company_id)}" style="width:16px;height:16px;accent-color:#5C2D91">
-        <strong>${escCov(c.name)}</strong>
-        <span style="color:#888;font-size:11px;margin-left:auto">${escCov(c.hq||'')} · ${escCov(c.revenue_tier||'')}</span>
+        <input type="checkbox" class="pb-pick-co" value="${escapeHtml(c.company_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
+        <strong>${escapeHtml(c.name)}</strong>
+        <span style="color:#888;font-size:11px;margin-left:auto">${escapeHtml(c.hq||'')} · ${escapeHtml(c.revenue_tier||'')}</span>
       </label>`
     ).join('');
 
@@ -1419,20 +1405,20 @@ async function loadCoverageFromPlaybook(searchId) {
       <div style="overflow-y:auto;flex:1;padding:8px 0">
         ${availFirms.length > 0 ? `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#5C2D91;letter-spacing:0.5px">PE Firms (${availFirms.length})</div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6B2D5B;letter-spacing:0.5px">PE Firms (${availFirms.length})</div>
             <label style="font-size:11px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.pb-pick-firm').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
           </div>
           ${firmRows}` : ''}
         ${availCos.length > 0 ? `
           <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0 8px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#5C2D91;letter-spacing:0.5px">Target Companies (${availCos.length})</div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#6B2D5B;letter-spacing:0.5px">Target Companies (${availCos.length})</div>
             <label style="font-size:11px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.pb-pick-co').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
           </div>
           ${coRows}` : ''}
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;padding-top:12px;border-top:1px solid #e0e0e0">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
-        <button class="btn btn-primary btn-sm" onclick="submitPlaybookPick('${escCov(searchId)}')">Add Selected</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPlaybookPick('${escapeHtml(searchId)}')">Add Selected</button>
       </div>
     </div>`;
     document.body.appendChild(modal);
@@ -1522,8 +1508,8 @@ function toggleCovSelectMode(searchId) {
       bar.style.cssText = 'display:flex;gap:10px;align-items:center;padding:10px 0;margin-bottom:8px';
       bar.innerHTML = `
         <label style="font-size:12px;color:#888;cursor:pointer"><input type="checkbox" onchange="document.querySelectorAll('.cov-select-cb').forEach(c=>c.checked=this.checked)" style="margin-right:4px">Select All</label>
-        <button class="btn btn-sm" style="background:#c62828;color:#fff;border:none" onclick="deleteSelectedCovEntries('${escCov(searchId)}')">Delete Selected</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleCovSelectMode('${escCov(searchId)}')">Cancel</button>
+        <button class="btn btn-sm" style="background:#c62828;color:#fff;border:none" onclick="deleteSelectedCovEntries('${escapeHtml(searchId)}')">Delete Selected</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCovSelectMode('${escapeHtml(searchId)}')">Cancel</button>
       `;
       const module = document.getElementById('coverage-module');
       if (module) module.insertBefore(bar, document.getElementById('coverage-table'));

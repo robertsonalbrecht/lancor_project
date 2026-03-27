@@ -28,7 +28,7 @@ function escTpl(s) {
 function highlightPlaceholders(text) {
   if (!text) return '';
   return escTpl(text).replace(/\{\{([^}]+)\}\}/g,
-    '<span style="background:#EDE7F6;color:#5C2D91;font-weight:600;border-radius:3px;padding:0 3px">{{$1}}</span>');
+    '<span style="background:#F3E8EF;color:#6B2D5B;font-weight:600;border-radius:3px;padding:0 3px">{{$1}}</span>');
 }
 
 // ── Sector + Archetype options ────────────────────────────────────────────────
@@ -104,7 +104,7 @@ function renderTemplatesPage(container) {
     const count = (allTemplatesData && allTemplatesData.templates && allTemplatesData.templates[c.key] || []).length;
     return `<button class="subtab-btn${templateSubTab === key ? ' active' : ''}"
       onclick="switchTemplateTab('${key}')"
-      style="padding:8px 16px;border:none;background:${templateSubTab === key ? '#5C2D91' : '#f5f5f5'};
+      style="padding:8px 16px;border:none;background:${templateSubTab === key ? '#6B2D5B' : '#f5f5f5'};
              color:${templateSubTab === key ? 'white' : '#444'};border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">
       ${c.label} <span style="opacity:0.7;font-weight:400">(${count})</span>
     </button>`;
@@ -180,7 +180,7 @@ function renderBooleanTable(templates) {
   const rows = templates.map((t, i) => `
     <tr>
       <td>
-        <a href="#" style="color:#5C2D91;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('boolean-detail-${i}');return false">${escTpl(t.name)}</a>
+        <a href="#" style="color:#6B2D5B;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('boolean-detail-${i}');return false">${escTpl(t.name)}</a>
       </td>
       <td>${escTpl(t.sector || '')}</td>
       <td>${escTpl(t.archetype || '')}</td>
@@ -219,7 +219,7 @@ function renderPitchbookTable(templates) {
   const rows = templates.map((t, i) => `
     <tr>
       <td>
-        <a href="#" style="color:#5C2D91;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('pb-detail-${i}');return false">${escTpl(t.name)}</a>
+        <a href="#" style="color:#6B2D5B;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('pb-detail-${i}');return false">${escTpl(t.name)}</a>
       </td>
       <td>${escTpl(t.sector || '')}</td>
       <td>${escTpl(t.pull_type || '')}</td>
@@ -261,7 +261,7 @@ function renderOutreachTable(templates) {
   const rows = templates.map((t, i) => `
     <tr>
       <td>
-        <a href="#" style="color:#5C2D91;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('out-detail-${i}');return false">${escTpl(t.name)}</a>
+        <a href="#" style="color:#6B2D5B;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('out-detail-${i}');return false">${escTpl(t.name)}</a>
       </td>
       <td>${escTpl(t.archetype || '')}</td>
       <td>${escTpl(t.channel || '')}</td>
@@ -277,7 +277,7 @@ function renderOutreachTable(templates) {
     <tr id="out-detail-${i}" style="display:none">
       <td colspan="4">
         <div class="template-detail">
-          ${t.subject ? `<div style="font-size:12px;font-weight:700;color:#5C2D91;margin-bottom:6px">Subject: ${escTpl(t.subject)}</div>` : ''}
+          ${t.subject ? `<div style="font-size:12px;font-weight:700;color:#6B2D5B;margin-bottom:6px">Subject: ${escTpl(t.subject)}</div>` : ''}
           <div class="template-body-preview">${highlightPlaceholders(t.body || '')}</div>
           ${t.notes ? `<p style="font-size:12px;color:#666;margin-top:10px">${escTpl(t.notes)}</p>` : ''}
         </div>
@@ -299,7 +299,7 @@ function renderProfileTable(templates) {
   const rows = templates.map((t, i) => `
     <tr>
       <td>
-        <a href="#" style="color:#5C2D91;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('prof-detail-${i}');return false">${escTpl(t.name)}</a>
+        <a href="#" style="color:#6B2D5B;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('prof-detail-${i}');return false">${escTpl(t.name)}</a>
       </td>
       <td>${escTpl(t.sector || '')}</td>
       <td>${escTpl(t.archetype || '')}</td>
@@ -347,7 +347,7 @@ function renderScreenTable(templates) {
   const rows = templates.map((t, i) => `
     <tr>
       <td>
-        <a href="#" style="color:#5C2D91;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('scr-detail-${i}');return false">${escTpl(t.name)}</a>
+        <a href="#" style="color:#6B2D5B;font-weight:600;text-decoration:none" onclick="toggleTemplateDetail('scr-detail-${i}');return false">${escTpl(t.name)}</a>
       </td>
       <td>${escTpl(t.archetype || '')}</td>
       <td>${(t.questions || []).length} question${(t.questions || []).length !== 1 ? 's' : ''}</td>
@@ -531,13 +531,13 @@ function renderNewSearchIdeasPanel(tab, searches) {
     <div style="background:#faf7ff;border:1px solid #d8c8f5;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:200px;max-width:280px;flex:1">
       <div style="font-size:13px;font-weight:700;color:#1a1a1a;line-height:1.3">${escTpl(idea.title)}</div>
       <div style="font-size:11px;color:#666;line-height:1.5;flex:1">${escTpl(idea.reason)}</div>
-      <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;align-self:flex-start;color:#5C2D91;border-color:#c8a8f0" onclick="${idea.onclick}">${escTpl(idea.action)}</button>
+      <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;align-self:flex-start;color:#6B2D5B;border-color:#c8a8f0" onclick="${idea.onclick}">${escTpl(idea.action)}</button>
     </div>`).join('');
 
   return `
     <div style="margin-top:36px;padding-top:24px;border-top:2px solid #e0e0e0">
       <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:16px">
-        <h3 style="font-size:14px;font-weight:700;color:#5C2D91;margin:0">&#128161; New Search Ideas</h3>
+        <h3 style="font-size:14px;font-weight:700;color:#6B2D5B;margin:0">&#128161; New Search Ideas</h3>
         <span style="font-size:12px;color:#999">Based on your current pipeline and search activity</span>
       </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -625,7 +625,7 @@ function openTemplateModal(tabType, id) {
   overlay.innerHTML = `
     <div style="background:white;border-radius:12px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #eee;position:sticky;top:0;background:white;z-index:1">
-        <h3 style="font-size:16px;font-weight:700;color:#5C2D91">${title}</h3>
+        <h3 style="font-size:16px;font-weight:700;color:#6B2D5B">${title}</h3>
         <button onclick="closeTemplateModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1">&times;</button>
       </div>
       <div style="padding:24px" id="template-modal-body">

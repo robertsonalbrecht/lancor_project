@@ -10,7 +10,14 @@ function dataFile() {
 }
 
 function readData() {
-  return JSON.parse(fs.readFileSync(dataFile(), 'utf8'));
+  const data = JSON.parse(fs.readFileSync(dataFile(), 'utf8'));
+  // Lazy migration: ensure all sectors have top_pe_firms and top_companies
+  (data.sectors || []).forEach(s => {
+    if (!s.top_pe_firms) s.top_pe_firms = [];
+    if (!s.top_companies) s.top_companies = [];
+    if (!s.target_companies) s.target_companies = [];
+  });
+  return data;
 }
 
 function writeData(data) {
