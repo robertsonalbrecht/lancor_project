@@ -1457,3 +1457,58 @@ tr.row-open > td {
 }
 .pool-import-result-item:hover { background: #f9f5ff; }
 .pool-import-result-item:last-child { border-bottom: none; }
+
+/* ── Custom Dialog System ──────────────────────────────────────────────── */
+.app-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: dialogFadeIn 0.15s ease;
+}
+.app-dialog-box {
+  background: white;
+  border-radius: 12px;
+  max-width: 420px;
+  width: 90%;
+  padding: 24px 28px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  animation: dialogSlideIn 0.15s ease;
+}
+.app-dialog-header {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+.app-dialog-body {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: break-word;
+}
+.app-dialog-input {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.app-dialog-input:focus {
+  border-color: var(--lancor-purple);
+  box-shadow: 0 0 0 2px rgba(107, 45, 91, 0.15);
+}
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+@keyframes dialogFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialogSlideIn { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }

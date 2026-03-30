@@ -421,7 +421,7 @@ async function openCompanyDetail(companyId) {
     const allCandidates = poolResp.candidates || [];
     renderCompanyFullPage(company, allCandidates);
   } catch (err) {
-    alert('Error loading company: ' + err.message);
+    appAlert('Error loading company: ' + err.message, { type: 'error' });
   }
 }
 
@@ -630,7 +630,7 @@ async function saveCompanyField(companyId, field, value) {
     const idx = cpAllCompanies.findIndex(c => c.company_id === companyId);
     if (idx !== -1) cpAllCompanies[idx] = Object.assign({}, cpAllCompanies[idx], updates);
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -646,7 +646,7 @@ async function openEditCompanyForm(companyId) {
     const company = await api('GET', '/companies/' + companyId);
     _renderCompanyForm(company);
   } catch (err) {
-    alert('Error loading company: ' + err.message);
+    appAlert('Error loading company: ' + err.message, { type: 'error' });
   }
 }
 
@@ -802,7 +802,7 @@ function _cpFormTypeToggle() {
 async function _submitCompanyForm(existingId) {
   const type = document.getElementById('cf-type').value;
   const name = document.getElementById('cf-name').value.trim();
-  if (!name) { alert('Name is required.'); return; }
+  if (!name) { appAlert('Name is required.', { type: 'warning' }); return; }
 
   const slugify = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 
@@ -852,19 +852,19 @@ async function _submitCompanyForm(existingId) {
     // Reopen detail panel so the user sees the saved result
     openCompanyDetail(result.company_id);
   } catch (err) {
-    alert('Error saving company: ' + err.message);
+    appAlert('Error saving company: ' + err.message, { type: 'error' });
   }
 }
 
 async function _deleteCompany(companyId) {
-  if (!confirm('Delete this company from the pool? This cannot be undone.')) return;
+  if (!(await appConfirm('Delete this company from the pool? This cannot be undone.', { type: 'warning' }))) return;
   try {
     await api('DELETE', '/companies/' + companyId);
     document.getElementById('cp-form-overlay').remove();
     cpAllCompanies = cpAllCompanies.filter(c => c.company_id !== companyId);
     renderCompanyView();
   } catch (err) {
-    alert('Error deleting: ' + err.message);
+    appAlert('Error deleting: ' + err.message, { type: 'error' });
   }
 }
 
@@ -878,7 +878,7 @@ async function addCompanyAlias(companyId) {
     const company = await api('GET', '/companies/' + companyId);
     const aliases = company.aliases || [];
     if (aliases.some(a => a.toLowerCase() === alias.toLowerCase())) {
-      alert('Alias already exists.');
+      appAlert('Alias already exists.', { type: 'warning' });
       return;
     }
     aliases.push(alias);
@@ -887,7 +887,7 @@ async function addCompanyAlias(companyId) {
     // Refresh the page
     openCompanyDetail(companyId);
   } catch (err) {
-    alert('Error adding alias: ' + err.message);
+    appAlert('Error adding alias: ' + err.message, { type: 'error' });
   }
 }
 
@@ -900,6 +900,6 @@ async function removeCompanyAlias(companyId, index) {
     invalidateAliasCache();
     openCompanyDetail(companyId);
   } catch (err) {
-    alert('Error removing alias: ' + err.message);
+    appAlert('Error removing alias: ' + err.message, { type: 'error' });
   }
 }

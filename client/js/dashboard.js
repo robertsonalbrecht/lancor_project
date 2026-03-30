@@ -25,7 +25,7 @@ async function generateClientDashboard(searchId) {
       if (historyEl) renderDashboardHistory(historyEl, updated.weekly_updates || []);
     }
   } catch (e) {
-    alert('Error generating dashboard: ' + e.message);
+    appAlert('Error generating dashboard: ' + e.message, { type: 'error' });
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Generate Dashboard'; }
   }
@@ -67,7 +67,7 @@ async function previewDashboard(searchId) {
     win.document.write(result.html);
     win.document.close();
   } catch (e) {
-    alert('Error previewing dashboard: ' + e.message);
+    appAlert('Error previewing dashboard: ' + e.message, { type: 'error' });
   }
 }
 
@@ -79,7 +79,7 @@ async function printDashboard(searchId) {
     win.document.close();
     setTimeout(() => win.print(), 500);
   } catch (e) {
-    alert('Error printing dashboard: ' + e.message);
+    appAlert('Error printing dashboard: ' + e.message, { type: 'error' });
   }
 }
 

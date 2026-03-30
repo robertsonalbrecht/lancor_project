@@ -565,20 +565,20 @@ function copyToClipboard(text, btn) {
       setTimeout(() => { btn.textContent = original; }, 1500);
     }
   }).catch(err => {
-    alert('Copy failed: ' + err.message);
+    appAlert('Copy failed: ' + err.message, { type: 'error' });
   });
 }
 
 // ── Delete template ───────────────────────────────────────────────────────────
 
 async function deleteTemplate(tabType, id) {
-  if (!confirm('Delete this template? This cannot be undone.')) return;
+  if (!(await appConfirm('Delete this template? This cannot be undone.', { type: 'warning' }))) return;
   try {
     await api('DELETE', '/templates/' + tabType + '/' + id);
     allTemplatesData = await api('GET', '/templates');
     renderTemplatesPage();
   } catch (err) {
-    alert('Error deleting template: ' + err.message);
+    appAlert('Error deleting template: ' + err.message, { type: 'error' });
   }
 }
 
@@ -601,7 +601,7 @@ async function duplicateTemplate(tabType, id) {
     allTemplatesData = await api('GET', '/templates');
     renderTemplatesPage();
   } catch (err) {
-    alert('Error duplicating template: ' + err.message);
+    appAlert('Error duplicating template: ' + err.message, { type: 'error' });
   }
 }
 
@@ -890,7 +890,7 @@ function collectDynamicList(listId) {
 
 async function saveTemplate(tabType, id) {
   const name = (document.getElementById('tf-name') || {}).value || '';
-  if (!name.trim()) { alert('Template name is required.'); return; }
+  if (!name.trim()) { appAlert('Template name is required.', { type: 'warning' }); return; }
 
   let payload = { name: name.trim() };
 
@@ -901,7 +901,7 @@ async function saveTemplate(tabType, id) {
       payload.archetype = (document.getElementById('tf-archetype') || {}).value || '';
       payload.boolean_string = (document.getElementById('tf-boolean') || {}).value || '';
       payload.notes = (document.getElementById('tf-notes') || {}).value || '';
-      if (!payload.boolean_string.trim()) { alert('Boolean string is required.'); return; }
+      if (!payload.boolean_string.trim()) { appAlert('Boolean string is required.', { type: 'warning' }); return; }
       break;
 
     case 'pitchbook': {
@@ -924,7 +924,7 @@ async function saveTemplate(tabType, id) {
       payload.subject = (document.getElementById('tf-subject') || {}).value || '';
       payload.body = (document.getElementById('tf-body') || {}).value || '';
       payload.notes = (document.getElementById('tf-notes') || {}).value || '';
-      if (!payload.body.trim()) { alert('Message body is required.'); return; }
+      if (!payload.body.trim()) { appAlert('Message body is required.', { type: 'warning' }); return; }
       break;
 
     case 'profile':
@@ -953,6 +953,6 @@ async function saveTemplate(tabType, id) {
     allTemplatesData = await api('GET', '/templates');
     renderTemplatesPage();
   } catch (err) {
-    alert('Error saving template: ' + err.message);
+    appAlert('Error saving template: ' + err.message, { type: 'error' });
   }
 }

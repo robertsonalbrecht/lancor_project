@@ -177,7 +177,7 @@ async function toggleArchivedSearches(includeArchived) {
     const data = await api('GET', url);
     renderSearchList(data.searches || [], includeArchived);
   } catch (err) {
-    alert('Error loading searches: ' + err.message);
+    appAlert('Error loading searches: ' + err.message, { type: 'error' });
   }
 }
 
@@ -362,7 +362,7 @@ function wizardNext() {
     const clientName = document.getElementById('wiz-client-name').value.trim();
     const roleTitle = document.getElementById('wiz-role-title').value.trim();
     if (!clientName || !roleTitle) {
-      alert('Client Name and Role Title are required.');
+      appAlert('Client Name and Role Title are required.', { type: 'warning' });
       return;
     }
     wizardData.client_name = clientName;
@@ -377,7 +377,7 @@ function wizardNext() {
 
 async function wizardCreate() {
   try {
-    const slug = slugify(wizardData.client_name) + '-' + new Date().getFullYear();
+    const slug = slugify(wizardData.client_name) + '-' + slugify(wizardData.role_title || '') + '-' + new Date().getFullYear();
     const payload = Object.assign({}, wizardData, {
       search_id: slug,
       status: 'active',
@@ -390,7 +390,7 @@ async function wizardCreate() {
     currentSearchId = created.search_id;
     renderSearchDetail(created.search_id);
   } catch (err) {
-    alert('Error creating search: ' + err.message);
+    appAlert('Error creating search: ' + err.message, { type: 'error' });
   }
 }
 
@@ -798,7 +798,7 @@ async function setStage(candidateId, newStage) {
 
   // Prompt for DQ reason
   if (newStage === 'DQ' || newStage === 'NI') {
-    const reason = prompt(`Reason for ${newStage}:`);
+    const reason = await appPrompt(`Reason for ${newStage}:`);
     pipeline[idx].dq_reason = reason || '';
   }
 
@@ -809,7 +809,7 @@ async function setStage(candidateId, newStage) {
     currentSearchData.pipeline = updated.pipeline || pipeline;
     renderSearchDetailView(currentSearchData, 'pipeline');
   } catch (err) {
-    alert('Error saving stage: ' + err.message);
+    appAlert('Error saving stage: ' + err.message, { type: 'error' });
   }
 }
 
@@ -842,7 +842,7 @@ async function cycleMeetingStatus(candidateId, contactName) {
     currentSearchData.pipeline = updated.pipeline || pipeline;
     renderSearchDetailView(currentSearchData, 'pipeline');
   } catch (err) {
-    alert('Error saving meeting status: ' + err.message);
+    appAlert('Error saving meeting status: ' + err.message, { type: 'error' });
   }
 }
 
@@ -911,7 +911,7 @@ async function saveInlineEdit(cell, cid, field, value) {
       if (currentSearchData) renderSearchDetailView(currentSearchData, 'pipeline');
     }, 900);
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
     if (currentSearchData) renderSearchDetailView(currentSearchData, 'pipeline');
   }
 }
@@ -981,7 +981,7 @@ function showAddNoteForm() {
 async function saveWeeklyNote() {
   const date = document.getElementById('note-date').value;
   const notes = document.getElementById('note-text').value.trim();
-  if (!notes) { alert('Please enter notes.'); return; }
+  if (!notes) { appAlert('Please enter notes.', { type: 'warning' }); return; }
 
   if (!currentSearchData) return;
 
@@ -992,7 +992,7 @@ async function saveWeeklyNote() {
     currentSearchData.weekly_updates = updated.weekly_updates || weekly_updates;
     renderSearchDetailView(currentSearchData, 'weekly-updates');
   } catch (err) {
-    alert('Error saving note: ' + err.message);
+    appAlert('Error saving note: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1087,7 +1087,7 @@ async function submitQuickAdd() {
   const location = document.getElementById('qa-location').value.trim();
 
   if (!name || !title || !firm || !location) {
-    alert('Please fill in all required fields (Name, Title, Firm, Location).');
+    appAlert('Please fill in all required fields (Name, Title, Firm, Location).', { type: 'warning' });
     return;
   }
 
@@ -1136,7 +1136,7 @@ async function submitQuickAdd() {
     currentSearchData = updated;
     renderSearchDetailView(currentSearchData, 'pipeline');
   } catch (err) {
-    alert('Error adding candidate: ' + err.message);
+    appAlert('Error adding candidate: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1186,7 +1186,7 @@ function openImportModal() {
 function submitImport() {
   const fileInput = document.getElementById('import-file');
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-    alert('Please select an HTML file.');
+    appAlert('Please select an HTML file.', { type: 'warning' });
     return;
   }
 
@@ -1410,14 +1410,14 @@ async function saveEditSearch() {
     closeModal();
     renderSearchDetailView(currentSearchData, currentTab);
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
 // ── Close Search + Debrief trigger ───────────────────────────────────────────
 
 async function initiateCloseSearch(searchId) {
-  if (!confirm('Close this search? You will be prompted to debrief the pipeline before archiving.')) return;
+  if (!(await appConfirm('Close this search? You will be prompted to debrief the pipeline before archiving.'))) return;
   try {
     // Close the search
     await api('PUT', '/searches/' + searchId + '/close', {});
@@ -1429,10 +1429,10 @@ async function initiateCloseSearch(searchId) {
       setTimeout(() => openDebriefFlow(search), 100);
     } else {
       navigateTo('searches');
-      alert('Search closed. Open Candidate Pool to run the debrief.');
+      appAlert('Search closed. Open Candidate Pool to run the debrief.', { type: 'success' });
     }
   } catch (e) {
-    alert('Error closing search: ' + e.message);
+    appAlert('Error closing search: ' + e.message, { type: 'error' });
   }
 }
 
@@ -1472,6 +1472,11 @@ async function saveKitEntry(type, entry) {
   await api('PUT', '/searches/' + _kitSearch.search_id, { search_kit: _kitSearch.search_kit });
   currentSearchData = _kitSearch;
   loadSearchKitTab(_kitSearch);
+}
+
+async function confirmDeleteKitEntry(type, id) {
+  if (!(await appConfirm('Delete this entry?'))) return;
+  deleteKitEntry(type, id);
 }
 
 async function deleteKitEntry(type, id) {
@@ -1583,7 +1588,7 @@ function renderKitItem(type, item, search) {
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="viewKitItem('${type}', ${ij}, ${sj})">View</button>
-        <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="if(confirm('Delete this entry?')) deleteKitEntry('${type}','${item.id}')">Delete</button>
+        <button class="btn btn-ghost btn-sm" style="color:#c62828" onclick="confirmDeleteKitEntry('${type}','${item.id}')">Delete</button>
         <button class="btn btn-ghost btn-sm" onclick="saveKitToLibrary('${type}', ${ij}, ${sj})">Save to Library</button>
       </div>
     </div>`;
@@ -1668,9 +1673,9 @@ async function saveKitToLibrary(type, item, search) {
   delete payload.created_at;
   try {
     await api('POST', '/templates/' + apiType, payload);
-    alert('Saved to Templates Library!');
+    appAlert('Saved to Templates Library!', { type: 'success' });
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1681,7 +1686,7 @@ async function openImportFromLibrary(type, search) {
     const data = await api('GET', '/templates');
     const items = data[type] || [];
     if (items.length === 0) {
-      alert('No items in the Templates Library for this category.');
+      appAlert('No items in the Templates Library for this category.', { type: 'warning' });
       return;
     }
     const rows = items.map(tpl => {
@@ -1703,7 +1708,7 @@ async function openImportFromLibrary(type, search) {
         <tbody>${rows}</tbody>
       </table>`);
   } catch (err) {
-    alert('Error loading library: ' + err.message);
+    appAlert('Error loading library: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1719,7 +1724,7 @@ async function importLibraryItem(type, tpl) {
     await saveKitEntry(type, entry);
     closeKitModal();
   } catch (err) {
-    alert('Error importing: ' + err.message);
+    appAlert('Error importing: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1939,7 +1944,7 @@ function toggleICPSector(s, checked) {
 
 async function saveICPProfile() {
   const name = document.getElementById('icp-name')?.value?.trim();
-  if (!name) { alert('Please enter a profile name.'); return; }
+  if (!name) { appAlert('Please enter a profile name.', { type: 'warning' }); return; }
   const entry = Object.assign({}, _icpState, {
     id: 'icp-' + Date.now(),
     name,
@@ -1949,7 +1954,7 @@ async function saveICPProfile() {
     await saveKitEntry('ideal_candidate_profiles', entry);
     closeKitModal();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -2160,13 +2165,13 @@ function copyBooleanString(btnEl) {
     const orig = btnEl.innerHTML;
     btnEl.innerHTML = 'Copied!';
     setTimeout(() => { btnEl.innerHTML = orig; }, 1800);
-  }).catch(() => alert('Copy failed — please copy manually.'));
+  }).catch(() => appAlert('Copy failed — please copy manually.', { type: 'error' }));
 }
 
 async function saveBooleanToSearch() {
   const query = document.getElementById('bool-preview')?.textContent || '';
   if (!query || query.startsWith('(add tags')) {
-    alert('Please add some tags before saving.');
+    appAlert('Please add some tags before saving.', { type: 'warning' });
     return;
   }
   const entry = {
@@ -2181,7 +2186,7 @@ async function saveBooleanToSearch() {
     await saveKitEntry('boolean_strings', entry);
     document.getElementById('bool-builder-modal')?.remove();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -2228,7 +2233,7 @@ async function saveOutreachMessage() {
   const channel = document.getElementById('om-channel')?.value;
   const subject = document.getElementById('om-subject')?.value?.trim();
   const body = document.getElementById('om-body')?.value?.trim();
-  if (!name || !body) { alert('Please fill in the name and message body.'); return; }
+  if (!name || !body) { appAlert('Please fill in the name and message body.', { type: 'warning' }); return; }
 
   const entry = {
     id: 'outreach-' + Date.now(),
@@ -2243,7 +2248,7 @@ async function saveOutreachMessage() {
     await saveKitEntry('outreach_messages', entry);
     closeKitModal();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -2368,8 +2373,8 @@ function renderScreenQResults() {
 
 async function saveScreenQGuide() {
   const name = document.getElementById('sq-name')?.value?.trim();
-  if (!name) { alert('Please enter a guide name.'); return; }
-  if (!_screenQCategories?.length) { alert('No questions to save.'); return; }
+  if (!name) { appAlert('Please enter a guide name.', { type: 'warning' }); return; }
+  if (!_screenQCategories?.length) { appAlert('No questions to save.', { type: 'warning' }); return; }
   // Clean empty questions
   const categories = _screenQCategories.map(c => ({
     category: c.category,
@@ -2387,7 +2392,7 @@ async function saveScreenQGuide() {
     await saveKitEntry('screen_question_guides', entry);
     closeKitModal();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -2497,7 +2502,7 @@ function removePBTag(field, idx) {
 
 async function savePitchbookParams() {
   const name = document.getElementById('pb-name')?.value?.trim();
-  if (!name) { alert('Please enter a name.'); return; }
+  if (!name) { appAlert('Please enter a name.', { type: 'warning' }); return; }
   const entry = {
     id: 'pb-' + Date.now(),
     name,
@@ -2518,6 +2523,6 @@ async function savePitchbookParams() {
     await saveKitEntry('pitchbook_params', entry);
     closeKitModal();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }

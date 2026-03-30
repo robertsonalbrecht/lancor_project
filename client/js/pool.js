@@ -550,7 +550,7 @@ async function saveDetailField(candidateId, field, value) {
       }
     }
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -584,7 +584,7 @@ async function setPrimaryExperience(candidateId, idx) {
     // Refresh pool table row subtitle
     renderPoolView();
   } catch (err) {
-    alert('Error setting primary experience: ' + err.message);
+    appAlert('Error setting primary experience: ' + err.message, { type: 'error' });
   }
 }
 
@@ -595,7 +595,7 @@ async function openEditCandidateForm(candidateId) {
   try {
     candidate = await api('GET', '/candidates/' + candidateId);
   } catch (err) {
-    alert('Error loading candidate: ' + err.message);
+    appAlert('Error loading candidate: ' + err.message, { type: 'error' });
     return;
   }
 
@@ -753,7 +753,7 @@ async function saveEditCandidate(candidateId) {
     // Re-render pool table
     renderPoolView();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -765,13 +765,13 @@ async function openRunDebriefPicker() {
     const data = await api('GET', '/searches?include=closed');
     allSearches = data.searches || [];
   } catch (err) {
-    alert('Error loading searches: ' + err.message);
+    appAlert('Error loading searches: ' + err.message, { type: 'error' });
     return;
   }
 
   const closedSearches = allSearches.filter(s => s.status === 'closed');
   if (closedSearches.length === 0) {
-    alert('No closed searches found. Close a search first to run a debrief.');
+    appAlert('No closed searches found. Close a search first to run a debrief.', { type: 'info' });
     return;
   }
 
@@ -811,7 +811,7 @@ async function pickAndDebrief() {
     const search = await api('GET', '/searches/' + searchId);
     openDebriefFlow(search);
   } catch (err) {
-    alert('Error loading search: ' + err.message);
+    appAlert('Error loading search: ' + err.message, { type: 'error' });
   }
 }
 
@@ -824,13 +824,13 @@ async function openDebriefFlow(search) {
     const data = await api('GET', '/candidates');
     poolData = data.candidates || [];
   } catch (err) {
-    alert('Error loading pool: ' + err.message);
+    appAlert('Error loading pool: ' + err.message, { type: 'error' });
     return;
   }
 
   const pipeline = search.pipeline || [];
   if (pipeline.length === 0) {
-    alert('This search has no pipeline candidates to debrief.');
+    appAlert('This search has no pipeline candidates to debrief.', { type: 'info' });
     return;
   }
 
@@ -938,7 +938,7 @@ async function submitDebrief(searchId, count) {
   }
 
   if (candidates.length === 0) {
-    alert('No candidates selected.');
+    appAlert('No candidates selected.', { type: 'warning' });
     return;
   }
 

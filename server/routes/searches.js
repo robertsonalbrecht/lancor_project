@@ -308,72 +308,55 @@ async function seedCoverageFromPlaybook(searchUuid, sectorSlugs) {
     if (sectorRows.length === 0) continue;
     const sectorUuid = sectorRows[0].id;
 
-    // PE firms from playbook
-    const { rows: pbFirms } = await pool.query(
-      `SELECT spf.*, co.slug AS firm_slug
+    // Bulk insert PE firms from playbook → coverage (one query)
+    await pool.query(
+      `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
+       SELECT $1, spf.company_id, spf.name, spf.hq, spf.size_tier, spf.strategy, spf.sector_focus, COALESCE(spf.why_target, '')
        FROM sector_pe_firms spf
-       JOIN companies co ON co.id = spf.company_id
-       WHERE spf.sector_id = $1`,
-      [sectorUuid]
+       WHERE spf.sector_id = $2
+       ON CONFLICT (search_id, company_id) DO NOTHING`,
+      [searchUuid, sectorUuid]
     );
 
-    for (const firm of pbFirms) {
-      const { rows: inserted } = await pool.query(
-        `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-         ON CONFLICT (search_id, company_id) DO NOTHING
-         RETURNING id`,
-        [searchUuid, firm.company_id, firm.name, firm.hq, firm.size_tier, firm.strategy, firm.sector_focus, firm.why_target || '']
-      );
-      if (inserted.length > 0) {
-        const covFirmId = inserted[0].id;
-        // Copy roster
-        const { rows: roster } = await pool.query(
-          'SELECT * FROM playbook_firm_roster WHERE sector_pe_firm_id = $1',
-          [firm.id]
-        );
-        for (const person of roster) {
-          await pool.query(
-            `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [covFirmId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]
-          );
-        }
-      }
-    }
+    // Bulk insert firm rosters: join playbook roster → newly created coverage firms
+    await pool.query(
+      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+       SELECT scf.id, pfr.candidate_id, pfr.candidate_slug, pfr.name, pfr.title, pfr.linkedin_url, pfr.roster_status
+       FROM playbook_firm_roster pfr
+       JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
+       JOIN search_coverage_firms scf ON scf.company_id = spf.company_id AND scf.search_id = $1
+       WHERE spf.sector_id = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM coverage_firm_roster cfr
+           WHERE cfr.coverage_firm_id = scf.id AND cfr.candidate_slug = pfr.candidate_slug
+         )`,
+      [searchUuid, sectorUuid]
+    );
 
-    // Target companies from playbook
-    const { rows: pbCos } = await pool.query(
-      `SELECT stc.*, co.slug AS company_slug
+    // Bulk insert target companies from playbook → coverage
+    await pool.query(
+      `INSERT INTO search_coverage_companies (search_id, company_id, name, hq, revenue_tier, ownership_type, why_target)
+       SELECT $1, stc.company_id, stc.name, stc.hq, stc.revenue_tier, stc.ownership_type, COALESCE(stc.why_target, '')
        FROM sector_target_companies stc
-       JOIN companies co ON co.id = stc.company_id
-       WHERE stc.sector_id = $1`,
-      [sectorUuid]
+       WHERE stc.sector_id = $2
+       ON CONFLICT (search_id, company_id) DO NOTHING`,
+      [searchUuid, sectorUuid]
     );
 
-    for (const co of pbCos) {
-      const { rows: inserted } = await pool.query(
-        `INSERT INTO search_coverage_companies (search_id, company_id, name, hq, revenue_tier, ownership_type, why_target)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (search_id, company_id) DO NOTHING
-         RETURNING id`,
-        [searchUuid, co.company_id, co.name, co.hq, co.revenue_tier, co.ownership_type, co.why_target || '']
-      );
-      if (inserted.length > 0) {
-        const covCoId = inserted[0].id;
-        const { rows: roster } = await pool.query(
-          'SELECT * FROM playbook_company_roster WHERE sector_target_company_id = $1',
-          [co.id]
-        );
-        for (const person of roster) {
-          await pool.query(
-            `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [covCoId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]
-          );
-        }
-      }
-    }
+    // Bulk insert company rosters
+    await pool.query(
+      `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+       SELECT scc.id, pcr.candidate_id, pcr.candidate_slug, pcr.name, pcr.title, pcr.linkedin_url, pcr.roster_status
+       FROM playbook_company_roster pcr
+       JOIN sector_target_companies stc ON stc.id = pcr.sector_target_company_id
+       JOIN search_coverage_companies scc ON scc.company_id = stc.company_id AND scc.search_id = $1
+       WHERE stc.sector_id = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM coverage_company_roster ccr
+           WHERE ccr.coverage_company_id = scc.id AND ccr.candidate_slug = pcr.candidate_slug
+         )`,
+      [searchUuid, sectorUuid]
+    );
   }
 }
 
@@ -419,7 +402,12 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const body = req.body;
-    const searchSlug = body.search_id || `search-${Date.now()}`;
+    let searchSlug = body.search_id || `search-${Date.now()}`;
+    // If slug already exists, append a short suffix to make it unique
+    const { rows: existingSlug } = await pool.query('SELECT id FROM searches WHERE slug = $1', [searchSlug]);
+    if (existingSlug.length > 0) {
+      searchSlug = searchSlug + '-' + Date.now().toString(36).slice(-4);
+    }
     const today = new Date().toISOString();
 
     const { rows } = await pool.query(
@@ -437,10 +425,7 @@ router.post('/', async (req, res) => {
     await syncClientContacts(dbRow.id, body.client_contacts);
     await syncLancorTeam(dbRow.id, body.lancor_team);
 
-    // Seed coverage from playbook
-    if (body.sectors && body.sectors.length > 0) {
-      await seedCoverageFromPlaybook(dbRow.id, body.sectors);
-    }
+    // Coverage starts empty — user loads from playbook manually via "Load from Playbook" button
 
     res.status(201).json(await buildSearchResponse(dbRow));
   } catch (err) {
@@ -698,6 +683,88 @@ async function resolveCoverageIds(searchSlug, companySlug) {
   return { searchUuid: search.id, companyUuid: coRows[0].id };
 }
 
+// POST /api/searches/:id/coverage/seed — bulk load top firms & companies from a sector
+router.post('/:id/coverage/seed', async (req, res) => {
+  try {
+    const search = await fetchSearchBySlug(req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+
+    const { sector_id: sectorSlug, top_only } = req.body;
+    if (!sectorSlug) return res.status(400).json({ error: 'sector_id required' });
+
+    const { rows: sectorRows } = await pool.query('SELECT id FROM sectors WHERE slug = $1', [sectorSlug]);
+    if (sectorRows.length === 0) return res.status(404).json({ error: 'Sector not found' });
+    const sectorUuid = sectorRows[0].id;
+
+    if (top_only) {
+      // Only insert firms/companies that are in the top lists
+      await pool.query(
+        `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
+         SELECT $1, spf.company_id, spf.name, spf.hq, spf.size_tier, spf.strategy, spf.sector_focus, COALESCE(spf.why_target, '')
+         FROM sector_pe_firms spf
+         JOIN sector_top_pe_firms stpf ON stpf.company_id = spf.company_id AND stpf.sector_id = spf.sector_id
+         WHERE spf.sector_id = $2
+         ON CONFLICT (search_id, company_id) DO NOTHING`,
+        [search.id, sectorUuid]
+      );
+
+      await pool.query(
+        `INSERT INTO search_coverage_companies (search_id, company_id, name, hq, revenue_tier, ownership_type, why_target)
+         SELECT $1, stc.company_id, stc.name, stc.hq, stc.revenue_tier, stc.ownership_type, COALESCE(stc.why_target, '')
+         FROM sector_target_companies stc
+         JOIN sector_top_companies stop ON stop.company_id = stc.company_id AND stop.sector_id = stc.sector_id
+         WHERE stc.sector_id = $2
+         ON CONFLICT (search_id, company_id) DO NOTHING`,
+        [search.id, sectorUuid]
+      );
+    } else {
+      // Insert all firms/companies from the sector
+      await pool.query(
+        `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
+         SELECT $1, spf.company_id, spf.name, spf.hq, spf.size_tier, spf.strategy, spf.sector_focus, COALESCE(spf.why_target, '')
+         FROM sector_pe_firms spf WHERE spf.sector_id = $2
+         ON CONFLICT (search_id, company_id) DO NOTHING`,
+        [search.id, sectorUuid]
+      );
+
+      await pool.query(
+        `INSERT INTO search_coverage_companies (search_id, company_id, name, hq, revenue_tier, ownership_type, why_target)
+         SELECT $1, stc.company_id, stc.name, stc.hq, stc.revenue_tier, stc.ownership_type, COALESCE(stc.why_target, '')
+         FROM sector_target_companies stc WHERE stc.sector_id = $2
+         ON CONFLICT (search_id, company_id) DO NOTHING`,
+        [search.id, sectorUuid]
+      );
+    }
+
+    // Bulk copy rosters for newly added coverage entries
+    await pool.query(
+      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+       SELECT scf.id, pfr.candidate_id, pfr.candidate_slug, pfr.name, pfr.title, pfr.linkedin_url, pfr.roster_status
+       FROM playbook_firm_roster pfr
+       JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
+       JOIN search_coverage_firms scf ON scf.company_id = spf.company_id AND scf.search_id = $1
+       WHERE spf.sector_id = $2
+         AND NOT EXISTS (SELECT 1 FROM coverage_firm_roster cfr WHERE cfr.coverage_firm_id = scf.id AND cfr.candidate_slug = pfr.candidate_slug)`,
+      [search.id, sectorUuid]
+    );
+
+    await pool.query(
+      `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+       SELECT scc.id, pcr.candidate_id, pcr.candidate_slug, pcr.name, pcr.title, pcr.linkedin_url, pcr.roster_status
+       FROM playbook_company_roster pcr
+       JOIN sector_target_companies stc ON stc.id = pcr.sector_target_company_id
+       JOIN search_coverage_companies scc ON scc.company_id = stc.company_id AND scc.search_id = $1
+       WHERE stc.sector_id = $2
+         AND NOT EXISTS (SELECT 1 FROM coverage_company_roster ccr WHERE ccr.coverage_company_id = scc.id AND ccr.candidate_slug = pcr.candidate_slug)`,
+      [search.id, sectorUuid]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/searches/:id/coverage/firms — add firm to coverage
 router.post('/:id/coverage/firms', async (req, res) => {
   try {
@@ -708,9 +775,17 @@ router.post('/:id/coverage/firms', async (req, res) => {
     const firmSlug = body.firm_id;
     if (!firmSlug) return res.status(400).json({ error: 'firm_id required' });
 
-    const { rows: coRows } = await pool.query('SELECT id FROM companies WHERE slug = $1', [firmSlug]);
+    // Look up by slug first, fall back to name match
+    let { rows: coRows } = await pool.query('SELECT id, slug FROM companies WHERE slug = $1', [firmSlug]);
+    if (coRows.length === 0) {
+      // Try name match (typeahead may have generated a different slug)
+      const nameResult = await pool.query('SELECT id, slug FROM companies WHERE LOWER(name) = LOWER($1) LIMIT 1', [body.name || '']);
+      if (nameResult.rows.length > 0) coRows = nameResult.rows;
+    }
     if (coRows.length === 0) return res.status(404).json({ error: 'Company not found in pool' });
     const companyUuid = coRows[0].id;
+
+    console.log(`[coverage/firms POST] search=${req.params.id} (${search.id}), firm=${firmSlug}, resolved company=${coRows[0].slug} (${companyUuid})`);
 
     const { rows: inserted } = await pool.query(
       `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
@@ -721,26 +796,27 @@ router.post('/:id/coverage/firms', async (req, res) => {
        body.strategy || null, body.sector_focus || null, body.why_target || '']
     );
 
+    console.log(`[coverage/firms POST] inserted=${inserted.length} rows`);
+
     if (inserted.length > 0) {
       const covFirmId = inserted[0].id;
-      // Copy roster from playbook if available
-      const { rows: sectorIds } = await pool.query(
-        'SELECT sector_id FROM search_sectors WHERE search_id = $1', [search.id]);
-      for (const { sector_id } of sectorIds) {
-        const { rows: pbFirm } = await pool.query(
-          'SELECT id FROM sector_pe_firms WHERE sector_id = $1 AND company_id = $2',
-          [sector_id, companyUuid]);
-        if (pbFirm.length > 0) {
-          const { rows: roster } = await pool.query(
-            'SELECT * FROM playbook_firm_roster WHERE sector_pe_firm_id = $1', [pbFirm[0].id]);
-          for (const person of roster) {
-            await pool.query(
-              `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-              [covFirmId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
-          }
-          break; // only need roster from first matching sector
-        }
+      // Copy roster from playbook — check ALL sectors (firm may have roster in a different sector than the search)
+      const { rows: pbFirms } = await pool.query(
+        `SELECT pfr.* FROM playbook_firm_roster pfr
+         JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
+         WHERE spf.company_id = $1
+         ORDER BY pfr.name`,
+        [companyUuid]);
+      // Dedupe by candidate_slug (same person may appear across sectors)
+      const seen = new Set();
+      for (const person of pbFirms) {
+        const key = person.candidate_slug || person.name;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await pool.query(
+          `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [covFirmId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
       }
     }
 
@@ -776,24 +852,22 @@ router.post('/:id/coverage/companies', async (req, res) => {
 
     if (inserted.length > 0) {
       const covCoId = inserted[0].id;
-      // Copy roster from playbook if available
-      const { rows: sectorIds } = await pool.query(
-        'SELECT sector_id FROM search_sectors WHERE search_id = $1', [search.id]);
-      for (const { sector_id } of sectorIds) {
-        const { rows: pbCo } = await pool.query(
-          'SELECT id FROM sector_target_companies WHERE sector_id = $1 AND company_id = $2',
-          [sector_id, companyUuid]);
-        if (pbCo.length > 0) {
-          const { rows: roster } = await pool.query(
-            'SELECT * FROM playbook_company_roster WHERE sector_target_company_id = $1', [pbCo[0].id]);
-          for (const person of roster) {
-            await pool.query(
-              `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-              [covCoId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
-          }
-          break;
-        }
+      // Copy roster from playbook — check ALL sectors
+      const { rows: pbRoster } = await pool.query(
+        `SELECT pcr.* FROM playbook_company_roster pcr
+         JOIN sector_target_companies stc ON stc.id = pcr.sector_target_company_id
+         WHERE stc.company_id = $1
+         ORDER BY pcr.name`,
+        [companyUuid]);
+      const seen = new Set();
+      for (const person of pbRoster) {
+        const key = person.candidate_slug || person.name;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await pool.query(
+          `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [covCoId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
       }
     }
 
@@ -990,16 +1064,21 @@ router.patch('/:id/coverage/companies/:companyId/roster/:candidateId', async (re
 // POST /api/searches/:id/coverage/firms/:firmId/roster — add roster person
 router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
   try {
+    console.log(`[roster POST] search=${req.params.id} firm=${req.params.firmId} body=`, JSON.stringify(req.body));
+
     const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
-    if (error) return res.status(404).json({ error });
+    if (error) { console.log(`[roster POST] resolve error: ${error}`); return res.status(404).json({ error }); }
 
     const { rows: covRows } = await pool.query(
       'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
       [searchUuid, companyUuid]);
-    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+    if (covRows.length === 0) { console.log('[roster POST] coverage firm not found'); return res.status(404).json({ error: 'Coverage firm not found' }); }
+
+    console.log(`[roster POST] covFirmId=${covRows[0].id}`);
 
     const body = req.body;
     const candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.firmId).slice(0, 20);
+    console.log(`[roster POST] candidateSlug=${candidateSlug}`);
 
     // Resolve candidate UUID if exists
     const { rows: candRows } = await pool.query('SELECT id FROM candidates WHERE slug = $1', [candidateSlug]);
@@ -1011,6 +1090,8 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
       [covRows[0].id, candidateUuid, candidateSlug, body.name, body.title || null,
        body.linkedin_url || null, body.location || null, body.roster_status || 'Identified', body.source || null]);
 
+    console.log(`[roster POST] inserted id=${rows[0].id} name=${rows[0].name}`);
+
     res.status(201).json({
       candidate_id: rows[0].candidate_slug,
       name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
@@ -1018,6 +1099,44 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
       source: rows[0].source, reviewed: rows[0].reviewed,
       reviewed_date: null, review_status: null
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/searches/:id/coverage/firms/:firmId/roster/:candidateId — remove roster person
+router.delete('/:id/coverage/firms/:firmId/roster/:candidateId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
+    if (error) return res.status(404).json({ error });
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+    const { rows } = await pool.query(
+      'DELETE FROM coverage_firm_roster WHERE coverage_firm_id = $1 AND candidate_slug = $2 RETURNING id',
+      [covRows[0].id, req.params.candidateId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/searches/:id/coverage/companies/:companyId/roster/:candidateId — remove roster person
+router.delete('/:id/coverage/companies/:companyId/roster/:candidateId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.companyId);
+    if (error) return res.status(404).json({ error });
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_companies WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
+    const { rows } = await pool.query(
+      'DELETE FROM coverage_company_roster WHERE coverage_company_id = $1 AND candidate_slug = $2 RETURNING id',
+      [covRows[0].id, req.params.candidateId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

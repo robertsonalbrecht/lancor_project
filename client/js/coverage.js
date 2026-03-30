@@ -14,10 +14,20 @@ let _taDebounce = null;
 
 async function loadCompanyPool() {
   if (!_taCache) {
-    const resp = await api('GET', '/companies');
+    const resp = await api('GET', '/companies?limit=500');
     _taCache = resp.companies || [];
   }
   return _taCache;
+}
+
+/** Search companies server-side for typeahead (bypasses loading overlay) */
+async function searchCompanies(query, filterType) {
+  const params = new URLSearchParams({ text: query, limit: '8' });
+  if (filterType) params.set('type', filterType);
+  const res = await fetch('/api/companies?' + params.toString());
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.companies || [];
 }
 
 function setupTypeahead(inputId, opts) {
@@ -29,6 +39,7 @@ function setupTypeahead(inputId, opts) {
 
   let dropdown = null;
   let selectedIdx = -1;
+  let _taSearchTimer = null;
 
   function removeDropdown() {
     if (dropdown) { dropdown.remove(); dropdown = null; }
@@ -37,13 +48,7 @@ function setupTypeahead(inputId, opts) {
 
   async function showResults(query) {
     if (!query || query.length < 2) { removeDropdown(); return; }
-    const pool = await loadCompanyPool();
-    const q = query.toLowerCase();
-    let matches = pool.filter(c => {
-      const nameMatch = (c.name || '').toLowerCase().includes(q);
-      const typeMatch = !opts.filterType || (c.company_type || '').toLowerCase().includes(opts.filterType.toLowerCase());
-      return nameMatch && typeMatch;
-    }).slice(0, 8);
+    const matches = await searchCompanies(query, opts.filterType || null);
 
     removeDropdown();
     dropdown = document.createElement('div');
@@ -397,6 +402,7 @@ function buildPEFirmsTableHTML(firms, searchId) {
     const { pct, manual } = getCoveragePct(f, 'pe_firms');
     const isOpen = openAccordionId === f.firm_id;
     const rosterCount = (f.roster || []).length;
+    if (f.firm_id === 'blackstone') console.log('[buildFirmRow] blackstone roster.length=', rosterCount, 'roster=', (f.roster || []).map(r => r.name));
     const poolRec = getCompanyPoolRecord(f.name);
     const webUrl = f.website_url || (poolRec && poolRec.website_url) || '';
     const firmWebsite = webUrl ? `<a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
@@ -570,7 +576,8 @@ async function autoLinkCandidatesToRosters(search) {
             linkedin_url: c.linkedin_url || '',
             location: c.home_location || '',
             roster_status: 'Identified',
-            source: 'auto-linked'
+            source: 'auto-linked',
+            _new: true
           });
           changed = true;
         }
@@ -610,9 +617,34 @@ async function autoLinkCandidatesToRosters(search) {
     // Also auto-link to new firm if person moved
     // (the add-new-matches step above already handles this since we check current_firm)
 
-    // Save if any new people were linked
+    // Save newly linked people via roster POST endpoints
     if (changed) {
-      await api('PUT', '/searches/' + search.search_id, { sourcing_coverage: coverage });
+      for (const firm of (coverage.pe_firms || [])) {
+        for (const r of (firm.roster || [])) {
+          if (r.source === 'auto-linked' && r._new) {
+            try {
+              await fetch('/api/searches/' + search.search_id + '/coverage/firms/' + firm.firm_id + '/roster', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: r.name, title: r.title, linkedin_url: r.linkedin_url, location: r.location, roster_status: r.roster_status, source: 'auto-linked' })
+              });
+            } catch (e) { /* continue */ }
+            delete r._new;
+          }
+        }
+      }
+      for (const co of (coverage.companies || [])) {
+        for (const r of (co.roster || [])) {
+          if (r.source === 'auto-linked' && r._new) {
+            try {
+              await fetch('/api/searches/' + search.search_id + '/coverage/companies/' + co.company_id + '/roster', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: r.name, title: r.title, linkedin_url: r.linkedin_url, location: r.location, roster_status: r.roster_status, source: 'auto-linked' })
+              });
+            } catch (e) { /* continue */ }
+            delete r._new;
+          }
+        }
+      }
     }
     return changed;
   } catch (e) {
@@ -874,11 +906,10 @@ async function buildPlaybookTabHTML(search) {
 }
 
 async function loadTop25IntoSearch(searchId) {
-  if (!confirm('Load all Top 25 PE firms and companies from the sector playbooks into this search sourcing coverage? Existing firms and companies will not be duplicated.')) return;
+  if (!(await appConfirm('Load all Top 25 PE firms and companies from the sector playbooks into this search sourcing coverage? Existing firms and companies will not be duplicated.'))) return;
 
   try {
     const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const sectors = search.sectors || [];
     let addedFirms = 0;
     let addedCompanies = 0;
@@ -886,52 +917,32 @@ async function loadTop25IntoSearch(searchId) {
     for (const sectorId of sectors) {
       const sector = await api('GET', '/playbooks/' + sectorId);
 
-      // Add top PE firms
       for (const firmId of (sector.top_pe_firms || [])) {
         const firm = (sector.pe_firms || []).find(f => f.firm_id === firmId);
         if (!firm) continue;
-        const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
-        if (exists) continue;
-
-        coverage.pe_firms.push({
-          firm_id: firm.firm_id,
-          name: firm.name,
-          hq: firm.hq || '',
-          size_tier: firm.size_tier || '',
-          manual_complete: false,
-          manual_complete_note: '',
-          roster: JSON.parse(JSON.stringify(firm.roster || []))
+        const result = await api('POST', `/searches/${searchId}/coverage/firms`, {
+          firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
+          strategy: firm.strategy || '', sector_focus: firm.sector_focus || '', why_target: firm.why_target || ''
         });
+        // Check if it was actually new (total increased)
         addedFirms++;
       }
 
-      // Add top companies
       for (const coId of (sector.top_companies || [])) {
         const co = (sector.target_companies || []).find(c => c.company_id === coId);
         if (!co) continue;
-        const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
-        if (exists) continue;
-
-        coverage.companies.push({
-          company_id: co.company_id,
-          name: co.name,
-          hq: co.hq || '',
-          revenue_tier: co.revenue_tier || '',
-          manual_complete: false,
-          manual_complete_note: '',
-          roster: []
+        await api('POST', `/searches/${searchId}/coverage/companies`, {
+          company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
+          ownership_type: co.ownership_type || '', why_target: co.why_target || ''
         });
         addedCompanies++;
       }
     }
 
-    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
-    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies to sourcing coverage.');
-
-    // Refresh the coverage view
+    appAlert('Loaded ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies into sourcing coverage (duplicates skipped).', { type: 'success' });
     switchCoverageTab('pe-firms', searchId);
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -956,18 +967,18 @@ async function openAddPlaybookModal(searchId) {
     const available = allSectors.filter(s => !currentSectors.includes(s.id));
 
     if (available.length === 0) {
-      alert('All sector playbooks are already added to this search.');
+      appAlert('All sector playbooks are already added to this search.', { type: 'warning' });
       return;
     }
 
-    const choice = prompt(
+    const choice = await appPrompt(
       'Add a sector playbook:\n\n' +
       available.map((s, i) => `${i + 1}. ${s.label}`).join('\n') +
       '\n\nEnter number:'
     );
     if (!choice) return;
     const idx = parseInt(choice) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= available.length) { alert('Invalid selection.'); return; }
+    if (isNaN(idx) || idx < 0 || idx >= available.length) { appAlert('Invalid selection.', { type: 'warning' }); return; }
 
     const newSectorId = available[idx].id;
     const updatedSectors = [...currentSectors, newSectorId];
@@ -976,51 +987,40 @@ async function openAddPlaybookModal(searchId) {
     // Refresh playbook tab
     switchCoverageTab('playbook', searchId);
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
 async function addPlaybookItemToSearch(searchId, type, itemId, sectorId) {
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const sector = await api('GET', '/playbooks/' + sectorId);
 
     if (type === 'pe') {
       const firm = (sector.pe_firms || []).find(f => f.firm_id === itemId);
-      if (!firm) { alert('Firm not found.'); return; }
-      const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
-      if (exists) { alert('Already added.'); return; }
-      coverage.pe_firms.push({
+      if (!firm) { appAlert('Firm not found.', { type: 'warning' }); return; }
+      await api('POST', `/searches/${searchId}/coverage/firms`, {
         firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
-        manual_complete: false, manual_complete_note: '',
-        roster: JSON.parse(JSON.stringify(firm.roster || []))
+        strategy: firm.strategy || '', sector_focus: firm.sector_focus || '', why_target: firm.why_target || ''
       });
     } else {
       const co = (sector.target_companies || []).find(c => c.company_id === itemId);
-      if (!co) { alert('Company not found.'); return; }
-      const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
-      if (exists) { alert('Already added.'); return; }
-      coverage.companies.push({
+      if (!co) { appAlert('Company not found.', { type: 'warning' }); return; }
+      await api('POST', `/searches/${searchId}/coverage/companies`, {
         company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
-        manual_complete: false, manual_complete_note: '', roster: []
+        ownership_type: co.ownership_type || '', why_target: co.why_target || ''
       });
     }
 
-    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
-    // Refresh the playbook tab to show updated checkmarks
     switchCoverageTab('playbook', searchId);
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
 async function loadSectorPlaybookIntoSearch(searchId, sectorId) {
-  if (!confirm('Load this sector playbook into the search sourcing coverage?')) return;
+  if (!(await appConfirm('Load this sector playbook into the search sourcing coverage?'))) return;
 
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const sector = await api('GET', '/playbooks/' + sectorId);
     let addedFirms = 0;
     let addedCompanies = 0;
@@ -1028,12 +1028,9 @@ async function loadSectorPlaybookIntoSearch(searchId, sectorId) {
     for (const firmId of (sector.top_pe_firms || [])) {
       const firm = (sector.pe_firms || []).find(f => f.firm_id === firmId);
       if (!firm) continue;
-      const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
-      if (exists) continue;
-      coverage.pe_firms.push({
+      await api('POST', `/searches/${searchId}/coverage/firms`, {
         firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
-        manual_complete: false, manual_complete_note: '',
-        roster: JSON.parse(JSON.stringify(firm.roster || []))
+        strategy: firm.strategy || '', sector_focus: firm.sector_focus || '', why_target: firm.why_target || ''
       });
       addedFirms++;
     }
@@ -1041,20 +1038,17 @@ async function loadSectorPlaybookIntoSearch(searchId, sectorId) {
     for (const coId of (sector.top_companies || [])) {
       const co = (sector.target_companies || []).find(c => c.company_id === coId);
       if (!co) continue;
-      const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
-      if (exists) continue;
-      coverage.companies.push({
+      await api('POST', `/searches/${searchId}/coverage/companies`, {
         company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
-        manual_complete: false, manual_complete_note: '', roster: []
+        ownership_type: co.ownership_type || '', why_target: co.why_target || ''
       });
       addedCompanies++;
     }
 
-    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
-    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies from ' + (sector.sector_name || sectorId) + '.');
+    appAlert('Loaded ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies from ' + (sector.sector_name || sectorId) + ' (duplicates skipped).', { type: 'success' });
     switchCoverageTab('playbook', searchId);
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1142,45 +1136,42 @@ async function applyCoverageFilters(searchId) {
 
 async function updateRosterPersonStatus(searchId, type, entityId, candidateId, newStatus) {
   try {
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    await api('PATCH', `/searches/${searchId}/coverage/${subPath}/${entityId}/roster/${candidateId}`, {
+      roster_status: newStatus
+    });
+    // Re-fetch and re-render
     const search = await api('GET', '/searches/' + searchId);
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
     const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
     const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
-    const person = (entity.roster || []).find(p => p.candidate_id === candidateId);
-    if (!person) return;
-    person.roster_status = newStatus;
-    person.last_updated = todayISO();
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-    // Re-render roster section only
-    const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
-    // Update coverage bar
-    refreshCoverageBar(entity, entityId, type);
+    if (entity) {
+      const rosterEl = document.getElementById('roster-section-' + entityId);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
+      refreshCoverageBar(entity, entityId, type);
+    }
   } catch (e) {
     console.error('updateRosterPersonStatus error:', e);
   }
 }
 
 async function removeRosterPerson(searchId, type, entityId, candidateId) {
-  if (!confirm('Remove this person from the roster?')) return;
+  if (!(await appConfirm('Remove this person from the roster?'))) return;
   try {
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    await api('DELETE', `/searches/${searchId}/coverage/${subPath}/${entityId}/roster/${candidateId}`);
+    // Re-fetch and re-render
     const search = await api('GET', '/searches/' + searchId);
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
     const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
     const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
-    entity.roster = (entity.roster || []).filter(p => p.candidate_id !== candidateId);
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-    // Re-render roster section
-    const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
-    // Update coverage bar
-    refreshCoverageBar(entity, entityId, type);
+    if (entity) {
+      const rosterEl = document.getElementById('roster-section-' + entityId);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
+      refreshCoverageBar(entity, entityId, type);
+    }
   } catch (e) {
     console.error('removeRosterPerson error:', e);
   }
@@ -1193,40 +1184,34 @@ async function addRosterPerson(searchId, type, entityId) {
   const statusEl = document.getElementById('add-status-' + entityId);
 
   const name = (nameEl ? nameEl.value.trim() : '');
-  if (!name) { alert('Name is required.'); return; }
+  if (!name) { appAlert('Name is required.', { type: 'warning' }); return; }
 
   const title = titleEl ? titleEl.value.trim() : '';
   const linkedin_url = linkedinEl ? linkedinEl.value.trim() : '';
   const roster_status = statusEl ? statusEl.value : 'Identified';
 
-  const candidate_id = slugify(name + '-' + entityId);
-
-  const person = {
-    candidate_id,
-    name,
-    title,
-    linkedin_url,
-    roster_status,
-    last_updated: todayISO(),
-    searches_appeared_in: [searchId]
-  };
-
   try {
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    const url = `/searches/${searchId}/coverage/${subPath}/${entityId}/roster`;
+    console.log('[addRosterPerson] POST', url, { name, title, linkedin_url, roster_status });
+    const result = await api('POST', url, {
+      name, title, linkedin_url, roster_status
+    });
+    console.log('[addRosterPerson] result:', result);
+
+    // Re-fetch full coverage to get updated roster
     const search = await api('GET', '/searches/' + searchId);
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
     const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
     const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
-    if (!entity.roster) entity.roster = [];
-    entity.roster.push(person);
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-    // Re-render roster section
-    const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
-    // Update coverage bar
-    refreshCoverageBar(entity, entityId, type);
+
+    if (entity) {
+      const rosterEl = document.getElementById('roster-section-' + entityId);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
+      refreshCoverageBar(entity, entityId, type);
+    }
+
     // Clear form
     if (nameEl) nameEl.value = '';
     if (titleEl) titleEl.value = '';
@@ -1234,7 +1219,7 @@ async function addRosterPerson(searchId, type, entityId) {
     if (statusEl) statusEl.value = 'Identified';
   } catch (e) {
     console.error('addRosterPerson error:', e);
-    alert('Error saving person: ' + e.message);
+    appAlert('Error saving person: ' + e.message, { type: 'error' });
   }
 }
 
@@ -1258,7 +1243,7 @@ async function toggleArchiveComplete(searchId, type, entityId) {
     openAccordionId = null;
     switchCoverageTab(tab, searchId);
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1280,7 +1265,7 @@ async function resetVerification(searchId, type, entityId) {
       if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(updated, entityId, searchId, type);
     }
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1339,6 +1324,7 @@ function refreshCoverageBar(entity, entityId, type) {
 
 async function setReviewStatus(searchId, type, entityId, candidateId, newStatus) {
   try {
+    // Read current state to check for toggle
     const search = await api('GET', '/searches/' + searchId);
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
@@ -1347,21 +1333,26 @@ async function setReviewStatus(searchId, type, entityId, candidateId, newStatus)
     if (!entity) return;
     const person = (entity.roster || []).find(p => p.candidate_id === candidateId);
     if (!person) return;
-    // Toggle: if already set to this status, clear it back to pending
+
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    let patchData;
     if (person.review_status === newStatus) {
-      person.review_status = null;
-      person.reviewed = false;
-      person.reviewed_date = null;
+      patchData = { review_status: null, reviewed: false, reviewed_date: null };
     } else {
-      person.review_status = newStatus;
-      person.reviewed = true;
-      person.reviewed_date = todayISO();
+      patchData = { review_status: newStatus, reviewed: true, reviewed_date: todayISO() };
     }
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-    const rosterEl = document.getElementById('roster-section-' + entityId);
-    if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
-    refreshCoverageBar(entity, entityId, type);
+    await api('PATCH', `/searches/${searchId}/coverage/${subPath}/${entityId}/roster/${candidateId}`, patchData);
+
+    // Re-fetch and re-render
+    const freshSearch = await api('GET', '/searches/' + searchId);
+    const freshCov = freshSearch.sourcing_coverage || { pe_firms: [], companies: [] };
+    const freshList = type === 'pe_firms' ? freshCov.pe_firms : freshCov.companies;
+    const freshEntity = (freshList || []).find(e => e[idKey] === entityId);
+    if (freshEntity) {
+      const rosterEl = document.getElementById('roster-section-' + entityId);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(freshEntity.roster, entityId, searchId, type, freshEntity.name);
+      refreshCoverageBar(freshEntity, entityId, type);
+    }
   } catch (e) {
     console.error('setReviewStatus error:', e);
   }
@@ -1431,6 +1422,7 @@ function openAddFirmModal(searchId) {
     filterType: 'PE Firm',
     onSelect: function(company) {
       document.getElementById('modal-firm-name').value = company.name;
+      document.getElementById('modal-firm-name').dataset.companyId = company.company_id;
       if (company.hq) document.getElementById('modal-firm-hq').value = company.hq;
       if (company.size_tier) document.getElementById('modal-firm-size').value = company.size_tier;
       if (company.strategy) document.getElementById('modal-firm-strategy').value = company.strategy;
@@ -1442,58 +1434,45 @@ function openAddFirmModal(searchId) {
     },
     onAddNew: function(name) {
       document.getElementById('modal-firm-name').value = name;
+      document.getElementById('modal-firm-name').dataset.companyId = '';
     }
   });
   document.getElementById('modal-firm-name').focus();
 }
 
 async function submitAddFirm(searchId) {
-  const name = (document.getElementById('modal-firm-name').value || '').trim();
-  if (!name) { alert('Firm name is required.'); return; }
+  const nameEl = document.getElementById('modal-firm-name');
+  const name = (nameEl.value || '').trim();
+  if (!name) { appAlert('Firm name is required.', { type: 'warning' }); return; }
   const hq = (document.getElementById('modal-firm-hq').value || '').trim();
   const size_tier = document.getElementById('modal-firm-size').value;
   const strategy = (document.getElementById('modal-firm-strategy').value || '').trim();
   const sector_focus = (document.getElementById('modal-firm-sector').value || '').trim();
   const why_target = (document.getElementById('modal-firm-why').value || '').trim();
 
-  const firm_id = slugify(name);
-  const newFirm = {
-    firm_id,
-    name,
-    hq,
-    size_tier,
-    strategy,
-    sector_focus,
-    why_target,
-    manual_complete: false,
-    manual_complete_note: '',
-    roster: []
-  };
+  // Use the company_id from typeahead selection if available, otherwise generate slug
+  const firm_id = nameEl.dataset.companyId || slugify(name);
 
   try {
-    // Add to company pool if not already there
-    const pool = await loadCompanyPool();
-    const exists = pool.some(c => c.name.toLowerCase() === name.toLowerCase());
-    if (!exists) {
-      await api('POST', '/companies', { name, company_type: 'PE Firm', hq, size_tier, strategy });
-      _taCache = null; // invalidate cache
+    // Only create company if it's a new entry (no existing company_id from typeahead)
+    if (!nameEl.dataset.companyId) {
+      await api('POST', '/companies', { company_id: firm_id, name, company_type: 'PE Firm', hq, size_tier, strategy });
+      _taCache = null;
     }
 
-    const search = await api('GET', '/searches/' + searchId);
-    if (!search.sourcing_coverage) search.sourcing_coverage = { pe_firms: [], companies: [] };
-    if (!search.sourcing_coverage.pe_firms) search.sourcing_coverage.pe_firms = [];
-    search.sourcing_coverage.pe_firms.push(newFirm);
-    await api('PUT', '/searches/' + searchId, search);
+    // Add to coverage via the dedicated endpoint
+    const coverage = await api('POST', `/searches/${searchId}/coverage/firms`, {
+      firm_id, name, hq, size_tier, strategy, sector_focus, why_target
+    });
+
     document.getElementById('cov-add-modal').remove();
-    // Re-render table
     const tableEl = document.getElementById('coverage-table');
-    if (tableEl) tableEl.innerHTML = buildPEFirmsTableHTML(search.sourcing_coverage.pe_firms, searchId);
-    // Update sub-tab count
+    if (tableEl) tableEl.innerHTML = buildPEFirmsTableHTML(coverage.pe_firms, searchId);
     const peBtn = document.getElementById('cov-tab-pe');
-    if (peBtn) peBtn.textContent = `PE Firms (${search.sourcing_coverage.pe_firms.length})`;
+    if (peBtn) peBtn.textContent = `PE Firms (${coverage.pe_firms.length})`;
   } catch (e) {
     console.error('submitAddFirm error:', e);
-    alert('Error adding firm: ' + e.message);
+    appAlert('Error adding firm: ' + e.message, { type: 'error' });
   }
 }
 
@@ -1560,64 +1539,51 @@ function openAddCompanyModal(searchId) {
     filterType: null, // search all company types
     onSelect: function(company) {
       document.getElementById('modal-co-name').value = company.name;
+      document.getElementById('modal-co-name').dataset.companyId = company.company_id;
       if (company.hq) document.getElementById('modal-co-hq').value = company.hq;
       if (company.revenue_tier) document.getElementById('modal-co-rev').value = company.revenue_tier;
       if (company.ownership_type) document.getElementById('modal-co-ownership').value = company.ownership_type;
     },
     onAddNew: function(name) {
       document.getElementById('modal-co-name').value = name;
+      document.getElementById('modal-co-name').dataset.companyId = '';
     }
   });
   document.getElementById('modal-co-name').focus();
 }
 
 async function submitAddCompany(searchId) {
-  const name = (document.getElementById('modal-co-name').value || '').trim();
-  if (!name) { alert('Company name is required.'); return; }
+  const nameEl = document.getElementById('modal-co-name');
+  const name = (nameEl.value || '').trim();
+  if (!name) { appAlert('Company name is required.', { type: 'warning' }); return; }
   const hq = (document.getElementById('modal-co-hq').value || '').trim();
   const revenue_tier = document.getElementById('modal-co-rev').value;
   const ownership_type = (document.getElementById('modal-co-ownership').value || '').trim();
   const roles_to_target = (document.getElementById('modal-co-roles').value || '').trim();
   const why_target = (document.getElementById('modal-co-why').value || '').trim();
 
-  const company_id = slugify(name);
-  const newCompany = {
-    company_id,
-    name,
-    hq,
-    revenue_tier,
-    ownership_type,
-    roles_to_target,
-    why_target,
-    manual_complete: false,
-    manual_complete_note: '',
-    roster: []
-  };
+  const company_id = nameEl.dataset.companyId || slugify(name);
 
   try {
-    // Add to company pool if not already there
-    const pool = await loadCompanyPool();
-    const exists = pool.some(c => c.name.toLowerCase() === name.toLowerCase());
-    if (!exists) {
-      await api('POST', '/companies', { name, company_type: 'Private Company', hq, revenue_tier, ownership_type });
-      _taCache = null; // invalidate cache
+    // Only create company if it's a new entry
+    if (!nameEl.dataset.companyId) {
+      await api('POST', '/companies', { company_id, name, company_type: 'Private Company', hq, revenue_tier, ownership_type });
+      _taCache = null;
     }
 
-    const search = await api('GET', '/searches/' + searchId);
-    if (!search.sourcing_coverage) search.sourcing_coverage = { pe_firms: [], companies: [] };
-    if (!search.sourcing_coverage.companies) search.sourcing_coverage.companies = [];
-    search.sourcing_coverage.companies.push(newCompany);
-    await api('PUT', '/searches/' + searchId, search);
+    // Add to coverage via the dedicated endpoint
+    const coverage = await api('POST', `/searches/${searchId}/coverage/companies`, {
+      company_id, name, hq, revenue_tier, ownership_type, why_target
+    });
+
     document.getElementById('cov-add-modal').remove();
-    // Re-render table
     const tableEl = document.getElementById('coverage-table');
-    if (tableEl) tableEl.innerHTML = buildCompaniesTableHTML(search.sourcing_coverage.companies, searchId);
-    // Update sub-tab count
+    if (tableEl) tableEl.innerHTML = buildCompaniesTableHTML(coverage.companies, searchId);
     const coBtn = document.getElementById('cov-tab-companies');
-    if (coBtn) coBtn.textContent = `Target Companies (${search.sourcing_coverage.companies.length})`;
+    if (coBtn) coBtn.textContent = `Target Companies (${coverage.companies.length})`;
   } catch (e) {
     console.error('submitAddCompany error:', e);
-    alert('Error adding company: ' + e.message);
+    appAlert('Error adding company: ' + e.message, { type: 'error' });
   }
 }
 
@@ -1625,39 +1591,10 @@ async function submitAddCompany(searchId) {
 
 async function loadCoverageFromPlaybook(searchId) {
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    if (!search.sectors || search.sectors.length === 0) {
-      alert('No sectors assigned to this search. Edit the search to add sectors first.');
-      return;
-    }
+    // Step 1: Show sector picker
+    const summary = await api('GET', '/playbooks/summary');
+    const sectors = summary.sectors || [];
 
-    const playbooks = await api('GET', '/playbooks');
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-
-    // Gather available firms and companies from matching sectors (exclude already loaded)
-    const availFirms = [];
-    const availCos = [];
-    search.sectors.forEach(sectorId => {
-      const sector = playbooks.sectors.find(s => s.sector_id === sectorId);
-      if (!sector) return;
-      (sector.pe_firms || []).forEach(firm => {
-        if (!coverage.pe_firms.some(f => f.firm_id === firm.firm_id) && !availFirms.some(f => f.firm_id === firm.firm_id)) {
-          availFirms.push(firm);
-        }
-      });
-      (sector.target_companies || []).forEach(co => {
-        if (!coverage.companies.some(c => c.company_id === co.company_id) && !availCos.some(c => c.company_id === co.company_id)) {
-          availCos.push(co);
-        }
-      });
-    });
-
-    if (availFirms.length === 0 && availCos.length === 0) {
-      alert('All firms and companies from the playbook are already loaded.');
-      return;
-    }
-
-    // Show picker modal
     const existing = document.getElementById('cov-add-modal');
     if (existing) existing.remove();
 
@@ -1665,29 +1602,90 @@ async function loadCoverageFromPlaybook(searchId) {
     modal.id = 'cov-add-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
 
-    const firmRows = availFirms.map(f =>
-      `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
-        <input type="checkbox" class="pb-pick-firm" value="${escapeHtml(f.firm_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
-        <strong>${escapeHtml(f.name)}</strong>
-        <span style="color:#888;font-size:11px;margin-left:auto">${escapeHtml(f.hq||'')} · ${escapeHtml(f.size_tier||'')}</span>
-      </label>`
-    ).join('');
-
-    const coRows = availCos.map(c =>
-      `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer">
-        <input type="checkbox" class="pb-pick-co" value="${escapeHtml(c.company_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
-        <strong>${escapeHtml(c.name)}</strong>
-        <span style="color:#888;font-size:11px;margin-left:auto">${escapeHtml(c.hq||'')} · ${escapeHtml(c.revenue_tier||'')}</span>
-      </label>`
-    ).join('');
+    const sectorCards = sectors.map(s => `
+      <div onclick="loadPlaybookSectorPicker('${escapeHtml(searchId)}','${escapeHtml(s.sector_id)}')"
+           style="padding:14px 18px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background 0.15s"
+           onmouseover="this.style.background='#F3E8EF'" onmouseout="this.style.background='white'">
+        <div>
+          <div style="font-weight:700;font-size:14px">${escapeHtml(s.sector_name)}</div>
+          <div style="font-size:12px;color:#888;margin-top:2px">${s.pe_firm_count} PE firms · ${s.target_company_count} companies</div>
+        </div>
+        <span style="color:#6B2D5B;font-size:18px">&#8250;</span>
+      </div>
+    `).join('');
 
     modal.innerHTML = `
-    <div class="modal-box" style="max-width:640px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="modal-box" style="max-width:520px;max-height:80vh;display:flex;flex-direction:column">
       <div class="modal-header-s3">
         <span class="modal-title-s3">Load from Playbook</span>
         <button class="modal-close-s3" onclick="document.getElementById('cov-add-modal').remove()">&#x2715;</button>
       </div>
-      <div style="font-size:12px;color:#888;padding:0 0 12px;border-bottom:1px solid #e0e0e0">Select which firms and companies to add to this search's coverage.</div>
+      <div style="font-size:12px;color:#888;padding:0 0 12px;border-bottom:1px solid #e0e0e0">Choose a sector playbook to load firms and companies from.</div>
+      <div style="overflow-y:auto;flex:1;padding:8px 0;display:flex;flex-direction:column;gap:8px">
+        ${sectorCards}
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+
+  } catch (e) {
+    console.error('loadCoverageFromPlaybook error:', e);
+    appAlert('Error: ' + e.message, { type: 'error' });
+  }
+}
+
+async function loadPlaybookSectorPicker(searchId, sectorId) {
+  try {
+    const [sector, search] = await Promise.all([
+      api('GET', '/playbooks/' + sectorId),
+      api('GET', '/searches/' + searchId)
+    ]);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const topFirmIds = new Set(sector.top_pe_firms || []);
+    const topCoIds = new Set(sector.top_companies || []);
+
+    // Filter out already loaded
+    const availFirms = (sector.pe_firms || []).filter(f => !coverage.pe_firms.some(cf => cf.firm_id === f.firm_id));
+    const availCos = (sector.target_companies || []).filter(c => !coverage.companies.some(cc => cc.company_id === c.company_id));
+
+    const topFirmsAvail = availFirms.filter(f => topFirmIds.has(f.firm_id));
+    const topCosAvail = availCos.filter(c => topCoIds.has(c.company_id));
+    const hasTop = topFirmsAvail.length > 0 || topCosAvail.length > 0;
+
+    const firmRows = availFirms.map(f => {
+      const isTop = topFirmIds.has(f.firm_id);
+      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer${isTop ? ';background:#faf5ff' : ''}">
+        <input type="checkbox" class="pb-pick-firm" value="${escapeHtml(f.firm_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
+        <strong>${escapeHtml(f.name)}</strong>${isTop ? '<span style="background:#6B2D5B;color:white;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px">TOP</span>' : ''}
+        <span style="color:#888;font-size:11px;margin-left:auto;white-space:nowrap">${escapeHtml(f.hq || '')} · ${escapeHtml(f.size_tier || '')}</span>
+      </label>`;
+    }).join('');
+
+    const coRows = availCos.map(c => {
+      const isTop = topCoIds.has(c.company_id);
+      return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;cursor:pointer${isTop ? ';background:#faf5ff' : ''}">
+        <input type="checkbox" class="pb-pick-co" value="${escapeHtml(c.company_id)}" style="width:16px;height:16px;accent-color:#6B2D5B">
+        <strong>${escapeHtml(c.name)}</strong>${isTop ? '<span style="background:#6B2D5B;color:white;font-size:9px;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px">TOP</span>' : ''}
+        <span style="color:#888;font-size:11px;margin-left:auto;white-space:nowrap">${escapeHtml(c.hq || '')} · ${escapeHtml(c.revenue_tier || '')}</span>
+      </label>`;
+    }).join('');
+
+    const quickLoadBtn = hasTop ? `
+      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="loadTopFromSector('${escapeHtml(searchId)}','${escapeHtml(sectorId)}')">
+        &#9733; Add All Top Firms (${topFirmsAvail.length}) &amp; Companies (${topCosAvail.length})
+      </button>` : '';
+
+    const modal = document.getElementById('cov-add-modal');
+    modal.innerHTML = `
+    <div class="modal-box" style="max-width:640px;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-header-s3">
+        <span class="modal-title-s3">${escapeHtml(sector.sector_name)} Playbook</span>
+        <button class="modal-close-s3" onclick="document.getElementById('cov-add-modal').remove()">&#x2715;</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:0 0 12px;border-bottom:1px solid #e0e0e0">
+        <button class="btn btn-ghost btn-sm" onclick="loadCoverageFromPlaybook('${escapeHtml(searchId)}')" style="font-size:12px">&#8249; Back to sectors</button>
+        <span style="font-size:12px;color:#888">${availFirms.length} firms · ${availCos.length} companies available</span>
+      </div>
+      ${hasTop ? `<div style="padding:12px 0;border-bottom:1px solid #e0e0e0">${quickLoadBtn}</div>` : ''}
       <div style="overflow-y:auto;flex:1;padding:8px 0">
         ${availFirms.length > 0 ? `
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1707,11 +1705,25 @@ async function loadCoverageFromPlaybook(searchId) {
         <button class="btn btn-primary btn-sm" onclick="submitPlaybookPick('${escapeHtml(searchId)}')">Add Selected</button>
       </div>
     </div>`;
-    document.body.appendChild(modal);
 
   } catch (e) {
-    console.error('loadCoverageFromPlaybook error:', e);
-    alert('Error loading from playbook: ' + e.message);
+    console.error('loadPlaybookSectorPicker error:', e);
+    appAlert('Error: ' + e.message, { type: 'error' });
+  }
+}
+
+async function loadTopFromSector(searchId, sectorId) {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  try {
+    await api('POST', `/searches/${searchId}/coverage/seed`, { sector_id: sectorId, top_only: true });
+    document.getElementById('cov-add-modal')?.remove();
+    switchCoverageTab(coverageSubTab, searchId);
+  } catch (e) {
+    appAlert('Error: ' + e.message, { type: 'error' });
+    btn.disabled = false;
+    btn.textContent = 'Add All Top Firms & Companies';
   }
 }
 
@@ -1720,52 +1732,40 @@ async function submitPlaybookPick(searchId) {
   const selectedCoIds = [...document.querySelectorAll('.pb-pick-co:checked')].map(c => c.value);
 
   if (selectedFirmIds.length === 0 && selectedCoIds.length === 0) {
-    alert('Please select at least one firm or company.');
+    appAlert('Please select at least one firm or company.', { type: 'warning' });
     return;
   }
 
   try {
     const search = await api('GET', '/searches/' + searchId);
     const playbooks = await api('GET', '/playbooks');
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
 
-    search.sectors.forEach(sectorId => {
+    for (const sectorId of (search.sectors || [])) {
       const sector = playbooks.sectors.find(s => s.sector_id === sectorId);
-      if (!sector) return;
+      if (!sector) continue;
 
-      (sector.pe_firms || []).forEach(firm => {
-        if (selectedFirmIds.includes(firm.firm_id) && !coverage.pe_firms.some(f => f.firm_id === firm.firm_id)) {
-          coverage.pe_firms.push({
+      for (const firm of (sector.pe_firms || [])) {
+        if (selectedFirmIds.includes(firm.firm_id)) {
+          await api('POST', `/searches/${searchId}/coverage/firms`, {
             firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
-            why_target: firm.why_target || '', manual_complete: false, manual_complete_note: '',
-            roster: JSON.parse(JSON.stringify(firm.roster || []))
+            strategy: firm.strategy || '', sector_focus: firm.sector_focus || '', why_target: firm.why_target || ''
           });
         }
-      });
-      (sector.target_companies || []).forEach(co => {
-        if (selectedCoIds.includes(co.company_id) && !coverage.companies.some(c => c.company_id === co.company_id)) {
-          coverage.companies.push({
+      }
+      for (const co of (sector.target_companies || [])) {
+        if (selectedCoIds.includes(co.company_id)) {
+          await api('POST', `/searches/${searchId}/coverage/companies`, {
             company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
-            why_target: co.why_target || '', manual_complete: false, manual_complete_note: '',
-            roster: JSON.parse(JSON.stringify(co.roster || []))
+            ownership_type: co.ownership_type || '', why_target: co.why_target || ''
           });
         }
-      });
-    });
+      }
+    }
 
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
     document.getElementById('cov-add-modal')?.remove();
-
-    // Re-render
-    const tableEl = document.getElementById('coverage-table');
-    const peBtn = document.getElementById('cov-tab-pe');
-    const coBtn = document.getElementById('cov-tab-companies');
-    if (tableEl) tableEl.innerHTML = coverageSubTab === 'pe-firms' ? buildPEFirmsTableHTML(coverage.pe_firms, searchId) : buildCompaniesTableHTML(coverage.companies, searchId);
-    if (peBtn) peBtn.textContent = `PE Firms (${coverage.pe_firms.length})`;
-    if (coBtn) coBtn.textContent = `Target Companies (${coverage.companies.length})`;
+    switchCoverageTab(coverageSubTab, searchId);
   } catch (e) {
-    alert('Error: ' + e.message);
+    appAlert('Error: ' + e.message, { type: 'error' });
   }
 }
 
@@ -1809,29 +1809,23 @@ function toggleCovSelectMode(searchId) {
 
 async function deleteSelectedCovEntries(searchId) {
   const selected = [...document.querySelectorAll('.cov-select-cb:checked')].map(c => c.value);
-  if (selected.length === 0) { alert('No items selected.'); return; }
-  if (!confirm(`Delete ${selected.length} selected entries from sourcing coverage?`)) return;
+  if (selected.length === 0) { appAlert('No items selected.', { type: 'warning' }); return; }
+  if (!(await appConfirm(`Delete ${selected.length} selected entries from sourcing coverage?`))) return;
 
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-    const type = coverageSubTab === 'pe-firms' ? 'pe_firms' : 'companies';
-    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
+    const subPath = coverageSubTab === 'pe-firms' ? 'firms' : 'companies';
 
-    coverage[type] = coverage[type].filter(e => !selected.includes(e[idKey]));
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
+    // Delete each selected entry via the dedicated DELETE endpoint
+    for (const entityId of selected) {
+      await api('DELETE', `/searches/${searchId}/coverage/${subPath}/${entityId}`);
+    }
 
     _covSelectMode = false;
     document.getElementById('cov-delete-bar')?.remove();
 
-    const tableEl = document.getElementById('coverage-table');
-    const peBtn = document.getElementById('cov-tab-pe');
-    const coBtn = document.getElementById('cov-tab-companies');
-    if (tableEl) tableEl.innerHTML = type === 'pe_firms' ? buildPEFirmsTableHTML(coverage.pe_firms, searchId) : buildCompaniesTableHTML(coverage.companies, searchId);
-    if (peBtn) peBtn.textContent = `PE Firms (${coverage.pe_firms.length})`;
-    if (coBtn) coBtn.textContent = `Target Companies (${coverage.companies.length})`;
+    // Re-fetch fresh data and re-render
+    switchCoverageTab(coverageSubTab, searchId);
   } catch (e) {
-    alert('Error deleting: ' + e.message);
+    appAlert('Error deleting: ' + e.message, { type: 'error' });
   }
 }

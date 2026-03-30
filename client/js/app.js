@@ -76,7 +76,8 @@ function firmNamesMatchWithAliases(a, b, aliasMap) {
 
 // ── API utility ───────────────────────────────────────────────────────────────
 
-let _apiOverlayTimer = null;
+let _apiShowTimer = null;
+let _apiHideTimer = null;
 let _apiOverlayEl = null;
 let _apiInFlight = 0;
 
@@ -86,21 +87,27 @@ function _showApiOverlay() {
   _apiOverlayEl.id = 'api-loading-overlay';
   _apiOverlayEl.innerHTML = '<div class="spinner"></div>';
   document.body.appendChild(_apiOverlayEl);
+  // Hide in-page spinners to avoid duplicates
+  document.querySelectorAll('.loading').forEach(el => el.style.visibility = 'hidden');
 }
 
 function _hideApiOverlay() {
   if (_apiOverlayEl) {
     _apiOverlayEl.remove();
     _apiOverlayEl = null;
+    // Restore in-page spinners
+    document.querySelectorAll('.loading').forEach(el => el.style.visibility = '');
   }
 }
 
 async function api(method, path, body) {
   _apiInFlight++;
+  // Cancel any pending hide — we're still working
+  if (_apiHideTimer) { clearTimeout(_apiHideTimer); _apiHideTimer = null; }
   // Show overlay after 200ms if still in flight
-  if (!_apiOverlayTimer && !_apiOverlayEl) {
-    _apiOverlayTimer = setTimeout(() => {
-      _apiOverlayTimer = null;
+  if (!_apiShowTimer && !_apiOverlayEl) {
+    _apiShowTimer = setTimeout(() => {
+      _apiShowTimer = null;
       if (_apiInFlight > 0) _showApiOverlay();
     }, 200);
   }
@@ -123,8 +130,13 @@ async function api(method, path, body) {
     _apiInFlight--;
     if (_apiInFlight <= 0) {
       _apiInFlight = 0;
-      if (_apiOverlayTimer) { clearTimeout(_apiOverlayTimer); _apiOverlayTimer = null; }
-      _hideApiOverlay();
+      if (_apiShowTimer) { clearTimeout(_apiShowTimer); _apiShowTimer = null; }
+      // Delay hide by 100ms — if another call starts immediately, overlay stays up
+      if (_apiHideTimer) clearTimeout(_apiHideTimer);
+      _apiHideTimer = setTimeout(() => {
+        _apiHideTimer = null;
+        if (_apiInFlight <= 0) _hideApiOverlay();
+      }, 100);
     }
   }
 }
@@ -264,7 +276,7 @@ async function openCandidatePanel(candidateId) {
       );
     } catch (e2) { /* ignore */ }
   }
-  if (!candidate) { alert('Candidate not found.'); return; }
+  if (!candidate) { appAlert('Candidate not found.', { type: 'warning' }); return; }
   renderCandidatePanel(candidate);
 }
 
@@ -599,7 +611,7 @@ function addEditWorkHistoryEntry() {
 async function saveCandidateEdits(candidateId) {
   const btn = document.getElementById('cp-save-btn');
   const name = document.getElementById('cp-edit-name')?.value?.trim();
-  if (!name) { alert('Name is required.'); return; }
+  if (!name) { appAlert('Name is required.', { type: 'warning' }); return; }
 
   btn.disabled = true;
   btn.textContent = 'Saving...';
@@ -641,7 +653,7 @@ async function saveCandidateEdits(candidateId) {
     // Re-open panel with fresh data
     openCandidatePanel(candidateId);
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Save Changes';
   }
@@ -676,7 +688,7 @@ async function setCandidatePrimaryExperience(candidateId, idx) {
     openCandidatePanel(candidateId);
   } catch (e) {
     console.error('setCandidatePrimaryExperience error:', e);
-    alert('Error setting primary experience: ' + e.message);
+    appAlert('Error setting primary experience: ' + e.message, { type: 'error' });
   }
 }
 
@@ -696,7 +708,7 @@ async function openMergeModal(candidateId) {
     target = await api('GET', '/candidates/' + encodeURIComponent(candidateId));
     const resp = await api('GET', '/candidates');
     allCandidates = resp.candidates || [];
-  } catch (e) { alert('Error: ' + e.message); return; }
+  } catch (e) { appAlert('Error: ' + e.message, { type: 'error' }); return; }
 
   const dupes = allCandidates.filter(c =>
     c.candidate_id !== candidateId &&
@@ -704,7 +716,7 @@ async function openMergeModal(candidateId) {
   );
 
   if (dupes.length === 0) {
-    alert('No duplicate candidates found with the name "' + target.name + '".');
+    appAlert('No duplicate candidates found with the name "' + target.name + '".', { type: 'info' });
     return;
   }
 
@@ -895,7 +907,7 @@ async function _submitMerge(keepId, removeId) {
       openCandidatePanel(keepId);
     }, 800);
   } catch (err) {
-    alert('Error merging: ' + err.message);
+    appAlert('Error merging: ' + err.message, { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Merge Candidates';
   }

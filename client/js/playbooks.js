@@ -151,7 +151,7 @@ async function saveSector(sector) {
     _currentSector = updated;
     return updated;
   } catch (err) {
-    alert('Save failed: ' + err.message);
+    appAlert('Save failed: ' + err.message, { type: 'error' });
     throw err;
   }
 }
@@ -397,7 +397,7 @@ function _topDrop(event) {
     : { top_companies: list };
   api('PUT', '/playbooks/' + s.sector_id, payload).then(() => {
     _paintSectorDetail();
-  }).catch(err => alert('Error saving: ' + err.message));
+  }).catch(err => appAlert('Error saving: ' + err.message, { type: 'error' }));
 }
 
 function _topDragEnd(event) {
@@ -473,19 +473,19 @@ async function _addPlaybookToSearch(sectorId) {
     const activeSearches = (resp.searches || []).filter(s => s.status === 'active');
 
     if (activeSearches.length === 0) {
-      alert('No active searches. Create a search first.');
+      appAlert('No active searches. Create a search first.', { type: 'info' });
       return;
     }
 
     const options = activeSearches.map(s => `${s.client_name} — ${s.role_title}`);
-    const choice = prompt(
+    const choice = await appPrompt(
       'Add Top 25 playbook to which search?\n\n' +
       activeSearches.map((s, i) => `${i + 1}. ${s.client_name} — ${s.role_title}`).join('\n') +
       '\n\nEnter number:'
     );
     if (!choice) return;
     const idx = parseInt(choice) - 1;
-    if (isNaN(idx) || idx < 0 || idx >= activeSearches.length) { alert('Invalid selection.'); return; }
+    if (isNaN(idx) || idx < 0 || idx >= activeSearches.length) { appAlert('Invalid selection.', { type: 'warning' }); return; }
 
     const searchId = activeSearches[idx].search_id;
     const search = await api('GET', '/searches/' + searchId);
@@ -523,9 +523,9 @@ async function _addPlaybookToSearch(sectorId) {
     }
 
     await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
-    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies to "' + activeSearches[idx].client_name + '".');
+    appAlert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies to "' + activeSearches[idx].client_name + '".', { type: 'success' });
   } catch (err) {
-    alert('Error: ' + err.message);
+    appAlert('Error: ' + err.message, { type: 'error' });
   }
 }
 
@@ -550,7 +550,7 @@ async function _addToTopList(type, id) {
     await api('PUT', '/playbooks/' + s.sector_id, payload);
     _paintSectorDetail();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -571,7 +571,7 @@ async function _removeFromTopList(type, id) {
     await api('PUT', '/playbooks/' + s.sector_id, payload);
     _paintSectorDetail();
   } catch (err) {
-    alert('Error saving: ' + err.message);
+    appAlert('Error saving: ' + err.message, { type: 'error' });
   }
 }
 
@@ -1104,7 +1104,7 @@ async function _addPersonToFirm(firmId) {
   const status = document.getElementById(`ap-status-${firmId}`).value;
 
   if (!name || !title) {
-    alert('Name and Title are required.');
+    appAlert('Name and Title are required.', { type: 'warning' });
     return;
   }
 
@@ -1143,7 +1143,7 @@ async function _updateCandidateStatus(firmId, idx, newStatus, isCompany) {
 }
 
 async function _removeCandidate(entityId, idx, isCompany) {
-  if (!confirm('Remove this person from the roster?')) return;
+  if (!(await appConfirm('Remove this person from the roster?'))) return;
   const s = _currentSector;
   const arr = isCompany ? s.target_companies : s.pe_firms;
   const entity = isCompany
@@ -1337,7 +1337,7 @@ async function _submitAddFirm() {
   const customRoster = customRaw ? parseInt(customRaw, 10) : undefined;
 
   if (!name || !hq) {
-    alert('Firm Name and HQ are required.');
+    appAlert('Firm Name and HQ are required.', { type: 'warning' });
     return;
   }
 
@@ -1600,7 +1600,7 @@ async function _addPersonToCompany(companyId) {
   const status = document.getElementById(`apc-status-${companyId}`).value;
 
   if (!name || !title) {
-    alert('Name and Title are required.');
+    appAlert('Name and Title are required.', { type: 'warning' });
     return;
   }
 
@@ -1704,7 +1704,7 @@ async function _submitAddCompany() {
   const customRoster  = customRaw ? parseInt(customRaw, 10) : undefined;
 
   if (!name || !hq) {
-    alert('Company Name and HQ are required.');
+    appAlert('Company Name and HQ are required.', { type: 'warning' });
     return;
   }
 
@@ -1880,11 +1880,11 @@ function _openAllstarDetail(candidateId) {
     const candidates = data.candidates || [];
     const c = candidates.find(x => x.candidate_id === candidateId);
     if (!c) {
-      alert('Candidate details not found.');
+      appAlert('Candidate details not found.', { type: 'warning' });
       return;
     }
     _showCandidateModal(c);
-  }).catch(() => alert('Could not load candidate details.'));
+  }).catch(() => appAlert('Could not load candidate details.', { type: 'error' }));
 }
 
 function _showCandidateModal(c) {

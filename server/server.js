@@ -122,25 +122,23 @@ app.use('/api/companies',  companiesRouter);
 
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 
-app.get('/api/stats', (req, res) => {
+app.get('/api/stats', async (req, res) => {
   try {
-    const searches  = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'active_searches.json'), 'utf8'));
-    const pool      = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'candidate_pool.json'), 'utf8'));
-    const playbooks = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'sector_playbooks.json'), 'utf8'));
-    const templates = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'search_templates.json'), 'utf8'));
-
-    const companies = JSON.parse(fs.readFileSync(path.join(DATA_PATH, 'company_pool.json'), 'utf8'));
-
-    const activeSearches   = searches.searches.filter(s => s.status === 'active').length;
-    const totalCandidates  = pool.candidates.length;
-    const totalCompanies   = companies.companies.length;
-    const playbooksBuilt   = playbooks.sectors.filter(s => s.build_status !== 'pending').length;
-    const t = templates.templates;
-    const totalTemplates   = (t.boolean_strings.length + t.pitchbook_params.length +
-                               t.outreach_messages.length + t.ideal_candidate_profiles.length +
-                               t.screen_question_guides.length);
-
-    res.json({ activeSearches, totalCandidates, totalCompanies, playbooksBuilt, totalTemplates });
+    const db = require('./db');
+    const [searches, candidates, companies, playbooks, templates] = await Promise.all([
+      db.query("SELECT COUNT(*)::int AS cnt FROM searches WHERE status IN ('active', 'open')"),
+      db.query('SELECT COUNT(*)::int AS cnt FROM candidates'),
+      db.query('SELECT COUNT(*)::int AS cnt FROM companies'),
+      db.query("SELECT COUNT(*)::int AS cnt FROM sectors WHERE build_status != 'pending'"),
+      db.query('SELECT (SELECT COUNT(*) FROM outreach_messages) + (SELECT COUNT(*) FROM search_templates) AS cnt')
+    ]);
+    res.json({
+      activeSearches: searches.rows[0].cnt,
+      totalCandidates: candidates.rows[0].cnt,
+      totalCompanies: companies.rows[0].cnt,
+      playbooksBuilt: playbooks.rows[0].cnt,
+      totalTemplates: parseInt(templates.rows[0].cnt)
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
