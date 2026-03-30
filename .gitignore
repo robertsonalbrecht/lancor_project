@@ -7,7 +7,8 @@ node_modules/
 .env.local
 .env.*.local
 
-# Data backups (large JSON snapshots)
+# Data (now in Postgres — JSON files kept locally as reference)
+data/
 data_backup/
 data_backup_*/
 
