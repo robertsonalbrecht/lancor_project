@@ -107,7 +107,7 @@ function setupTypeahead(inputId, opts) {
 
 // ── Module-level state ────────────────────────────────────────────────────────
 
-let coverageSubTab = 'pe-firms'; // 'pe-firms' | 'companies'
+let coverageSubTab = 'pe-firms'; // 'pe-firms' | 'companies' | 'playbook'
 let coverageFilters = {
   size_tier: 'all',
   revenue_tier: 'all',
@@ -235,21 +235,20 @@ function overrideSectionHTML(entity, entityId, searchId, type) {
     verifiedDisplay = `<span style="font-size:12px;color:#bbb">Never verified</span>`;
   }
 
+  const isManualComplete = entity.manual_complete;
+  const resetLink = isManualComplete
+    ? `<span style="font-size:11px;color:#999;cursor:pointer;text-decoration:underline;margin-left:8px" onclick="resetVerification('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">Reset verification</span>`
+    : '';
+
   return `
   <div class="override-section">
     <strong style="font-size:13px;display:block;margin-bottom:10px;text-decoration:none">Coverage Verification</strong>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-      ${verifiedDisplay}
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-      <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="override-complete-${escapeHtml(entityId)}" ${isComplete ? 'checked' : ''} style="width:16px;height:16px;accent-color:#6B2D5B">
-        Mark as Complete
-      </label>
+      ${verifiedDisplay}${resetLink}
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <input type="text" id="override-note-${escapeHtml(entityId)}" value="${note}" placeholder="Note (optional)" style="padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1;min-width:160px" />
-      <button class="btn btn-primary btn-sm" onclick="verifyCoverage('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">Verify Now</button>
+      <button class="btn btn-primary btn-sm" onclick="verifyCoverage('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">${isManualComplete ? '&#10003; Verified' : 'Verify &amp; Mark Complete'}</button>
     </div>
   </div>`;
 }
@@ -334,15 +333,14 @@ function rosterTableHTML(roster, entityId, searchId, type) {
 
 function accordionHTML(entity, entityId, searchId, type) {
   const roster = entity.roster || [];
-  const promoteSection = entity.search_specific
-    ? `<div style="margin-top:12px">
-        <button class="btn btn-secondary btn-sm promote-btn" onclick="promoteToPlaybook('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">&#8593; Promote to Playbook</button>
-        <span style="font-size:12px;color:#888;margin-left:8px">Remove the "Search Only" flag and add to the sector playbook.</span>
-       </div>`
-    : '';
+  const archiveBtn = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="btn btn-ghost btn-sm" style="color:#888;font-size:11px" onclick="event.stopPropagation();toggleArchiveComplete('${escapeHtml(searchId)}','${type}','${escapeHtml(entityId)}')">${entity.archived_complete ? '&#9664; Restore to Active' : '&#10003; Move to Completed'}</button>
+  </div>`;
+
   return `<tr class="accordion-tr" id="acc-${escapeHtml(entityId)}">
-    <td colspan="7">
+    <td colspan="6">
       <div class="accordion-inner">
+        ${archiveBtn}
         <div id="roster-section-${escapeHtml(entityId)}">
           ${rosterTableHTML(roster, entityId, searchId, type)}
         </div>
@@ -351,7 +349,6 @@ function accordionHTML(entity, entityId, searchId, type) {
           ${addPersonFormHTML(entityId, searchId, type)}
         </div>
         ${overrideSectionHTML(entity, entityId, searchId, type)}
-        ${promoteSection}
       </div>
     </td>
   </tr>`;
@@ -396,12 +393,9 @@ function buildPEFirmsTableHTML(firms, searchId) {
     return filterBar + `<div style="padding:32px;text-align:center;color:#888;font-size:14px">No PE firms loaded — use "Add PE Firm" below to get started.</div>`;
   }
 
-  const rows = filtered.flatMap(f => {
+  function buildFirmRow(f) {
     const { pct, manual } = getCoveragePct(f, 'pe_firms');
     const isOpen = openAccordionId === f.firm_id;
-    const badge = f.search_specific
-      ? `<span class="badge-search-specific" id="badge-${escapeHtml(f.firm_id)}">Search Only</span>`
-      : '';
     const rosterCount = (f.roster || []).length;
     const poolRec = getCompanyPoolRecord(f.name);
     const webUrl = f.website_url || (poolRec && poolRec.website_url) || '';
@@ -410,14 +404,32 @@ function buildPEFirmsTableHTML(firms, searchId) {
       <td><strong>${escapeHtml(f.name)}</strong>${firmWebsite}</td>
       <td>${escapeHtml(f.hq || '—')}</td>
       <td>${escapeHtml(f.size_tier || '—')}</td>
-      <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
       <td id="revbar-${escapeHtml(f.firm_id)}">${reviewedBar(f)}</td>
       <td id="covbar-${escapeHtml(f.firm_id)}">${coverageBar(pct, manual, f)}</td>
     </tr>`;
-    const accRow = isOpen ? accordionHTML(f, f.firm_id, searchId, 'pe_firms') : `<tr class="accordion-tr" id="acc-${escapeHtml(f.firm_id)}" style="display:none"><td colspan="7"></td></tr>`;
+    const accRow = isOpen ? accordionHTML(f, f.firm_id, searchId, 'pe_firms') : `<tr class="accordion-tr" id="acc-${escapeHtml(f.firm_id)}" style="display:none"><td colspan="6"></td></tr>`;
     return [firmRow, accRow];
-  });
+  }
+
+  // Split into active and completed
+  const active = filtered.filter(f => !f.archived_complete);
+  const completed = filtered.filter(f => f.archived_complete);
+  const activeRows = active.flatMap(buildFirmRow);
+  const completedRows = completed.flatMap(buildFirmRow);
+
+  const completedSection = completed.length > 0 ? `
+    <div class="collapsible-section" style="margin-top:16px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+      <div class="collapsible-header" onclick="toggleSection('completed-pe')" style="background:#f5f5f5;padding:10px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;font-size:13px;color:#888">Completed (${completed.length})</span>
+        <span id="completed-pe-arrow">&#9654;</span>
+      </div>
+      <div class="collapsible-body" id="completed-pe" style="display:none;padding:0">
+        <table class="coverage-table">
+          <tbody>${completedRows.join('')}</tbody>
+        </table>
+      </div>
+    </div>` : '';
 
   return filterBar + `
   <table class="coverage-table">
@@ -425,13 +437,13 @@ function buildPEFirmsTableHTML(firms, searchId) {
       <th>Firm Name</th>
       <th>HQ</th>
       <th>Size Tier</th>
-      <th>Search-Specific</th>
       <th style="text-align:center">People</th>
       <th>Reviewed</th>
       <th>Coverage</th>
     </tr></thead>
-    <tbody>${rows.join('')}</tbody>
-  </table>`;
+    <tbody>${activeRows.join('')}</tbody>
+  </table>
+  ${completedSection}`;
 }
 
 // ── Companies table ───────────────────────────────────────────────────────────
@@ -471,12 +483,9 @@ function buildCompaniesTableHTML(companies, searchId) {
     return filterBar + `<div style="padding:32px;text-align:center;color:#888;font-size:14px">No target companies loaded — use "Add Target Company" below to get started.</div>`;
   }
 
-  const rows = filtered.flatMap(c => {
+  function buildCompanyRow(c) {
     const { pct, manual } = getCoveragePct(c, 'companies');
     const isOpen = openAccordionId === c.company_id;
-    const badge = c.search_specific
-      ? `<span class="badge-search-specific" id="badge-${escapeHtml(c.company_id)}">Search Only</span>`
-      : '';
     const rosterCount = (c.roster || []).length;
     const coPoolRec = getCompanyPoolRecord(c.name);
     const coWebUrl = c.website_url || (coPoolRec && coPoolRec.website_url) || '';
@@ -485,14 +494,31 @@ function buildCompaniesTableHTML(companies, searchId) {
       <td><strong>${escapeHtml(c.name)}</strong>${coWebsite}</td>
       <td>${escapeHtml(c.hq || '—')}</td>
       <td>${escapeHtml(c.revenue_tier || '—')}</td>
-      <td>${badge}</td>
       <td style="text-align:center"><span style="font-size:12px;color:#555">${rosterCount}</span></td>
       <td id="revbar-${escapeHtml(c.company_id)}">${reviewedBar(c)}</td>
       <td id="covbar-${escapeHtml(c.company_id)}">${coverageBar(pct, manual, c)}</td>
     </tr>`;
-    const accRow = isOpen ? accordionHTML(c, c.company_id, searchId, 'companies') : `<tr class="accordion-tr" id="acc-${escapeHtml(c.company_id)}" style="display:none"><td colspan="7"></td></tr>`;
+    const accRow = isOpen ? accordionHTML(c, c.company_id, searchId, 'companies') : `<tr class="accordion-tr" id="acc-${escapeHtml(c.company_id)}" style="display:none"><td colspan="6"></td></tr>`;
     return [compRow, accRow];
-  });
+  }
+
+  const active = filtered.filter(c => !c.archived_complete);
+  const completed = filtered.filter(c => c.archived_complete);
+  const activeRows = active.flatMap(buildCompanyRow);
+  const completedRows = completed.flatMap(buildCompanyRow);
+
+  const completedSection = completed.length > 0 ? `
+    <div class="collapsible-section" style="margin-top:16px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden">
+      <div class="collapsible-header" onclick="toggleSection('completed-co')" style="background:#f5f5f5;padding:10px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:600;font-size:13px;color:#888">Completed (${completed.length})</span>
+        <span id="completed-co-arrow">&#9654;</span>
+      </div>
+      <div class="collapsible-body" id="completed-co" style="display:none;padding:0">
+        <table class="coverage-table">
+          <tbody>${completedRows.join('')}</tbody>
+        </table>
+      </div>
+    </div>` : '';
 
   return filterBar + `
   <table class="coverage-table">
@@ -500,13 +526,13 @@ function buildCompaniesTableHTML(companies, searchId) {
       <th>Company Name</th>
       <th>HQ</th>
       <th>Revenue Tier</th>
-      <th>Search-Specific</th>
       <th style="text-align:center">People</th>
       <th>Reviewed</th>
       <th>Coverage</th>
     </tr></thead>
-    <tbody>${rows.join('')}</tbody>
-  </table>`;
+    <tbody>${activeRows.join('')}</tbody>
+  </table>
+  ${completedSection}`;
 }
 
 // ── Main render entry point ───────────────────────────────────────────────────
@@ -660,6 +686,7 @@ function renderCoverageTabHTML(search) {
     <div class="sub-tab-bar" style="margin-bottom:0">
       <button class="sub-tab active" id="cov-tab-pe" onclick="switchCoverageTab('pe-firms','${escapeHtml(searchId)}')">PE Firms (${firms.length})</button>
       <button class="sub-tab" id="cov-tab-companies" onclick="switchCoverageTab('companies','${escapeHtml(searchId)}')">Target Companies (${companies.length})</button>
+      <button class="sub-tab" id="cov-tab-playbook" onclick="switchCoverageTab('playbook','${escapeHtml(searchId)}')">Playbook</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap" id="cov-action-btns">
       <button class="btn btn-secondary btn-sm" id="cov-add-btn" onclick="openAddFirmModal('${escapeHtml(searchId)}')">+ Add PE Firm</button>
@@ -679,15 +706,16 @@ function renderCoverageTabHTML(search) {
 async function switchCoverageTab(tab, searchId) {
   coverageSubTab = tab;
   openAccordionId = null;
-  // Reset text filter but preserve tier filter relevant to the tab
   coverageFilters.text = '';
 
-  // Update button active states immediately
   const peBtn = document.getElementById('cov-tab-pe');
   const coBtn = document.getElementById('cov-tab-companies');
+  const pbBtn = document.getElementById('cov-tab-playbook');
   const addBtn = document.getElementById('cov-add-btn');
+  const actionBtns = document.getElementById('cov-action-btns');
   if (peBtn) peBtn.classList.toggle('active', tab === 'pe-firms');
   if (coBtn) coBtn.classList.toggle('active', tab === 'companies');
+  if (pbBtn) pbBtn.classList.toggle('active', tab === 'playbook');
 
   try {
     const search = await api('GET', '/searches/' + searchId);
@@ -701,19 +729,332 @@ async function switchCoverageTab(tab, searchId) {
     if (tab === 'pe-firms') {
       coverageFilters.revenue_tier = 'all';
       tableEl.innerHTML = buildPEFirmsTableHTML(firms, searchId);
-      if (addBtn) { addBtn.textContent = '+ Add PE Firm'; addBtn.setAttribute('onclick', `openAddFirmModal('${escapeHtml(searchId)}')`); }
-      // Update sub-tab counts
+      if (addBtn) { addBtn.style.display = ''; addBtn.textContent = '+ Add PE Firm'; addBtn.setAttribute('onclick', `openAddFirmModal('${escapeHtml(searchId)}')`); }
+      if (actionBtns) actionBtns.style.display = '';
       if (peBtn) peBtn.textContent = `PE Firms (${firms.length})`;
       if (coBtn) coBtn.textContent = `Target Companies (${companies.length})`;
-    } else {
+    } else if (tab === 'companies') {
       coverageFilters.size_tier = 'all';
       tableEl.innerHTML = buildCompaniesTableHTML(companies, searchId);
-      if (addBtn) { addBtn.textContent = '+ Add Target Company'; addBtn.setAttribute('onclick', `openAddCompanyModal('${escapeHtml(searchId)}')`); }
+      if (addBtn) { addBtn.style.display = ''; addBtn.textContent = '+ Add Target Company'; addBtn.setAttribute('onclick', `openAddCompanyModal('${escapeHtml(searchId)}')`); }
+      if (actionBtns) actionBtns.style.display = '';
       if (peBtn) peBtn.textContent = `PE Firms (${firms.length})`;
       if (coBtn) coBtn.textContent = `Target Companies (${companies.length})`;
+    } else if (tab === 'playbook') {
+      if (actionBtns) actionBtns.style.display = 'none';
+      tableEl.innerHTML = await buildPlaybookTabHTML(search);
     }
   } catch (e) {
     console.error('switchCoverageTab error:', e);
+  }
+}
+
+// ── Playbook tab (Top 25 from sector playbooks) ─────────────────────────────
+
+async function buildPlaybookTabHTML(search) {
+  const sectors = search.sectors || [];
+  if (sectors.length === 0) {
+    return `<div style="padding:24px;text-align:center;color:#888">
+      <p>No sectors assigned to this search. Edit the search to add sectors.</p>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="openAddPlaybookModal('${escapeHtml(search.search_id)}')">+ Add a Sector Playbook</button>
+    </div>`;
+  }
+
+  const searchId = search.search_id;
+  const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+
+  // Build lookup sets for what's already in sourcing coverage
+  const covFirmIds = new Set((coverage.pe_firms || []).map(f => f.firm_id));
+  const covFirmNames = new Set((coverage.pe_firms || []).map(f => (f.name || '').toLowerCase()));
+  const covCompanyIds = new Set((coverage.companies || []).map(c => c.company_id));
+  const covCompanyNames = new Set((coverage.companies || []).map(c => (c.name || '').toLowerCase()));
+
+  function isFirmAdded(f) {
+    return covFirmIds.has(f.firm_id) || covFirmNames.has((f.name || '').toLowerCase());
+  }
+  function isCompanyAdded(c) {
+    return covCompanyIds.has(c.company_id) || covCompanyNames.has((c.name || '').toLowerCase());
+  }
+
+  const sectorSections = [];
+
+  for (const sectorId of sectors) {
+    try {
+      const sector = await api('GET', '/playbooks/' + sectorId);
+      const topFirmIds = sector.top_pe_firms || [];
+      const topCompanyIds = sector.top_companies || [];
+
+      const topFirms = topFirmIds.map(id => (sector.pe_firms || []).find(f => f.firm_id === id)).filter(Boolean);
+      const topCompanies = topCompanyIds.map(id => (sector.target_companies || []).find(c => c.company_id === id)).filter(Boolean);
+
+      // Progress counts
+      const firmsAdded = topFirms.filter(isFirmAdded).length;
+      const companiesAdded = topCompanies.filter(isCompanyAdded).length;
+
+      const firmsHTML = topFirms.length === 0
+        ? `<p style="color:#aaa;font-size:13px;padding:12px">No top PE firms ranked yet.</p>`
+        : topFirms.map((f, i) => {
+            const added = isFirmAdded(f);
+            const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
+            const tagBadge = f.firm_tag === 'Specialist'
+              ? `<span style="background:#fff8e1;color:#f57f17;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">&#9733; Specialist</span>`
+              : f.firm_tag === 'Generalist'
+              ? `<span style="background:#f5f5f5;color:#999;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600">Generalist</span>`
+              : '';
+            const statusBtn = added
+              ? `<span style="color:#4caf50;font-size:16px;flex-shrink:0" title="Added to sourcing coverage">&#10003;</span>`
+              : `<button onclick="addPlaybookItemToSearch('${escapeHtml(searchId)}','pe','${escapeHtml(f.firm_id)}','${escapeHtml(sectorId)}')" style="background:#6B2D5B;color:#fff;border:none;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">+ Add</button>`;
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;${added ? 'background:#f8fdf8;' : ''}">
+              <span style="font-weight:700;color:#999;width:18px;text-align:right;font-size:11px">${i + 1}</span>
+              <span style="font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(f.name)}</span>
+              ${tagBadge} ${sizePill}
+              ${statusBtn}
+            </div>`;
+          }).join('');
+
+      const companiesHTML = topCompanies.length === 0
+        ? `<p style="color:#aaa;font-size:13px;padding:12px">No top companies ranked yet.</p>`
+        : topCompanies.map((c, i) => {
+            const added = isCompanyAdded(c);
+            const statusBtn = added
+              ? `<span style="color:#4caf50;font-size:16px;flex-shrink:0" title="Added to sourcing coverage">&#10003;</span>`
+              : `<button onclick="addPlaybookItemToSearch('${escapeHtml(searchId)}','company','${escapeHtml(c.company_id)}','${escapeHtml(sectorId)}')" style="background:#6B2D5B;color:#fff;border:none;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">+ Add</button>`;
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;${added ? 'background:#f8fdf8;' : ''}">
+              <span style="font-weight:700;color:#999;width:18px;text-align:right;font-size:11px">${i + 1}</span>
+              <span style="font-weight:600;flex:1">${escapeHtml(c.name)}</span>
+              <span style="color:#888;font-size:10px;white-space:nowrap">${escapeHtml(c.hq || '')}</span>
+              <span style="color:#888;font-size:10px">${escapeHtml(c.revenue_tier || '')}</span>
+              ${statusBtn}
+            </div>`;
+          }).join('');
+
+      // Progress bar
+      const firmsPct = topFirms.length > 0 ? Math.round(firmsAdded / topFirms.length * 100) : 0;
+      const companiesPct = topCompanies.length > 0 ? Math.round(companiesAdded / topCompanies.length * 100) : 0;
+
+      sectorSections.push(`
+        <div style="border:2px solid #F3E8EF;border-radius:12px;overflow:hidden;margin-bottom:16px">
+          <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+            <h2 style="margin:0;color:#fff;font-size:18px;font-weight:700">${escapeHtml(sector.sector_name)} Playbook</h2>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="color:rgba(255,255,255,0.8);font-size:12px">${firmsAdded}/${topFirms.length} firms · ${companiesAdded}/${topCompanies.length} companies added</span>
+              <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:11px" onclick="loadSectorPlaybookIntoSearch('${escapeHtml(searchId)}','${escapeHtml(sectorId)}')">Add All</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+            <div style="border-right:1px solid #f0f0f0">
+              <div style="padding:8px 12px;background:#faf6f9;font-weight:700;font-size:11px;color:#6B2D5B;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #F3E8EF;display:flex;justify-content:space-between;align-items:center">
+                <span>Top PE Firms (${firmsAdded}/${topFirms.length})</span>
+                <div style="width:60px;height:4px;background:#e0e0e0;border-radius:2px;overflow:hidden"><div style="width:${firmsPct}%;height:100%;background:#4caf50;border-radius:2px"></div></div>
+              </div>
+              <div style="max-height:400px;overflow-y:auto">${firmsHTML}</div>
+            </div>
+            <div>
+              <div style="padding:8px 12px;background:#faf6f9;font-weight:700;font-size:11px;color:#6B2D5B;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #F3E8EF;display:flex;justify-content:space-between;align-items:center">
+                <span>Top Companies (${companiesAdded}/${topCompanies.length})</span>
+                <div style="width:60px;height:4px;background:#e0e0e0;border-radius:2px;overflow:hidden"><div style="width:${companiesPct}%;height:100%;background:#4caf50;border-radius:2px"></div></div>
+              </div>
+              <div style="max-height:400px;overflow-y:auto">${companiesHTML}</div>
+            </div>
+          </div>
+        </div>`);
+    } catch { /* skip sector */ }
+  }
+
+  if (sectorSections.length === 0) {
+    return `<div style="padding:24px;text-align:center;color:#888">No playbook data available for the selected sectors.</div>`;
+  }
+
+  return `<div style="margin-top:8px">
+    ${sectorSections.join('')}
+    <div style="text-align:center;padding:16px">
+      <button class="btn btn-secondary btn-sm" onclick="openAddPlaybookModal('${escapeHtml(searchId)}')">+ Add Another Sector Playbook</button>
+    </div>
+  </div>`;
+}
+
+async function loadTop25IntoSearch(searchId) {
+  if (!confirm('Load all Top 25 PE firms and companies from the sector playbooks into this search sourcing coverage? Existing firms and companies will not be duplicated.')) return;
+
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const sectors = search.sectors || [];
+    let addedFirms = 0;
+    let addedCompanies = 0;
+
+    for (const sectorId of sectors) {
+      const sector = await api('GET', '/playbooks/' + sectorId);
+
+      // Add top PE firms
+      for (const firmId of (sector.top_pe_firms || [])) {
+        const firm = (sector.pe_firms || []).find(f => f.firm_id === firmId);
+        if (!firm) continue;
+        const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
+        if (exists) continue;
+
+        coverage.pe_firms.push({
+          firm_id: firm.firm_id,
+          name: firm.name,
+          hq: firm.hq || '',
+          size_tier: firm.size_tier || '',
+          manual_complete: false,
+          manual_complete_note: '',
+          roster: JSON.parse(JSON.stringify(firm.roster || []))
+        });
+        addedFirms++;
+      }
+
+      // Add top companies
+      for (const coId of (sector.top_companies || [])) {
+        const co = (sector.target_companies || []).find(c => c.company_id === coId);
+        if (!co) continue;
+        const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
+        if (exists) continue;
+
+        coverage.companies.push({
+          company_id: co.company_id,
+          name: co.name,
+          hq: co.hq || '',
+          revenue_tier: co.revenue_tier || '',
+          manual_complete: false,
+          manual_complete_note: '',
+          roster: []
+        });
+        addedCompanies++;
+      }
+    }
+
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies to sourcing coverage.');
+
+    // Refresh the coverage view
+    switchCoverageTab('pe-firms', searchId);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function openAddPlaybookModal(searchId) {
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const currentSectors = search.sectors || [];
+    const allSectors = [
+      { id: 'industrials', label: 'Industrials' },
+      { id: 'technology-software', label: 'Technology / Software' },
+      { id: 'tech-enabled-services', label: 'Tech-Enabled Services' },
+      { id: 'healthcare', label: 'Healthcare' },
+      { id: 'financial-services', label: 'Financial Services' },
+      { id: 'consumer', label: 'Consumer' },
+      { id: 'business-services', label: 'Business Services' },
+      { id: 'infrastructure-energy', label: 'Infrastructure / Energy' },
+      { id: 'life-sciences', label: 'Life Sciences' },
+      { id: 'media-entertainment', label: 'Media / Entertainment' },
+      { id: 'real-estate-proptech', label: 'Real Estate / PropTech' },
+      { id: 'agriculture-fb', label: 'Agriculture / Food & Beverage' }
+    ];
+    const available = allSectors.filter(s => !currentSectors.includes(s.id));
+
+    if (available.length === 0) {
+      alert('All sector playbooks are already added to this search.');
+      return;
+    }
+
+    const choice = prompt(
+      'Add a sector playbook:\n\n' +
+      available.map((s, i) => `${i + 1}. ${s.label}`).join('\n') +
+      '\n\nEnter number:'
+    );
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= available.length) { alert('Invalid selection.'); return; }
+
+    const newSectorId = available[idx].id;
+    const updatedSectors = [...currentSectors, newSectorId];
+    await api('PUT', '/searches/' + searchId, { sectors: updatedSectors });
+
+    // Refresh playbook tab
+    switchCoverageTab('playbook', searchId);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function addPlaybookItemToSearch(searchId, type, itemId, sectorId) {
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const sector = await api('GET', '/playbooks/' + sectorId);
+
+    if (type === 'pe') {
+      const firm = (sector.pe_firms || []).find(f => f.firm_id === itemId);
+      if (!firm) { alert('Firm not found.'); return; }
+      const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
+      if (exists) { alert('Already added.'); return; }
+      coverage.pe_firms.push({
+        firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
+        manual_complete: false, manual_complete_note: '',
+        roster: JSON.parse(JSON.stringify(firm.roster || []))
+      });
+    } else {
+      const co = (sector.target_companies || []).find(c => c.company_id === itemId);
+      if (!co) { alert('Company not found.'); return; }
+      const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
+      if (exists) { alert('Already added.'); return; }
+      coverage.companies.push({
+        company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
+        manual_complete: false, manual_complete_note: '', roster: []
+      });
+    }
+
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+    // Refresh the playbook tab to show updated checkmarks
+    switchCoverageTab('playbook', searchId);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function loadSectorPlaybookIntoSearch(searchId, sectorId) {
+  if (!confirm('Load this sector playbook into the search sourcing coverage?')) return;
+
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const sector = await api('GET', '/playbooks/' + sectorId);
+    let addedFirms = 0;
+    let addedCompanies = 0;
+
+    for (const firmId of (sector.top_pe_firms || [])) {
+      const firm = (sector.pe_firms || []).find(f => f.firm_id === firmId);
+      if (!firm) continue;
+      const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
+      if (exists) continue;
+      coverage.pe_firms.push({
+        firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
+        manual_complete: false, manual_complete_note: '',
+        roster: JSON.parse(JSON.stringify(firm.roster || []))
+      });
+      addedFirms++;
+    }
+
+    for (const coId of (sector.top_companies || [])) {
+      const co = (sector.target_companies || []).find(c => c.company_id === coId);
+      if (!co) continue;
+      const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
+      if (exists) continue;
+      coverage.companies.push({
+        company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
+        manual_complete: false, manual_complete_note: '', roster: []
+      });
+      addedCompanies++;
+    }
+
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies from ' + (sector.sector_name || sectorId) + '.');
+    switchCoverageTab('playbook', searchId);
+  } catch (err) {
+    alert('Error: ' + err.message);
   }
 }
 
@@ -897,11 +1238,58 @@ async function addRosterPerson(searchId, type, entityId) {
   }
 }
 
+async function toggleArchiveComplete(searchId, type, entityId) {
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
+    const idField = type === 'pe_firms' ? 'firm_id' : 'company_id';
+    const entity = list.find(e => e[idField] === entityId);
+    if (!entity) return;
+
+    entity.archived_complete = !entity.archived_complete;
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+
+    // Refresh the tab
+    const tab = type === 'pe_firms' ? 'pe-firms' : 'companies';
+    openAccordionId = null;
+    switchCoverageTab(tab, searchId);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+async function resetVerification(searchId, type, entityId) {
+  try {
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
+    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
+    const entity = (list || []).find(e => e[idKey] === entityId);
+    if (!entity) return;
+
+    entity.manual_complete = false;
+    entity.last_verified = null;
+    entity.verified_by = null;
+    entity.manual_complete_note = '';
+
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+
+    // Re-render
+    refreshCoverageBar(entity, entityId, type);
+    const accInner = document.getElementById('roster-section-' + entityId)?.closest('.accordion-inner');
+    if (accInner) {
+      const overrideDiv = accInner.querySelector('.override-section');
+      if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(entity, entityId, searchId, type);
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
 async function verifyCoverage(searchId, type, entityId) {
   const noteEl = document.getElementById('override-note-' + entityId);
-  const completeEl = document.getElementById('override-complete-' + entityId);
   const note = noteEl ? noteEl.value.trim() : '';
-  const isComplete = completeEl ? completeEl.checked : false;
   const btn = event?.target;
 
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -913,7 +1301,7 @@ async function verifyCoverage(searchId, type, entityId) {
     const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
     const entity = (list || []).find(e => e[idKey] === entityId);
     if (!entity) return;
-    entity.manual_complete = isComplete;
+    entity.manual_complete = true;
     entity.manual_complete_note = note;
     entity.last_verified = todayISO();
     entity.verified_by = 'RA';
@@ -987,84 +1375,6 @@ async function setReviewStatus(searchId, type, entityId, candidateId, newStatus)
   }
 }
 
-// ── Promote to playbook ───────────────────────────────────────────────────────
-
-async function promoteToPlaybook(searchId, type, entityId) {
-  if (!confirm('Promote this entry to the sector playbook? It will no longer be search-specific.')) return;
-  try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-    const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
-    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
-    const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
-
-    // Get sector
-    const sectorId = (search.sectors || [])[0];
-    if (!sectorId) { alert('Search has no sector assigned. Cannot promote.'); return; }
-
-    const playbooksData = await api('GET', '/playbooks');
-    const sector = (playbooksData.sectors || []).find(s => s.sector_id === sectorId);
-    if (!sector) { alert('Sector "' + sectorId + '" not found in playbooks.'); return; }
-
-    if (type === 'pe_firms') {
-      const pbFirms = sector.pe_firms || [];
-      const alreadyExists = pbFirms.some(f => f.firm_id === entityId);
-      if (!alreadyExists) {
-        pbFirms.push({
-          firm_id: entity.firm_id,
-          name: entity.name,
-          hq: entity.hq || '',
-          size_tier: entity.size_tier || '',
-          strategy: entity.strategy || '',
-          sector_focus: entity.sector_focus || '',
-          why_target: entity.why_target || '',
-          roster: JSON.parse(JSON.stringify(entity.roster || []))
-        });
-        sector.pe_firms = pbFirms;
-      }
-    } else {
-      const pbCos = sector.target_companies || [];
-      const alreadyExists = pbCos.some(c => c.company_id === entityId);
-      if (!alreadyExists) {
-        pbCos.push({
-          company_id: entity.company_id,
-          name: entity.name,
-          hq: entity.hq || '',
-          revenue_tier: entity.revenue_tier || '',
-          ownership_type: entity.ownership_type || '',
-          why_target: entity.why_target || '',
-          roster: JSON.parse(JSON.stringify(entity.roster || []))
-        });
-        sector.target_companies = pbCos;
-      }
-    }
-
-    // Update playbook
-    await api('PUT', '/playbooks/' + sectorId, sector);
-
-    // Update search: clear search_specific flag
-    entity.search_specific = false;
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-
-    // Visual update
-    const badgeEl = document.getElementById('badge-' + entityId);
-    if (badgeEl) {
-      badgeEl.className = 'badge-promoted';
-      badgeEl.textContent = 'Promoted to Playbook';
-    }
-    // Hide promote button
-    const accEl = document.getElementById('acc-' + entityId);
-    if (accEl) {
-      const promoteDiv = accEl.querySelector('.promote-btn');
-      if (promoteDiv && promoteDiv.parentElement) promoteDiv.parentElement.style.display = 'none';
-    }
-  } catch (e) {
-    console.error('promoteToPlaybook error:', e);
-    alert('Error promoting to playbook: ' + e.message);
-  }
-}
 
 // ── Add Firm modal ────────────────────────────────────────────────────────────
 
@@ -1118,12 +1428,6 @@ function openAddFirmModal(searchId) {
         <label style="font-size:12px;color:#666;font-weight:600">Why Target</label>
         <textarea id="modal-firm-why" rows="2" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical" placeholder="Reason for targeting this firm..."></textarea>
       </div>
-      <div>
-        <label style="font-size:13px;cursor:pointer">
-          <input type="checkbox" id="modal-firm-specific" checked style="margin-right:6px" />
-          Search-specific (not in playbook)
-        </label>
-      </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="submitAddFirm('${escapeHtml(searchId)}')">Add Firm</button>
@@ -1159,7 +1463,6 @@ async function submitAddFirm(searchId) {
   const strategy = (document.getElementById('modal-firm-strategy').value || '').trim();
   const sector_focus = (document.getElementById('modal-firm-sector').value || '').trim();
   const why_target = (document.getElementById('modal-firm-why').value || '').trim();
-  const search_specific = document.getElementById('modal-firm-specific').checked;
 
   const firm_id = slugify(name);
   const newFirm = {
@@ -1170,7 +1473,6 @@ async function submitAddFirm(searchId) {
     strategy,
     sector_focus,
     why_target,
-    search_specific,
     manual_complete: false,
     manual_complete_note: '',
     roster: []
@@ -1255,12 +1557,6 @@ function openAddCompanyModal(searchId) {
         <label style="font-size:12px;color:#666;font-weight:600">Why Target</label>
         <textarea id="modal-co-why" rows="2" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical" placeholder="Reason for targeting this company..."></textarea>
       </div>
-      <div>
-        <label style="font-size:13px;cursor:pointer">
-          <input type="checkbox" id="modal-co-specific" checked style="margin-right:6px" />
-          Search-specific (not in playbook)
-        </label>
-      </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('cov-add-modal').remove()">Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="submitAddCompany('${escapeHtml(searchId)}')">Add Company</button>
@@ -1291,7 +1587,6 @@ async function submitAddCompany(searchId) {
   const ownership_type = (document.getElementById('modal-co-ownership').value || '').trim();
   const roles_to_target = (document.getElementById('modal-co-roles').value || '').trim();
   const why_target = (document.getElementById('modal-co-why').value || '').trim();
-  const search_specific = document.getElementById('modal-co-specific').checked;
 
   const company_id = slugify(name);
   const newCompany = {
@@ -1302,7 +1597,6 @@ async function submitAddCompany(searchId) {
     ownership_type,
     roles_to_target,
     why_target,
-    search_specific,
     manual_complete: false,
     manual_complete_note: '',
     roster: []
@@ -1451,7 +1745,7 @@ async function submitPlaybookPick(searchId) {
         if (selectedFirmIds.includes(firm.firm_id) && !coverage.pe_firms.some(f => f.firm_id === firm.firm_id)) {
           coverage.pe_firms.push({
             firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
-            why_target: firm.why_target || '', search_specific: false, manual_complete: false, manual_complete_note: '',
+            why_target: firm.why_target || '', manual_complete: false, manual_complete_note: '',
             roster: JSON.parse(JSON.stringify(firm.roster || []))
           });
         }
@@ -1460,7 +1754,7 @@ async function submitPlaybookPick(searchId) {
         if (selectedCoIds.includes(co.company_id) && !coverage.companies.some(c => c.company_id === co.company_id)) {
           coverage.companies.push({
             company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
-            why_target: co.why_target || '', search_specific: false, manual_complete: false, manual_complete_note: '',
+            why_target: co.why_target || '', manual_complete: false, manual_complete_note: '',
             roster: JSON.parse(JSON.stringify(co.roster || []))
           });
         }

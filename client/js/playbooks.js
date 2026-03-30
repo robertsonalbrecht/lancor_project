@@ -252,11 +252,18 @@ function _paintSectorDetail() {
     : topFirms.map((f, i) => {
         const cov = getCoverageInfo(f);
         const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
-        const focusPill = f.sector_focus ? `<span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.sector_focus)}</span>` : '';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.1s" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+        const tagBadge = f.firm_tag === 'Specialist'
+          ? `<span style="background:#fff8e1;color:#f57f17;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">&#9733; Specialist</span>`
+          : f.firm_tag === 'Generalist'
+          ? `<span style="background:#f5f5f5;color:#999;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600">Generalist</span>`
+          : '';
+        return `<div draggable="true" data-id="${escapeHtml(f.firm_id)}" data-type="pe"
+          ondragstart="_topDragStart(event)" ondragover="_topDragOver(event)" ondrop="_topDrop(event)" ondragend="_topDragEnd(event)"
+          style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.15s;cursor:grab" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+          <span style="color:#ccc;font-size:10px;cursor:grab;user-select:none">&#9776;</span>
           <span style="font-weight:700;color:#999;width:20px;text-align:right;font-size:11px">${i + 1}</span>
           <span style="font-weight:600;font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="_openFirmDetail('${escapeHtml(f.firm_id)}')">${escapeHtml(f.name)}</span>
-          ${sizePill} ${focusPill}
+          ${sizePill} ${tagBadge}
           <span style="font-size:11px;color:#888;width:36px;text-align:right">${cov.pct}%</span>
           <button onclick="event.stopPropagation();_removeFromTopList('pe','${escapeHtml(f.firm_id)}')" title="Remove" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;padding:0 4px;line-height:1" onmouseover="this.style.color='#c62828'" onmouseout="this.style.color='#ccc'">&#10005;</button>
         </div>`;
@@ -265,7 +272,10 @@ function _paintSectorDetail() {
   const topCompaniesHTML = topCompanies.length === 0
     ? `<p style="color:#aaa;font-size:13px;padding:12px 0">No top companies yet.</p>`
     : topCompanies.map((c, i) => {
-        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.1s" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+        return `<div draggable="true" data-id="${escapeHtml(c.company_id)}" data-type="company"
+          ondragstart="_topDragStart(event)" ondragover="_topDragOver(event)" ondrop="_topDrop(event)" ondragend="_topDragEnd(event)"
+          style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #f0f0f0;transition:background 0.15s;cursor:grab" onmouseover="this.style.background='#faf6f9'" onmouseout="this.style.background=''">
+          <span style="color:#ccc;font-size:10px;cursor:grab;user-select:none">&#9776;</span>
           <span style="font-weight:700;color:#999;width:20px;text-align:right;font-size:11px">${i + 1}</span>
           <span style="font-weight:600;font-size:13px;flex:1">${escapeHtml(c.name)}</span>
           <span style="color:#666;font-size:11px">${escapeHtml(c.hq || '')}</span>
@@ -288,7 +298,10 @@ function _paintSectorDetail() {
     <div style="margin-bottom:24px;border:2px solid #F3E8EF;border-radius:12px;overflow:hidden">
       <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
         <h2 style="margin:0;color:#fff;font-size:16px;font-weight:700">All-Star Playbook</h2>
-        <span style="color:rgba(255,255,255,0.7);font-size:12px">Top firms and companies to prioritize for search kickoffs</span>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="color:rgba(255,255,255,0.7);font-size:12px">Top firms and companies to prioritize for search kickoffs</span>
+          <button onclick="_addPlaybookToSearch('${escapeHtml(s.sector_id)}')" class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:11px;white-space:nowrap">Add to Search &rarr;</button>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
         <div style="border-right:1px solid #f0f0f0">
@@ -332,6 +345,69 @@ function _paintSectorDetail() {
     <div id="tab-content"></div>`;
 
   _renderActiveTab();
+}
+
+// ── All-Star Playbook drag-to-reorder ────────────────────────────────────────
+
+let _topDragId = null;
+let _topDragType = null;
+
+function _topDragStart(event) {
+  const row = event.target.closest('[data-id]');
+  if (!row) return;
+  _topDragId = row.dataset.id;
+  _topDragType = row.dataset.type;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', _topDragId);
+  row.style.opacity = '0.4';
+}
+
+function _topDragOver(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const row = event.target.closest('[data-id]');
+  if (row && row.dataset.type === _topDragType) {
+    row.style.borderTop = '2px solid #6B2D5B';
+  }
+}
+
+function _topDrop(event) {
+  event.preventDefault();
+  const targetRow = event.target.closest('[data-id]');
+  if (!targetRow || !_topDragId || targetRow.dataset.type !== _topDragType) return;
+
+  const targetId = targetRow.dataset.id;
+  if (targetId === _topDragId) return;
+
+  const s = _currentSector;
+  if (!s) return;
+
+  const list = _topDragType === 'pe' ? (s.top_pe_firms || []) : (s.top_companies || []);
+  const fromIdx = list.indexOf(_topDragId);
+  const toIdx = list.indexOf(targetId);
+  if (fromIdx === -1 || toIdx === -1) return;
+
+  // Move item from fromIdx to toIdx
+  list.splice(fromIdx, 1);
+  list.splice(toIdx, 0, _topDragId);
+
+  // Save and re-render
+  const payload = _topDragType === 'pe'
+    ? { top_pe_firms: list }
+    : { top_companies: list };
+  api('PUT', '/playbooks/' + s.sector_id, payload).then(() => {
+    _paintSectorDetail();
+  }).catch(err => alert('Error saving: ' + err.message));
+}
+
+function _topDragEnd(event) {
+  _topDragId = null;
+  _topDragType = null;
+  // Clean up all drag styles
+  document.querySelectorAll('[data-id]').forEach(el => {
+    el.style.opacity = '';
+    el.style.borderTop = '';
+  });
 }
 
 // ── All-Star Playbook add/remove ─────────────────────────────────────────────
@@ -387,6 +463,69 @@ function _filterAddToTopList(type) {
             <span style="color:#888;font-size:11px">${escapeHtml(c.revenue_tier || '')}</span>
           </div>`;
         }).join('');
+  }
+}
+
+async function _addPlaybookToSearch(sectorId) {
+  // Show a picker of active searches to add the Top 25 to
+  try {
+    const resp = await api('GET', '/searches');
+    const activeSearches = (resp.searches || []).filter(s => s.status === 'active');
+
+    if (activeSearches.length === 0) {
+      alert('No active searches. Create a search first.');
+      return;
+    }
+
+    const options = activeSearches.map(s => `${s.client_name} — ${s.role_title}`);
+    const choice = prompt(
+      'Add Top 25 playbook to which search?\n\n' +
+      activeSearches.map((s, i) => `${i + 1}. ${s.client_name} — ${s.role_title}`).join('\n') +
+      '\n\nEnter number:'
+    );
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= activeSearches.length) { alert('Invalid selection.'); return; }
+
+    const searchId = activeSearches[idx].search_id;
+    const search = await api('GET', '/searches/' + searchId);
+    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
+    const sector = _currentSector;
+
+    let addedFirms = 0;
+    let addedCompanies = 0;
+
+    // Add top PE firms
+    for (const firmId of (sector.top_pe_firms || [])) {
+      const firm = (sector.pe_firms || []).find(f => f.firm_id === firmId);
+      if (!firm) continue;
+      const exists = coverage.pe_firms.some(f => f.firm_id === firm.firm_id || f.name.toLowerCase() === firm.name.toLowerCase());
+      if (exists) continue;
+      coverage.pe_firms.push({
+        firm_id: firm.firm_id, name: firm.name, hq: firm.hq || '', size_tier: firm.size_tier || '',
+        manual_complete: false, manual_complete_note: '',
+        roster: JSON.parse(JSON.stringify(firm.roster || []))
+      });
+      addedFirms++;
+    }
+
+    // Add top companies
+    for (const coId of (sector.top_companies || [])) {
+      const co = (sector.target_companies || []).find(c => c.company_id === coId);
+      if (!co) continue;
+      const exists = coverage.companies.some(c => c.company_id === co.company_id || c.name.toLowerCase() === co.name.toLowerCase());
+      if (exists) continue;
+      coverage.companies.push({
+        company_id: co.company_id, name: co.name, hq: co.hq || '', revenue_tier: co.revenue_tier || '',
+        manual_complete: false, manual_complete_note: '', roster: []
+      });
+      addedCompanies++;
+    }
+
+    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+    alert('Added ' + addedFirms + ' PE firms and ' + addedCompanies + ' companies to "' + activeSearches[idx].client_name + '".');
+  } catch (err) {
+    alert('Error: ' + err.message);
   }
 }
 

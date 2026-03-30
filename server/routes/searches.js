@@ -143,7 +143,6 @@ router.post('/', (req, res) => {
                 name: firm.name,
                 hq: firm.hq || '',
                 size_tier: firm.size_tier || '',
-                search_specific: false,
                 manual_complete: false,
                 manual_complete_note: '',
                 roster: JSON.parse(JSON.stringify(firm.roster || []))
@@ -155,7 +154,6 @@ router.post('/', (req, res) => {
                 name: co.name,
                 hq: co.hq || '',
                 revenue_tier: co.revenue_tier || '',
-                search_specific: false,
                 manual_complete: false,
                 manual_complete_note: '',
                 roster: JSON.parse(JSON.stringify(co.roster || []))

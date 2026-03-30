@@ -3897,7 +3897,8 @@
               }
             ],
             "last_verified": "2026-03-25",
-            "verified_by": "RA"
+            "verified_by": "RA",
+            "archived_complete": true
           },
           {
             "firm_id": "oaktree-capital-management",
@@ -5884,8 +5885,2524 @@
       ],
       "weekly_updates": [],
       "sourcing_coverage": {
-        "pe_firms": [],
-        "companies": []
+        "pe_firms": [
+          {
+            "firm_id": "welsh-carson-anderson-stowe",
+            "name": "Welsh, Carson, Anderson & Stowe",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "ray-greer-welsh-carson-anderson-stowe",
+                "name": "Ray Greer",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ray-greer-84b86318",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "dennis-dresser-welsh-carson-anderson-stowe",
+                "name": "Dennis Dresser",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/dennisdresser",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "tyler-pitchford-welsh-carson-anderson-stowe",
+                "name": "Tyler Pitchford",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/tylerpitchford",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Alpharetta, GA"
+              },
+              {
+                "candidate_id": "william-frank-welsh-carson-anderson-stowe",
+                "name": "William Frank",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/william-frank-9280092",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "mark-tomaino-welsh-carson-anderson-stowe",
+                "name": "Mark Tomaino",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-tomaino-5576b04",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "jenny-guyton-welsh-carson-anderson-stowe",
+                "name": "Jenny Guyton",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jennyguyton",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "jim-hinton-welsh-carson-anderson-stowe",
+                "name": "Jim Hinton",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jim-hinton",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "mark-tomaino-welsh-carson-anderson-stowe",
+                "name": "Mark Tomaino",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mark-tomaino-5576b04",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "stephen-west-welsh-carson-anderson-stowe",
+                "name": "Stephen West",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/westste",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Tampa, FL"
+              },
+              {
+                "candidate_id": "adaeze-enekwechi-welsh-carson-anderson-stowe",
+                "name": "Adaeze Enekwechi",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/adaeze-enekwechi-phd",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Washington, D.C."
+              },
+              {
+                "candidate_id": "jeff-gallant-welsh-carson-anderson-stowe",
+                "name": "Jeff Gallant",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jeff-gallant-a267577",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "sean-hsu-welsh-carson-anderson-stowe",
+                "name": "Sean Hsu",
+                "title": "Associate",
+                "linkedin_url": "https://www.linkedin.com/in/sshsu",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Atlanta, GA"
+              },
+              {
+                "candidate_id": "anne-maloney-welsh-carson-anderson-stowe",
+                "name": "Anne Maloney",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/anne-maloney-8499255",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "mia-jung-welsh-carson-anderson-stowe",
+                "name": "Mia Jung",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mia-jung-3493582",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "brian-k-welsh-carson-anderson-stowe",
+                "name": "Brian K.",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/briankasser",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "travis-cameron-welsh-carson-anderson-stowe",
+                "name": "Travis Cameron",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/travis-cameron-18652726",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "josh-sullivan-welsh-carson-anderson-stowe",
+                "name": "Josh Sullivan",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/josh-sullivan-35358812",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "lawrence-miller-welsh-carson-anderson-stowe",
+                "name": "Lawrence Miller",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/lawrence-r-miller",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "george-mashini-welsh-carson-anderson-stowe",
+                "name": "George Mashini",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/georgemashini",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Atlanta, GA"
+              },
+              {
+                "candidate_id": "bill-bowman-welsh-carson-anderson-stowe",
+                "name": "BIll Bowman",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/billbowman",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "kristin-schroeder-welsh-carson-anderson-stowe",
+                "name": "Kristin Schroeder",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/kristin-schroeder",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              }
+            ]
+          },
+          {
+            "firm_id": "linden",
+            "name": "Linden",
+            "hq": "Chicago, IL",
+            "size_tier": "Middle Market",
+            "strategy": "Buyout",
+            "sector_focus": "Technology, Healthcare, Business Services",
+            "why_target": "",
+            "search_specific": true,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "jeff-nelson-linden",
+                "name": "Jeff Nelson",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jeff-nelson-80786810",
+                "location": "Jacksonville, FL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ron-labrum-linden",
+                "name": "Ron Labrum",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ron-labrum-119b436",
+                "location": "Libertyville, IL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "john-potthoff-linden",
+                "name": "John Potthoff",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/johnpotthoff",
+                "location": "Austin, TX",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "ron-fugate-linden",
+                "name": "Ron Fugate",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ron-fugate-6508346",
+                "location": "Palm Harbor, FL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "rene-lorenz-linden",
+                "name": "Rene Lorenz",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/rene-lorenz-136306a",
+                "location": "Bethoud",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "dr-asheesh-bedi-linden",
+                "name": "Dr. Asheesh Bedi",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/asheesh-bedi-92256619",
+                "location": "Ann Arbor, MI",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "gadi-lachman-linden",
+                "name": "Gadi Lachman",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/gadi-lachman",
+                "location": "Cambridge, MA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "auro-nair-linden",
+                "name": "Auro Nair",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/auro-nair-290461",
+                "location": "Hoboken, NJ",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "miki-kapoor-linden",
+                "name": "Miki Kapoor",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mikikapoor",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "nick-giannasi-linden",
+                "name": "Nick Giannasi",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/nick-giannasi-346467b0",
+                "location": "San Francisco, CA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "bruce-broussard-linden",
+                "name": "Bruce Broussard",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/bruce-broussard-ba2b69b",
+                "location": "US",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "richard-thomas-linden",
+                "name": "Richard Thomas",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/richardthomas",
+                "location": "US",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "joseph-bernardo-linden",
+                "name": "Joseph Bernardo",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/joe-bernardo-9a130bb",
+                "location": "Lewes, DE",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "michael-fiore-linden",
+                "name": "Michael Fiore",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/michaelfiore",
+                "location": "US",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "water-street-healthcare-partners",
+            "name": "Water Street Healthcare Partners",
+            "hq": "Chicago, Illinois",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "frazier-healthcare-partners",
+            "name": "Frazier Healthcare Partners",
+            "hq": "Seattle, Washington",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "patient-square-capital",
+            "name": "Patient Square Capital",
+            "hq": "Menlo Park, California",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "ew-healthcare-partners",
+            "name": "EW Healthcare Partners",
+            "hq": "New York, New York",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "varsity-healthcare-partners",
+            "name": "Varsity Healthcare Partners",
+            "hq": "Los Angeles, California",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "orbimed",
+            "name": "OrbiMed",
+            "hq": "New York, New York",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "pharos-capital-group",
+            "name": "Pharos Capital Group",
+            "hq": "Dallas, Texas",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "altaris",
+            "name": "Altaris",
+            "hq": "New York, New York",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "cressey--company",
+            "name": "Cressey & Company",
+            "hq": "Chicago, Illinois",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "great-point-partners",
+            "name": "Great Point Partners",
+            "hq": "Greenwich, Connecticut",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "arsenal-capital-partners",
+            "name": "Arsenal Capital Partners",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "salvatore-gagliardo-arsenal-capital-partners",
+                "name": "Salvatore Gagliardo",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/salvatore-gagliardo-546b4743",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "dusty-tenney-arsenal-capital-partners",
+                "name": "Dusty Tenney",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/dusty-tenney-1808912",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "jp-fingado-arsenal-capital-partners",
+                "name": "J.P. Fingado",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jfingado",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Severna Park, MD"
+              },
+              {
+                "candidate_id": "jonathan-maack-arsenal-capital-partners",
+                "name": "Jonathan Maack",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jonathan-maack-18665b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              },
+              {
+                "candidate_id": "joshua-schultz-arsenal-capital-partners",
+                "name": "Joshua Schultz",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/joshua-schultz-3231a3",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Suffolk County, MA"
+              },
+              {
+                "candidate_id": "raymond-ray-h-hill-arsenal-capital-partners",
+                "name": "Raymond (Ray) H Hill",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/raymond-ray-h-hill-00b41633",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "West Palm Beach, FL"
+              },
+              {
+                "candidate_id": "david-s-arsenal-capital-partners",
+                "name": "David S.",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/david-s-3a2309a",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Philadelphia, PA"
+              },
+              {
+                "candidate_id": "martin-coulter-arsenal-capital-partners",
+                "name": "Martin Coulter",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/martin-coulter-52786a64",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "john-televantos-arsenal-capital-partners",
+                "name": "John Televantos",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/john-televantos-48043011",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "West Chester, PA"
+              },
+              {
+                "candidate_id": "tim-zappala-arsenal-capital-partners",
+                "name": "Tim Zappala",
+                "title": "Operating Partner, Partner",
+                "linkedin_url": "https://www.linkedin.com/in/tim-zappala-32a71713",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "george-abd-arsenal-capital-partners",
+                "name": "George Abd",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/george-abd-0757294",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Naples, FL"
+              },
+              {
+                "candidate_id": "jim-rock-arsenal-capital-partners",
+                "name": "Jim Rock",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/033",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              },
+              {
+                "candidate_id": "jeremy-steinfink-arsenal-capital-partners",
+                "name": "Jeremy Steinfink",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jeremy-steinfink-46386265",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "salvatore-gagliardo-arsenal-capital-partners",
+                "name": "Salvatore Gagliardo",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/salvatore-gagliardo-546b4743",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              }
+            ]
+          },
+          {
+            "firm_id": "new-mountain-capital",
+            "name": "New Mountain Capital",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "bert-notini-new-mountain-capital",
+                "name": "Bert Notini",
+                "title": "Managing Director, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/bert-notini-8a91bba",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              }
+            ]
+          },
+          {
+            "firm_id": "gtcr",
+            "name": "GTCR",
+            "hq": "Chicago, IL",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "travis-krueger-gtcr",
+                "name": "Travis Krueger",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/travis-krueger-0483aa2",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              }
+            ]
+          },
+          {
+            "firm_id": "summit-partners",
+            "name": "Summit Partners",
+            "hq": "Boston, MA",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "tim-strickland-summit-partners",
+                "name": "Tim Strickland",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/tim-strickland-4a114224",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "dave-averett-summit-partners",
+                "name": "Dave Averett",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/dave-averett-a414236",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              }
+            ]
+          },
+          {
+            "firm_id": "bain-capital",
+            "name": "Bain Capital",
+            "hq": "Boston, MA",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "sumit-gupta-bain-capital",
+                "name": "Sumit Gupta",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/sumitgupta55",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "rama-naageswaran-bain-capital",
+                "name": "Rama Naageswaran",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/rama-naageswaran-2a43105",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "celeste-clipp-lofqvist-bain-capital",
+                "name": "Celeste Clipp Lofqvist",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/celesteclipplofqvist",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "stephen-janco-bain-capital",
+                "name": "Stephen Janco",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/stephen-janco-7053b850",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Windham, NH"
+              },
+              {
+                "candidate_id": "ingrid-hammond-bain-capital",
+                "name": "Ingrid Hammond",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ingrid-hammond-612816",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "alena-harrison-bain-capital",
+                "name": "Alena Harrison",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/alena-harrison-a6732831",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "matthew-hanson-bain-capital",
+                "name": "Matthew Hanson",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/matthewjhanson",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "danielle-wang-bain-capital",
+                "name": "Danielle Wang",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/danielle-wang-1531183a",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "surbhi-martin-bain-capital",
+                "name": "Surbhi Martin",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/surbhi-martin-b825483",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "larissa-quinn-bain-capital",
+                "name": "Larissa Quinn",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/larissa-quinn-47661515",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "scott-mckenzie-bain-capital",
+                "name": "Scott McKenzie",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/scott-mckenzie-0501a924",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "pape-ndaw-bain-capital",
+                "name": "Pape Ndaw",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/pape-ndaw-a224a55",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "cand-steve-janco-1774534033380",
+                "name": "Steve Janco",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/steve-janco-7053b850/",
+                "location": "",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "kkr",
+            "name": "KKR",
+            "hq": "New York, NY",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "nicholas-zeitlin-kkr",
+                "name": "Nicholas Zeitlin",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/nicholas-zeitlin",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Fancisco, CA"
+              },
+              {
+                "candidate_id": "adam-fless-kkr",
+                "name": "Adam Fless",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/adamfless",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Palo Alton, CA"
+              },
+              {
+                "candidate_id": "jyo-sinha-kkr",
+                "name": "Jyo Sinha",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/jyosinha",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "nathan-jiang-v-kkr",
+                "name": "Nathan (Jiang) V.",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/nathan-v-78124426b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              },
+              {
+                "candidate_id": "amar-ghai-kkr",
+                "name": "Amar Ghai",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/amar-ghai",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Philadelphia, PA"
+              },
+              {
+                "candidate_id": "tyler-yoon-kkr",
+                "name": "Tyler Yoon",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/tyleryoon",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "pablo-illuzzi-kkr",
+                "name": "Pablo Illuzzi",
+                "title": "Principal, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/pilluzzi",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "ana-bakhshyan-kkr",
+                "name": "Ana Bakhshyan",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/anabak",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "baldeep-paul-dhaliwal-kkr",
+                "name": "Baldeep (Paul) Dhaliwal",
+                "title": "Director, Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/bdhaliwa",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Menlo Park, CA"
+              },
+              {
+                "candidate_id": "petie-burgdoerfer-kkr",
+                "name": "Petie Burgdoerfer",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/petie-burgdoerfer-a6653176",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "abigail-rhodes-kkr",
+                "name": "Abigail Rhodes",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/abigail-rhodes-bb8197103",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "joy-jia-ying-lim-kkr",
+                "name": "Joy (Jia Ying) Lim",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/joylimjiaying",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Fancisco, CA"
+              },
+              {
+                "candidate_id": "patricia-ludwig-kkr",
+                "name": "Patricia Ludwig",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/patricia-ludwig-02a18520",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "graham-thomas-kkr",
+                "name": "Graham Thomas",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/grahamdthomas",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "henry-bristol-kkr",
+                "name": "Henry Bristol",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/henrybristol",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "colin-johnson-kkr",
+                "name": "Colin Johnson",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/colin-johnson-7a697aa1",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "colin-johnson-kkr",
+                "name": "Colin Johnson",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/colin-johnson-7a697aa1",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "cand-alisha-peterle-1774371774447",
+                "name": "Alisha Peterle",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/alisha-peterle/",
+                "location": "United Kingdom",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "warburg-pincus",
+            "name": "Warburg Pincus",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "michael-frain-warburg-pincus",
+                "name": "Michael Frain",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/michael-frain-62260760",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "karen-obyrne-warburg-pincus",
+                "name": "Karen O'Byrne",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/kareno2",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Fort Lauderdale, FL"
+              },
+              {
+                "candidate_id": "rajveer-raj-kushwaha-warburg-pincus",
+                "name": "Rajveer (Raj) Kushwaha",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/rajveer-raj-kushwaha-14912b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "regina-penn-warburg-pincus",
+                "name": "Regina Penn",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/regina-penn",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "charles-redlick-warburg-pincus",
+                "name": "Charles Redlick",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/charles-redlick-16101086",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "deborah-kerr-warburg-pincus",
+                "name": "Deborah Kerr",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/deborahkerr",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "benny-melumad-warburg-pincus",
+                "name": "Benny Melumad",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/benny-melumad-523944",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "jay-epstein-warburg-pincus",
+                "name": "Jay Epstein",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/jay-epstein-13543213",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "david-vignes-warburg-pincus",
+                "name": "David Vignes",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/david-vignes-629978b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              },
+              {
+                "candidate_id": "margaretha-margreetmaggie-van-de-griend-warburg-pincus",
+                "name": "Margaretha (Margreet/Maggie) van de Griend",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/margaretha-margreet-maggie-van-de-griend-0873b2",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "sanjay-dholakia-warburg-pincus",
+                "name": "Sanjay Dholakia",
+                "title": "Senior Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/sanjay-dholakia-3555b0",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Bend, OR"
+              },
+              {
+                "candidate_id": "uday-devalla-warburg-pincus",
+                "name": "Uday Devalla",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/udaydevalla",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              },
+              {
+                "candidate_id": "cand-michael-bischoff-1774380193031",
+                "name": "Michael Bischoff",
+                "title": "Senior Vice President - Digital Strategy & Innovation",
+                "linkedin_url": "https://www.linkedin.com/in/mjbischoff/",
+                "location": "London, England, United Kingdom",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-gopi-chelliah-1774380365485",
+                "name": "Gopi Chelliah",
+                "title": "Operating & Technology Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/gopi-chelliah-37532b/",
+                "location": "London, England, United Kingdom",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-gilbert-chuabio-1774380455789",
+                "name": "Gilbert Chuabio",
+                "title": "CTO/ SVP Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/gilbert-chuabio-69825bb/",
+                "location": "Singapore",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-suhas-devaraju-1774380476949",
+                "name": "Suhas Devaraju",
+                "title": "Portfolio Value Creation",
+                "linkedin_url": "https://www.linkedin.com/in/suhas-devaraju-47221a4/",
+                "location": "Bengaluru, Karnataka, India",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-frances-fukuda-1774380496222",
+                "name": "Frances Fukuda",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/frances-fukuda-42497519/",
+                "location": "São Paulo, São Paulo, Brazil",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-vineet-jain-1774380518525",
+                "name": "Vineet Jain",
+                "title": "Senior Vice President Finance-Value creation",
+                "linkedin_url": "https://www.linkedin.com/in/vineet-jain-medtronic/",
+                "location": "Mumbai, Maharashtra, India",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-sumek-g-1774380562865",
+                "name": "Sumek G.",
+                "title": "Portfolio Value Creation- Talent",
+                "linkedin_url": "https://www.linkedin.com/in/sumekgopal/",
+                "location": "Mumbai, Maharashtra, India",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-wenqi-nie-1774380588366",
+                "name": "Wenqi Nie",
+                "title": "Associate Director",
+                "linkedin_url": "https://www.linkedin.com/in/wenqi-nie-85392b22/",
+                "location": "Shanghai, China",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "cand-dirk-woessner-1774380639654",
+                "name": "Dirk Woessner",
+                "title": "Geschäftsführer",
+                "linkedin_url": "https://www.linkedin.com/in/dirkwoessner/",
+                "location": "Germany",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "leonard-green-partners",
+            "name": "Leonard Green & Partners",
+            "hq": "Los Angeles, CA",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "reginald-holden-leonard-green-partners",
+                "name": "Reginald Holden",
+                "title": "",
+                "linkedin_url": "https://www.linkedin.com/in/reginald-holden-a773859",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Los Angeles, CA"
+              },
+              {
+                "candidate_id": "adeem-fenster-leonard-green-partners",
+                "name": "Adeem Fenster",
+                "title": "",
+                "linkedin_url": "https://www.linkedin.com/in/strategyexpert",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Los Angeles, CA"
+              }
+            ]
+          },
+          {
+            "firm_id": "hellman-friedman",
+            "name": "Hellman & Friedman",
+            "hq": "San Francisco, CA",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "josh-gold-hellman-friedman",
+                "name": "Josh Gold",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/joshgold1",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "matt-eisen-hellman-friedman",
+                "name": "Matt Eisen",
+                "title": "Partner",
+                "linkedin_url": "https://www.linkedin.com/in/matt-eisen-b908991a",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "whitney-ping-hellman-friedman",
+                "name": "Whitney Ping",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/wping",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "steve-solazzo-hellman-friedman",
+                "name": "Steve Solazzo",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/steve-solazzo-7a078632",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "aron-a-hellman-friedman",
+                "name": "Aron A.",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/aronain",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Naples, FL"
+              },
+              {
+                "candidate_id": "meghan-truchan-hellman-friedman",
+                "name": "Meghan Truchan",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/meghan-truchan-b216262",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dunedin, FL"
+              },
+              {
+                "candidate_id": "sean-obrien-hellman-friedman",
+                "name": "Sean O'Brien",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/sean-o-brien-6606477",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Lexington, MA"
+              }
+            ]
+          },
+          {
+            "firm_id": "consonance-capital",
+            "name": "Consonance Capital",
+            "hq": "New York, New York",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "shore-capital-partners",
+            "name": "Shore Capital Partners",
+            "hq": "Chicago, Illinois",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "martis-capital-management",
+            "name": "Martis Capital Management",
+            "hq": "San Francisco, California",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "revelstoke-capital-partners",
+            "name": "Revelstoke Capital Partners",
+            "hq": "Denver, Colorado",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "the-carlyle-group",
+            "name": "The Carlyle Group",
+            "hq": "Washington, DC",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "richard-elder-the-carlyle-group",
+                "name": "Richard Elder",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/richard-elder",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Washington, DC"
+              },
+              {
+                "candidate_id": "craig-greenseid-the-carlyle-group",
+                "name": "Craig Greenseid",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/craig-greenseid",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "heran-g-the-carlyle-group",
+                "name": "Heran G.",
+                "title": "Principal, Director",
+                "linkedin_url": "https://www.linkedin.com/in/herangetachew",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              }
+            ]
+          },
+          {
+            "firm_id": "cvc-capital-partners",
+            "name": "CVC Capital Partners",
+            "hq": "Luxembourg",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "russ-trpkovski-cvc-capital-partners",
+                "name": "Russ Trpkovski",
+                "title": "Principal, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/russtrpkovski",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "aviva-shneider-cvc-capital-partners",
+                "name": "Aviva Shneider",
+                "title": "Principal, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/aviva-shneider-071420",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "lalit-reddy-cvc-capital-partners",
+                "name": "Lalit Reddy",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/lalit-reddy-007584",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "jim-ousley-cvc-capital-partners",
+                "name": "Jim Ousley",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jim-ousley-13226213",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "US"
+              }
+            ]
+          },
+          {
+            "firm_id": "advent-international",
+            "name": "Advent International",
+            "hq": "Boston, MA",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "gilbert-lemieux-advent-international",
+                "name": "Gilbert Lemieux",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/gilbertlemieux",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "jaimee-michaud-advent-international",
+                "name": "Jaimee Michaud",
+                "title": "Senior Director",
+                "linkedin_url": "https://www.linkedin.com/in/jaimee-michaud-4a08886",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "tina-chen-advent-international",
+                "name": "Tina Chen",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/tina-chen-a6437255",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "angelo-brisimitzakis-advent-international",
+                "name": "Angelo Brisimitzakis",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/angelo-brisimitzakis-7048231",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Kansas City, MO"
+              },
+              {
+                "candidate_id": "alberto-c-advent-international",
+                "name": "Alberto C.",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/alberto-c-9b64473",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Miami, FL"
+              },
+              {
+                "candidate_id": "kahina-van-dyke-advent-international",
+                "name": "Kahina Van Dyke",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/kahinavandyke",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "pamela-joseph-advent-international",
+                "name": "Pamela Joseph",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/pamela-joseph-826928111",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Roswell, GA"
+              },
+              {
+                "candidate_id": "tom-szkutak-advent-international",
+                "name": "Tom Szkutak",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/tom-szkutak-4b59817",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "anthony-belfiore-advent-international",
+                "name": "Anthony Belfiore",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/anthony-belfiore-258142",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Brentwood, TN"
+              },
+              {
+                "candidate_id": "shar-dubey-advent-international",
+                "name": "Shar Dubey",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/shar-dubey-27a695",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "hakim-ghanem-advent-international",
+                "name": "Hakim Ghanem",
+                "title": "Senior Director",
+                "linkedin_url": "https://www.linkedin.com/in/hakimghanem",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "john-prince-advent-international",
+                "name": "John Prince",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/john-prince-4aa5277",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Wayzata, MN"
+              },
+              {
+                "candidate_id": "stacey-cunningham-advent-international",
+                "name": "Stacey Cunningham",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/stacey-cunningham-3400885",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "tricia-rothschild-advent-international",
+                "name": "Tricia Rothschild",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/triciarothschild",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "todd-lachman-advent-international",
+                "name": "Todd Lachman",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/todd-lachman-6620136a",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "mandy-ginsberg-advent-international",
+                "name": "Mandy Ginsberg",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mandy-ginsberg-b37b701",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "mohamed-atef-advent-international",
+                "name": "Mohamed Atef",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/mohamed-atef-mahmoud",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "mauricio-atri-advent-international",
+                "name": "Mauricio Atri",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/mauricio-atri-6b5345",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "adele-aviles-advent-international",
+                "name": "Adele Aviles",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/adele-aviles-35a926bb",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "hilda-lui-advent-international",
+                "name": "Hilda Lui",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/hilda-lui-9075502b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "maddy-keeshan-advent-international",
+                "name": "Maddy Keeshan",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/maddy-keeshan-76b3687a",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "cassie-clavin-advent-international",
+                "name": "Cassie Clavin",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/cassie-clavin-a4206412b",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "dave-hickey-advent-international",
+                "name": "Dave Hickey",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/dave-hickey-2903395",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Naples, FL"
+              },
+              {
+                "candidate_id": "james-mullen-advent-international",
+                "name": "James Mullen",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/james-mullen-5361b746",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Needham, MA"
+              },
+              {
+                "candidate_id": "michael-farrell-advent-international",
+                "name": "Michael Farrell",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mikefarrell5",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Colleyville, TX"
+              },
+              {
+                "candidate_id": "mohit-honwad-advent-international",
+                "name": "Mohit Honwad",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/mohithonwad",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "neal-vachhani-advent-international",
+                "name": "Neal Vachhani",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/nealvachhani",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "West Newton, MA"
+              },
+              {
+                "candidate_id": "stephan-scholl-advent-international",
+                "name": "Stephan Scholl",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/stephanscholl",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Chicago, IL"
+              },
+              {
+                "candidate_id": "rish-khara-advent-international",
+                "name": "Rish Khara",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/rish-khara-02578516",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Dallas, TX"
+              },
+              {
+                "candidate_id": "raul-guadarrama-advent-international",
+                "name": "Raul Guadarrama",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/raulguadarrama",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Denver, CO"
+              },
+              {
+                "candidate_id": "karim-beydoun-advent-international",
+                "name": "Karim Beydoun",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/beydounkarim",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "San Francisco, CA"
+              },
+              {
+                "candidate_id": "michael-solomon-advent-international",
+                "name": "Michael Solomon",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/mikejsolomon",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "marco-mendes-advent-international",
+                "name": "Marco Mendes",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/marco-mendes-37a335",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              }
+            ]
+          },
+          {
+            "firm_id": "general-atlantic",
+            "name": "General Atlantic",
+            "hq": "New York, NY",
+            "size_tier": "Mega",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "ben-w-general-atlantic",
+                "name": "Ben W.",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/ben-w-b5a0055",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Boston, MA"
+              },
+              {
+                "candidate_id": "preston-mckenzie-general-atlantic",
+                "name": "Preston McKenzie",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/prestonmckenzie",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "cameron-pomerantz-general-atlantic",
+                "name": "Cameron Pomerantz",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/cameron-pomerantz",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "alex-crawford-general-atlantic",
+                "name": "Alex Crawford",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/alex1crawford",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "dominick-b-general-atlantic",
+                "name": "Dominick B.",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/dominickbove4",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "graham-robertson-general-atlantic",
+                "name": "Graham Robertson",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/graham-robertson-927621118",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "henry-portwood-general-atlantic",
+                "name": "Henry Portwood",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/henry-portwood-7bb05073",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "nicolas-sambor-general-atlantic",
+                "name": "Nicolas Sambor",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/nicolassambor",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "david-buckley-general-atlantic",
+                "name": "David Buckley",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/david-buckley-b4217610",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "annemarie-marks-general-atlantic",
+                "name": "AnneMarie Marks",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/annemarie-marks-b0ab31127",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "ellen-wade-williams-general-atlantic",
+                "name": "Ellen (Wade) Williams",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/ellen-wade-williams",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "seckin-ozdamar-general-atlantic",
+                "name": "Seckin Ozdamar",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/seckin",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "eric-staffin-general-atlantic",
+                "name": "Eric Staffin",
+                "title": "Operating Executive",
+                "linkedin_url": "https://www.linkedin.com/in/ericstaffin",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "jemina-opman-auge-general-atlantic",
+                "name": "Jemina Opman-Auge",
+                "title": "Associate",
+                "linkedin_url": "https://www.linkedin.com/in/jemina-opman-auge",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "ryan-kilgallon-general-atlantic",
+                "name": "Ryan Kilgallon",
+                "title": "Senior Associate",
+                "linkedin_url": "https://www.linkedin.com/in/ryan-kilgallon-559b94190",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "blake-tiemeyer-general-atlantic",
+                "name": "Blake Tiemeyer",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/williamblaketiemeyer",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Brookllyn, NY"
+              },
+              {
+                "candidate_id": "dhruv-patel-general-atlantic",
+                "name": "Dhruv Patel",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/dhruv-patel-840182145",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "thomas-lee-general-atlantic",
+                "name": "Thomas Lee",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/thomas-lee-ab270267",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "carolina-gonzález-laurence-general-atlantic",
+                "name": "Carolina González Laurence",
+                "title": "Director",
+                "linkedin_url": "https://www.linkedin.com/in/carolina-gonz%C3%A1lez-laurence",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "kevin-karande-general-atlantic",
+                "name": "Kevin Karande",
+                "title": "Vice President",
+                "linkedin_url": "https://www.linkedin.com/in/kevinkarande",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "New York, NY"
+              },
+              {
+                "candidate_id": "gary-reiner-general-atlantic",
+                "name": "Gary Reiner",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/garyreiner",
+                "roster_status": "Identified",
+                "last_updated": "2026-03-22",
+                "searches_appeared_in": [],
+                "location": "Westport, CT"
+              }
+            ]
+          },
+          {
+            "firm_id": "dw-healthcare-partners",
+            "name": "DW Healthcare Partners",
+            "hq": "",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "firm_id": "blackstone",
+            "name": "Blackstone",
+            "hq": "New York, NY",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "jonathan-hartigan-blackstone",
+                "name": "Jonathan Hartigan",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jonathan-hartigan-77ab621b",
+                "location": "Houston, TX",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "sunil-sabharwal-blackstone",
+                "name": "Sunil Sabharwal",
+                "title": "Operating Partner, Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/sunilsabharwaldc",
+                "location": "Washinton, DC",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "pete-nicholson-blackstone",
+                "name": "Pete Nicholson",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/petenicholson",
+                "location": "Dallas, TX",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "kurt-wheeler-blackstone",
+                "name": "Kurt Wheeler",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/kurt-wheeler-3892579",
+                "location": "San Fancisco, CA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "gregory-beutler-blackstone",
+                "name": "Gregory Beutler",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/gregory-beutler-7241a56",
+                "location": "Weston, CT",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "matthew-d-blackstone",
+                "name": "Matthew D.",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/mattdougla",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "andreas-mang-blackstone",
+                "name": "Andreas Mang",
+                "title": "Managing Director, Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/andreas-mang-503927b",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "karen-brown-garza-blackstone",
+                "name": "Karen (Brown) Garza",
+                "title": "Operating Advisor",
+                "linkedin_url": "https://www.linkedin.com/in/karen-brown-garza",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "apollo-global-management",
+            "name": "Apollo Global Management",
+            "hq": "New York, NY",
+            "size_tier": "Middle Market",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": [
+              {
+                "candidate_id": "tracey-byrne-apollo-global-management",
+                "name": "Tracey Byrne",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/tracey-byrne-842b1b83",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "steven-faas-apollo-global-management",
+                "name": "Steven Faas",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/steven-faas-0a41a2",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "jason-maclean-apollo-global-management",
+                "name": "Jason MacLean",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jason-maclean-66a5428",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "rich-dubitsky-apollo-global-management",
+                "name": "Rich Dubitsky",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/richdubitsky",
+                "location": "Hartford, CT",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "james-hogarth-apollo-global-management",
+                "name": "James Hogarth",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/jameshogarth",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "mike-kay-apollo-global-management",
+                "name": "Mike Kay",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/mike-kay-201312103",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "tracy-burzycki-apollo-global-management",
+                "name": "Tracy Burzycki",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/tracyburzycki",
+                "location": "Philadelphia, PA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "vikram-mahidhar-apollo-global-management",
+                "name": "Vikram Mahidhar",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/vikrammahidhar",
+                "location": "Boston, MA",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "carletta-ooton-apollo-global-management",
+                "name": "Carletta Ooton",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/carlettaooton",
+                "location": "Bethesda, MD",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "johnathon-baker-apollo-global-management",
+                "name": "Johnathon Baker",
+                "title": "Operating Partner",
+                "linkedin_url": "https://www.linkedin.com/in/johnathon-baker-607aab4",
+                "location": "Miami, FL",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "anders-milton-apollo-global-management",
+                "name": "Anders Milton",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/anders-milton-9193a725",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "olivia-kent-apollo-global-management",
+                "name": "Olivia Kent",
+                "title": "Principal",
+                "linkedin_url": "https://www.linkedin.com/in/olivia-kent-91137256",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              },
+              {
+                "candidate_id": "douglas-chey-warburg-pincus",
+                "name": "Douglas Chey",
+                "title": "Managing Director",
+                "linkedin_url": "https://www.linkedin.com/in/dougchey",
+                "location": "New York, NY",
+                "roster_status": "Identified",
+                "source": "auto-linked"
+              }
+            ]
+          },
+          {
+            "firm_id": "tpg-capital",
+            "name": "TPG Capital",
+            "hq": "Fort Worth, Texas",
+            "size_tier": "Large",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          }
+        ],
+        "companies": [
+          {
+            "company_id": "optum",
+            "name": "Optum",
+            "hq": "Eden Prairie, Minnesota",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "walgreens-boots-alliance",
+            "name": "Walgreens Boots Alliance",
+            "hq": "Deerfield, Illinois",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "team-services-group",
+            "name": "Team Services Group",
+            "hq": "San Diego, California",
+            "revenue_tier": "$50M-$200M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "philips-north-america",
+            "name": "Philips North America",
+            "hq": "Nashville, Tennessee",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "envision-healthcare",
+            "name": "Envision Healthcare",
+            "hq": "Nashville, Tennessee",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "lifepoint-health",
+            "name": "LifePoint Health",
+            "hq": "Brentwood, Tennessee",
+            "revenue_tier": "",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "christus-health",
+            "name": "CHRISTUS Health",
+            "hq": "Irving, Texas",
+            "revenue_tier": "",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "help-at-home",
+            "name": "Help at Home",
+            "hq": "Chicago, Illinois",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "baylor-scott-white-health",
+            "name": "Baylor Scott & White Health",
+            "hq": "Dallas, Texas",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "sevita",
+            "name": "Sevita",
+            "hq": "Edina, Minnesota",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "omega-healthcare-management-services",
+            "name": "Omega Healthcare Management Services",
+            "hq": "Boca Raton, Florida",
+            "revenue_tier": "$200M-$500M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "r1-rcm",
+            "name": "R1 RCM",
+            "hq": "Murray, Utah",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "accentcare",
+            "name": "AccentCare",
+            "hq": "Dallas, Texas",
+            "revenue_tier": "$200M-$500M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "elara-caring",
+            "name": "Elara Caring",
+            "hq": "Dallas, Texas",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "scionhealth",
+            "name": "ScionHealth",
+            "hq": "Louisville, Kentucky",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "scribeamerica",
+            "name": "ScribeAmerica",
+            "hq": "Fort Lauderdale, Florida",
+            "revenue_tier": "$200M-$500M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "life-care-companies",
+            "name": "Life Care Companies",
+            "hq": "Lakewood, New Jersey",
+            "revenue_tier": "$10M-$50M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "avita-pharmacy",
+            "name": "Avita Pharmacy",
+            "hq": "Baton Rouge, Louisiana",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "brightstar-care",
+            "name": "BrightStar Care",
+            "hq": "Bannockburn, Illinois",
+            "revenue_tier": "$500M-$1B",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "discovery-senior-living",
+            "name": "Discovery Senior Living",
+            "hq": "Bonita Springs, Florida",
+            "revenue_tier": "$500M-$1B",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "heartland-dental",
+            "name": "Heartland Dental",
+            "hq": "Effingham, Illinois",
+            "revenue_tier": "$50M-$200M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "synergy-homecare",
+            "name": "SYNERGY HomeCare",
+            "hq": "Gilbert, Arizona",
+            "revenue_tier": "$50M-$200M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "catalent",
+            "name": "Catalent",
+            "hq": "Bridgewater, New Jersey",
+            "revenue_tier": "$1B+",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "ags-health",
+            "name": "AGS Health",
+            "hq": "Washington, District of Columbia",
+            "revenue_tier": "$50M-$200M",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          },
+          {
+            "company_id": "gebbs-healthcare-solutions",
+            "name": "Gebbs Healthcare Solutions",
+            "hq": "Culver City, California",
+            "revenue_tier": "",
+            "search_specific": false,
+            "manual_complete": false,
+            "manual_complete_note": "",
+            "roster": []
+          }
+        ]
       },
       "client_name": "Patient Square Capital",
       "role_title": "Operating Partner",
@@ -5934,7 +8451,14 @@
           "full_name": "Robby Albrecht",
           "role": "Partner"
         }
-      ]
+      ],
+      "search_kit": {
+        "boolean_strings": [],
+        "outreach_messages": [],
+        "ideal_candidate_profiles": [],
+        "screen_question_guides": [],
+        "pitchbook_params": []
+      }
     }
   ]
 }
