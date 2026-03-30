@@ -1240,6 +1240,7 @@ async function addRosterPerson(searchId, type, entityId) {
 
 async function toggleArchiveComplete(searchId, type, entityId) {
   try {
+    // Read current state to toggle
     const search = await api('GET', '/searches/' + searchId);
     const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
     const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
@@ -1247,8 +1248,10 @@ async function toggleArchiveComplete(searchId, type, entityId) {
     const entity = list.find(e => e[idField] === entityId);
     if (!entity) return;
 
-    entity.archived_complete = !entity.archived_complete;
-    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    await api('PATCH', `/searches/${searchId}/coverage/${subPath}/${entityId}`, {
+      archived_complete: !entity.archived_complete
+    });
 
     // Refresh the tab
     const tab = type === 'pe_firms' ? 'pe-firms' : 'companies';
@@ -1261,26 +1264,20 @@ async function toggleArchiveComplete(searchId, type, entityId) {
 
 async function resetVerification(searchId, type, entityId) {
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-    const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
-    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
-    const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    const updated = await api('PATCH', `/searches/${searchId}/coverage/${subPath}/${entityId}`, {
+      manual_complete: false,
+      last_verified: null,
+      verified_by: null,
+      manual_complete_note: ''
+    });
 
-    entity.manual_complete = false;
-    entity.last_verified = null;
-    entity.verified_by = null;
-    entity.manual_complete_note = '';
-
-    await api('PUT', '/searches/' + searchId, { sourcing_coverage: coverage });
-
-    // Re-render
-    refreshCoverageBar(entity, entityId, type);
+    // Re-render with updated data
+    refreshCoverageBar(updated, entityId, type);
     const accInner = document.getElementById('roster-section-' + entityId)?.closest('.accordion-inner');
     if (accInner) {
       const overrideDiv = accInner.querySelector('.override-section');
-      if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(entity, entityId, searchId, type);
+      if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(updated, entityId, searchId, type);
     }
   } catch (err) {
     alert('Error: ' + err.message);
@@ -1295,19 +1292,15 @@ async function verifyCoverage(searchId, type, entityId) {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
   try {
-    const search = await api('GET', '/searches/' + searchId);
-    const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
-    const list = type === 'pe_firms' ? coverage.pe_firms : coverage.companies;
-    const idKey = type === 'pe_firms' ? 'firm_id' : 'company_id';
-    const entity = (list || []).find(e => e[idKey] === entityId);
-    if (!entity) return;
-    entity.manual_complete = true;
-    entity.manual_complete_note = note;
-    entity.last_verified = todayISO();
-    entity.verified_by = 'RA';
-    search.sourcing_coverage = coverage;
-    await api('PUT', '/searches/' + searchId, search);
-    refreshCoverageBar(entity, entityId, type);
+    const subPath = type === 'pe_firms' ? 'firms' : 'companies';
+    const updated = await api('PATCH', `/searches/${searchId}/coverage/${subPath}/${entityId}`, {
+      manual_complete: true,
+      manual_complete_note: note,
+      last_verified: todayISO(),
+      verified_by: 'RA'
+    });
+
+    refreshCoverageBar(updated, entityId, type);
 
     // Flash confirmation then re-render
     if (btn) {
@@ -1316,13 +1309,12 @@ async function verifyCoverage(searchId, type, entityId) {
       btn.style.color = '#fff';
     }
     setTimeout(() => {
-      // Re-render the override section with updated data
       const rosterEl = document.getElementById('roster-section-' + entityId);
-      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(entity.roster, entityId, searchId, type, entity.name);
+      if (rosterEl) rosterEl.innerHTML = rosterTableHTML(updated.roster || [], entityId, searchId, type, updated.name);
       const accInner = rosterEl?.closest('.accordion-inner');
       if (accInner) {
         const overrideDiv = accInner.querySelector('.override-section');
-        if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(entity, entityId, searchId, type);
+        if (overrideDiv) overrideDiv.outerHTML = overrideSectionHTML(updated, entityId, searchId, type);
       }
     }, 1000);
   } catch (e) {

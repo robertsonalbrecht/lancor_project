@@ -76,7 +76,35 @@ function firmNamesMatchWithAliases(a, b, aliasMap) {
 
 // ── API utility ───────────────────────────────────────────────────────────────
 
+let _apiOverlayTimer = null;
+let _apiOverlayEl = null;
+let _apiInFlight = 0;
+
+function _showApiOverlay() {
+  if (_apiOverlayEl) return;
+  _apiOverlayEl = document.createElement('div');
+  _apiOverlayEl.id = 'api-loading-overlay';
+  _apiOverlayEl.innerHTML = '<div class="spinner"></div>';
+  document.body.appendChild(_apiOverlayEl);
+}
+
+function _hideApiOverlay() {
+  if (_apiOverlayEl) {
+    _apiOverlayEl.remove();
+    _apiOverlayEl = null;
+  }
+}
+
 async function api(method, path, body) {
+  _apiInFlight++;
+  // Show overlay after 200ms if still in flight
+  if (!_apiOverlayTimer && !_apiOverlayEl) {
+    _apiOverlayTimer = setTimeout(() => {
+      _apiOverlayTimer = null;
+      if (_apiInFlight > 0) _showApiOverlay();
+    }, 200);
+  }
+
   const opts = {
     method: method.toUpperCase(),
     headers: { 'Content-Type': 'application/json' }
@@ -84,12 +112,21 @@ async function api(method, path, body) {
   if (body !== undefined) {
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch('/api' + path, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+  try {
+    const res = await fetch('/api' + path, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } finally {
+    _apiInFlight--;
+    if (_apiInFlight <= 0) {
+      _apiInFlight = 0;
+      if (_apiOverlayTimer) { clearTimeout(_apiOverlayTimer); _apiOverlayTimer = null; }
+      _hideApiOverlay();
+    }
   }
-  return res.json();
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────

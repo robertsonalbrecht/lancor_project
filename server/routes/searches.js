@@ -687,6 +687,377 @@ router.delete('/:id/pipeline/:candidateId', async (req, res) => {
   }
 });
 
+// ── ROUTES: Sourcing Coverage (Part B — writes) ─────────────────────────────
+
+// Helper: resolve search UUID + company UUID from slugs
+async function resolveCoverageIds(searchSlug, companySlug) {
+  const search = await fetchSearchBySlug(searchSlug);
+  if (!search) return { error: 'Search not found' };
+  const { rows: coRows } = await pool.query('SELECT id FROM companies WHERE slug = $1', [companySlug]);
+  if (coRows.length === 0) return { error: 'Company not found' };
+  return { searchUuid: search.id, companyUuid: coRows[0].id };
+}
+
+// POST /api/searches/:id/coverage/firms — add firm to coverage
+router.post('/:id/coverage/firms', async (req, res) => {
+  try {
+    const search = await fetchSearchBySlug(req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+
+    const body = req.body;
+    const firmSlug = body.firm_id;
+    if (!firmSlug) return res.status(400).json({ error: 'firm_id required' });
+
+    const { rows: coRows } = await pool.query('SELECT id FROM companies WHERE slug = $1', [firmSlug]);
+    if (coRows.length === 0) return res.status(404).json({ error: 'Company not found in pool' });
+    const companyUuid = coRows[0].id;
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO search_coverage_firms (search_id, company_id, name, hq, size_tier, strategy, sector_focus, why_target)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (search_id, company_id) DO NOTHING
+       RETURNING id`,
+      [search.id, companyUuid, body.name || '', body.hq || null, body.size_tier || null,
+       body.strategy || null, body.sector_focus || null, body.why_target || '']
+    );
+
+    if (inserted.length > 0) {
+      const covFirmId = inserted[0].id;
+      // Copy roster from playbook if available
+      const { rows: sectorIds } = await pool.query(
+        'SELECT sector_id FROM search_sectors WHERE search_id = $1', [search.id]);
+      for (const { sector_id } of sectorIds) {
+        const { rows: pbFirm } = await pool.query(
+          'SELECT id FROM sector_pe_firms WHERE sector_id = $1 AND company_id = $2',
+          [sector_id, companyUuid]);
+        if (pbFirm.length > 0) {
+          const { rows: roster } = await pool.query(
+            'SELECT * FROM playbook_firm_roster WHERE sector_pe_firm_id = $1', [pbFirm[0].id]);
+          for (const person of roster) {
+            await pool.query(
+              `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+              [covFirmId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
+          }
+          break; // only need roster from first matching sector
+        }
+      }
+    }
+
+    const coverage = await fetchSourcingCoverage(search.id);
+    res.status(201).json(coverage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/searches/:id/coverage/companies — add company to coverage
+router.post('/:id/coverage/companies', async (req, res) => {
+  try {
+    const search = await fetchSearchBySlug(req.params.id);
+    if (!search) return res.status(404).json({ error: 'Search not found' });
+
+    const body = req.body;
+    const coSlug = body.company_id;
+    if (!coSlug) return res.status(400).json({ error: 'company_id required' });
+
+    const { rows: coRows } = await pool.query('SELECT id FROM companies WHERE slug = $1', [coSlug]);
+    if (coRows.length === 0) return res.status(404).json({ error: 'Company not found in pool' });
+    const companyUuid = coRows[0].id;
+
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO search_coverage_companies (search_id, company_id, name, hq, revenue_tier, ownership_type, why_target)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (search_id, company_id) DO NOTHING
+       RETURNING id`,
+      [search.id, companyUuid, body.name || '', body.hq || null, body.revenue_tier || null,
+       body.ownership_type || null, body.why_target || '']
+    );
+
+    if (inserted.length > 0) {
+      const covCoId = inserted[0].id;
+      // Copy roster from playbook if available
+      const { rows: sectorIds } = await pool.query(
+        'SELECT sector_id FROM search_sectors WHERE search_id = $1', [search.id]);
+      for (const { sector_id } of sectorIds) {
+        const { rows: pbCo } = await pool.query(
+          'SELECT id FROM sector_target_companies WHERE sector_id = $1 AND company_id = $2',
+          [sector_id, companyUuid]);
+        if (pbCo.length > 0) {
+          const { rows: roster } = await pool.query(
+            'SELECT * FROM playbook_company_roster WHERE sector_target_company_id = $1', [pbCo[0].id]);
+          for (const person of roster) {
+            await pool.query(
+              `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
+               VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+              [covCoId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
+          }
+          break;
+        }
+      }
+    }
+
+    const coverage = await fetchSourcingCoverage(search.id);
+    res.status(201).json(coverage);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/searches/:id/coverage/firms/:firmId — remove firm from coverage
+router.delete('/:id/coverage/firms/:firmId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
+    if (error) return res.status(404).json({ error });
+
+    const { rows } = await pool.query(
+      'DELETE FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2 RETURNING id',
+      [searchUuid, companyUuid]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/searches/:id/coverage/companies/:companyId — remove company from coverage
+router.delete('/:id/coverage/companies/:companyId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.companyId);
+    if (error) return res.status(404).json({ error });
+
+    const { rows } = await pool.query(
+      'DELETE FROM search_coverage_companies WHERE search_id = $1 AND company_id = $2 RETURNING id',
+      [searchUuid, companyUuid]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/searches/:id/coverage/firms/:firmId — update coverage firm fields
+router.patch('/:id/coverage/firms/:firmId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
+    if (error) return res.status(404).json({ error });
+
+    const body = req.body;
+    const allowed = ['manual_complete', 'manual_complete_note', 'last_verified', 'verified_by',
+                     'archived_complete', 'why_target', 'name', 'hq', 'size_tier', 'strategy', 'sector_focus'];
+    const updates = [];
+    const params = [];
+    let idx = 1;
+    for (const col of allowed) {
+      if (body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        params.push(body[col]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+
+    params.push(searchUuid, companyUuid);
+    const { rows } = await pool.query(
+      `UPDATE search_coverage_firms SET ${updates.join(',')} WHERE search_id = $${idx} AND company_id = $${idx + 1} RETURNING *`,
+      params);
+    if (rows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+
+    const coverage = await fetchSourcingCoverage(searchUuid);
+    const firm = coverage.pe_firms.find(f => f.firm_id === req.params.firmId);
+    res.json(firm || rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/searches/:id/coverage/companies/:companyId — update coverage company fields
+router.patch('/:id/coverage/companies/:companyId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.companyId);
+    if (error) return res.status(404).json({ error });
+
+    const body = req.body;
+    const allowed = ['manual_complete', 'manual_complete_note', 'last_verified', 'verified_by',
+                     'archived_complete', 'why_target', 'name', 'hq', 'revenue_tier', 'ownership_type'];
+    const updates = [];
+    const params = [];
+    let idx = 1;
+    for (const col of allowed) {
+      if (body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        params.push(body[col]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+
+    params.push(searchUuid, companyUuid);
+    const { rows } = await pool.query(
+      `UPDATE search_coverage_companies SET ${updates.join(',')} WHERE search_id = $${idx} AND company_id = $${idx + 1} RETURNING *`,
+      params);
+    if (rows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
+
+    const coverage = await fetchSourcingCoverage(searchUuid);
+    const co = coverage.companies.find(c => c.company_id === req.params.companyId);
+    res.json(co || rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/searches/:id/coverage/firms/:firmId/roster/:candidateId — update roster person
+router.patch('/:id/coverage/firms/:firmId/roster/:candidateId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
+    if (error) return res.status(404).json({ error });
+
+    // Find the coverage firm
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+
+    const body = req.body;
+    const allowed = ['reviewed', 'reviewed_date', 'review_status', 'roster_status', 'name', 'title', 'linkedin_url', 'location', 'source'];
+    const updates = [];
+    const params = [];
+    let idx = 1;
+    for (const col of allowed) {
+      if (body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        params.push(body[col]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+
+    params.push(covRows[0].id, req.params.candidateId);
+    const { rows } = await pool.query(
+      `UPDATE coverage_firm_roster SET ${updates.join(',')} WHERE coverage_firm_id = $${idx} AND candidate_slug = $${idx + 1} RETURNING *`,
+      params);
+    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    res.json({
+      candidate_id: rows[0].candidate_slug,
+      name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
+      location: rows[0].location, roster_status: rows[0].roster_status,
+      source: rows[0].source, reviewed: rows[0].reviewed,
+      reviewed_date: toISO(rows[0].reviewed_date), review_status: rows[0].review_status
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/searches/:id/coverage/companies/:companyId/roster/:candidateId — update roster person
+router.patch('/:id/coverage/companies/:companyId/roster/:candidateId', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.companyId);
+    if (error) return res.status(404).json({ error });
+
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_companies WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
+
+    const body = req.body;
+    const allowed = ['reviewed', 'reviewed_date', 'review_status', 'roster_status', 'name', 'title', 'linkedin_url', 'location', 'source'];
+    const updates = [];
+    const params = [];
+    let idx = 1;
+    for (const col of allowed) {
+      if (body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        params.push(body[col]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+
+    params.push(covRows[0].id, req.params.candidateId);
+    const { rows } = await pool.query(
+      `UPDATE coverage_company_roster SET ${updates.join(',')} WHERE coverage_company_id = $${idx} AND candidate_slug = $${idx + 1} RETURNING *`,
+      params);
+    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    res.json({
+      candidate_id: rows[0].candidate_slug,
+      name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
+      location: rows[0].location, roster_status: rows[0].roster_status,
+      source: rows[0].source, reviewed: rows[0].reviewed,
+      reviewed_date: toISO(rows[0].reviewed_date), review_status: rows[0].review_status
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/searches/:id/coverage/firms/:firmId/roster — add roster person
+router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
+    if (error) return res.status(404).json({ error });
+
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+
+    const body = req.body;
+    const candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.firmId).slice(0, 20);
+
+    // Resolve candidate UUID if exists
+    const { rows: candRows } = await pool.query('SELECT id FROM candidates WHERE slug = $1', [candidateSlug]);
+    const candidateUuid = candRows.length > 0 ? candRows[0].id : null;
+
+    const { rows } = await pool.query(
+      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, location, roster_status, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [covRows[0].id, candidateUuid, candidateSlug, body.name, body.title || null,
+       body.linkedin_url || null, body.location || null, body.roster_status || 'Identified', body.source || null]);
+
+    res.status(201).json({
+      candidate_id: rows[0].candidate_slug,
+      name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
+      location: rows[0].location, roster_status: rows[0].roster_status,
+      source: rows[0].source, reviewed: rows[0].reviewed,
+      reviewed_date: null, review_status: null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/searches/:id/coverage/companies/:companyId/roster — add roster person
+router.post('/:id/coverage/companies/:companyId/roster', async (req, res) => {
+  try {
+    const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.companyId);
+    if (error) return res.status(404).json({ error });
+
+    const { rows: covRows } = await pool.query(
+      'SELECT id FROM search_coverage_companies WHERE search_id = $1 AND company_id = $2',
+      [searchUuid, companyUuid]);
+    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
+
+    const body = req.body;
+    const candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.companyId).slice(0, 20);
+
+    const { rows: candRows } = await pool.query('SELECT id FROM candidates WHERE slug = $1', [candidateSlug]);
+    const candidateUuid = candRows.length > 0 ? candRows[0].id : null;
+
+    const { rows } = await pool.query(
+      `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, location, roster_status, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [covRows[0].id, candidateUuid, candidateSlug, body.name, body.title || null,
+       body.linkedin_url || null, body.location || null, body.roster_status || 'Identified', body.source || null]);
+
+    res.status(201).json({
+      candidate_id: rows[0].candidate_slug,
+      name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
+      location: rows[0].location, roster_status: rows[0].roster_status,
+      source: rows[0].source, reviewed: rows[0].reviewed,
+      reviewed_date: null, review_status: null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── ROUTES: Dashboard ────────────────────────────────────────────────────────
 
 router.post('/:id/dashboard', async (req, res) => {
