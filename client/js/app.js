@@ -1048,16 +1048,15 @@ async function submitAddToPipeline(candidateInfo) {
       name: candidateInfo.name,
       current_title: candidateInfo.current_title || '',
       current_firm: candidateInfo.current_firm || '',
-      home_location: candidateInfo.location || '',
+      location: candidateInfo.location || '',
       linkedin_url: candidateInfo.linkedin_url || '',
       archetype: candidateInfo.archetype || '',
       source: source,
       stage: stage,
-      notes: notes,
-      search_id: searchId
+      notes: notes
     };
 
-    await api('POST', '/candidates', payload);
+    await api('POST', `/searches/${searchId}/pipeline`, payload);
 
     // Success — show confirmation briefly then close
     btn.textContent = 'Added!';
