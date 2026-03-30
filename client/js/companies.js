@@ -15,7 +15,13 @@ let cpFilters = {
 };
 let cpSortField = 'name';
 let cpSortAsc = true;
-let cpAllCompanies = [];
+let cpAllCompanies = [];   // current page of companies
+let cpTotal = 0;           // total matching the current filter
+let cpLimit = 100;
+let cpOffset = 0;
+let cpTypeCounts = {};     // { 'PE Firm': 2640, ... }
+let cpIndustrySectors = []; // for filter dropdown
+let _cpFilterTimer = null; // debounce timer for text input
 
 // ── Sector definitions (shared with pool.js context) ─────────────────────────
 
@@ -73,54 +79,36 @@ function cpSectorTags(tags) {
   ).join('') + (tags.length > 4 ? `<span style="color:#aaa;font-size:10px">+${tags.length-4}</span>` : '');
 }
 
-// ── Filters & Sort ────────────────────────────────────────────────────────────
+// ── Server-side filtering & pagination ────────────────────────────────────────
 
-function applyCompanyFilters(companies) {
-  return companies.filter(c => {
-    // Type filter: "Unclassified" matches null/undefined types
-    if (cpFilters.type !== 'all') {
-      if (cpFilters.type === 'Unclassified') {
-        if (c.company_type) return false;
-      } else if (c.company_type !== cpFilters.type) return false;
-    }
-    if (cpFilters.size_tier !== 'all') {
-      if (cpFilters.size_tier.startsWith('rev:')) {
-        // Revenue tier filter
-        if (c.revenue_tier !== cpFilters.size_tier.slice(4)) return false;
-      } else {
-        // PE firm size tier filter
-        if (c.size_tier !== cpFilters.size_tier) return false;
-      }
-    }
-    if (cpFilters.sector !== 'all') {
-      if (!Array.isArray(c.sector_focus_tags) || !c.sector_focus_tags.includes(cpFilters.sector)) return false;
-    }
-    if (cpFilters.industry !== 'all') {
-      if ((c.industry_sector || '') !== cpFilters.industry) return false;
-    }
-    if (cpFilters.enrichment !== 'all') {
-      if ((c.enrichment_status || 'none') !== cpFilters.enrichment) return false;
-    }
-    if (cpFilters.text) {
-      const q = cpFilters.text.toLowerCase();
-      const hay = [c.name, c.hq, c.description, c.industry, c.industry_sector, ...(c.aliases || [])].filter(Boolean).join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
+/** Build query string from current filters */
+function _cpBuildQuery(extraOffset) {
+  const p = new URLSearchParams();
+  if (cpFilters.type !== 'all') p.set('type', cpFilters.type);
+  if (cpFilters.size_tier !== 'all') p.set('size_tier', cpFilters.size_tier);
+  if (cpFilters.sector !== 'all') p.set('sector', cpFilters.sector);
+  if (cpFilters.industry !== 'all') p.set('industry', cpFilters.industry);
+  if (cpFilters.enrichment !== 'all') p.set('enrichment', cpFilters.enrichment);
+  if (cpFilters.text) p.set('text', cpFilters.text);
+  p.set('sort', cpSortField);
+  p.set('order', cpSortAsc ? 'asc' : 'desc');
+  p.set('limit', String(cpLimit));
+  p.set('offset', String(extraOffset != null ? extraOffset : cpOffset));
+  return p.toString();
 }
 
-function sortCompanies(companies) {
-  const field = cpSortField;
-  return [...companies].sort((a, b) => {
-    let va = a[field] || '';
-    let vb = b[field] || '';
-    if (typeof va === 'string') va = va.toLowerCase();
-    if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va < vb) return cpSortAsc ? -1 : 1;
-    if (va > vb) return cpSortAsc ?  1 : -1;
-    return 0;
-  });
+/** Fetch a page of companies from the server and update state */
+async function _cpFetchPage(append) {
+  const qs = _cpBuildQuery();
+  const data = await api('GET', '/companies?' + qs);
+  if (append) {
+    cpAllCompanies = cpAllCompanies.concat(data.companies || []);
+  } else {
+    cpAllCompanies = data.companies || [];
+  }
+  cpTotal = data.total;
+  cpLimit = data.limit;
+  cpOffset = data.offset;
 }
 
 function setCpSort(field) {
@@ -130,7 +118,21 @@ function setCpSort(field) {
     cpSortField = field;
     cpSortAsc = true;
   }
-  renderCompanyView();
+  cpOffset = 0;
+  _cpRefreshTable();
+}
+
+async function _cpRefreshTable() {
+  const tableWrap = document.getElementById('cp-table-container');
+  const countEl   = document.getElementById('cp-count');
+  if (tableWrap) tableWrap.innerHTML = `<div class="loading"><div class="spinner"></div> Loading…</div>`;
+  try {
+    await _cpFetchPage(false);
+    if (tableWrap) tableWrap.innerHTML = renderCompanyTable(cpAllCompanies);
+    if (countEl) countEl.textContent = `Showing ${cpAllCompanies.length.toLocaleString()} of ${cpTotal.toLocaleString()} companies`;
+  } catch (err) {
+    if (tableWrap) tableWrap.innerHTML = `<div class="error-banner">Error: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 function onCpFilterChange() {
@@ -145,28 +147,45 @@ function onCpFilterChange() {
   if (indSelect)   cpFilters.industry  = indSelect.value;
   if (textInput)   cpFilters.text      = textInput.value.trim();
 
-  // Only update the table + count (not the whole page) to preserve focus
-  const tableWrap = document.getElementById('cp-table-container');
-  const countEl   = document.getElementById('cp-count');
-  if (tableWrap) {
-    const filtered = applyCompanyFilters(cpAllCompanies);
-    const sorted   = sortCompanies(filtered);
-    tableWrap.innerHTML = renderCompanyTable(sorted);
-    if (countEl) countEl.textContent = `${filtered.length.toLocaleString()} of ${cpAllCompanies.length.toLocaleString()} companies`;
-    return;
+  cpOffset = 0;
+
+  // Debounce text input, immediate for dropdowns
+  if (_cpFilterTimer) clearTimeout(_cpFilterTimer);
+  if (textInput && document.activeElement === textInput) {
+    _cpFilterTimer = setTimeout(() => _cpRefreshTable(), 300);
+  } else {
+    _cpRefreshTable();
   }
-  renderCompanyView();
 }
 
 function setCpTypeFilter(type) {
   cpFilters.type = type;
-  // Reset size filter when switching types to avoid stale filters
   cpFilters.size_tier = 'all';
   cpFilters.industry = 'all';
-  // Sync the hidden select
+  cpOffset = 0;
+  // Sync hidden select
   const typeSelect = document.getElementById('cp-filter-type');
   if (typeSelect) typeSelect.value = type;
-  renderCompanyView();
+  // Update pill active states immediately
+  document.querySelectorAll('.cp-type-pill').forEach(btn => {
+    btn.classList.toggle('active-all', btn.dataset.type === type);
+  });
+  _cpRefreshTable();
+}
+
+async function cpLoadMore() {
+  cpOffset += cpLimit;
+  const btn = document.getElementById('cp-load-more-btn');
+  if (btn) btn.textContent = 'Loading…';
+  try {
+    await _cpFetchPage(true);
+    const tableWrap = document.getElementById('cp-table-container');
+    if (tableWrap) tableWrap.innerHTML = renderCompanyTable(cpAllCompanies);
+    const countEl = document.getElementById('cp-count');
+    if (countEl) countEl.textContent = `Showing ${cpAllCompanies.length.toLocaleString()} of ${cpTotal.toLocaleString()} companies`;
+  } catch (err) {
+    if (btn) btn.textContent = 'Error — try again';
+  }
 }
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -176,8 +195,13 @@ async function renderCompanies() {
   content.innerHTML = `<div class="loading"><div class="spinner"></div> Loading Company Pool…</div>`;
 
   try {
-    const data = await api('GET', '/companies');
-    cpAllCompanies = data.companies || [];
+    // Fetch counts + first page in parallel
+    const [countsData] = await Promise.all([
+      api('GET', '/companies/counts'),
+      _cpFetchPage(false)
+    ]);
+    cpTypeCounts = countsData.type_counts || {};
+    cpIndustrySectors = countsData.industry_sectors || [];
     renderCompanyView();
   } catch (err) {
     content.innerHTML = `<div class="error-banner">Failed to load companies: ${escapeHtml(err.message)}</div>`;
@@ -188,17 +212,12 @@ async function renderCompanies() {
 
 function renderCompanyView() {
   const content = document.getElementById('app-content');
-  const filtered = applyCompanyFilters(cpAllCompanies);
-  const sorted   = sortCompanies(filtered);
+  const typeCounts = cpTypeCounts;
+  const totalAll = Object.values(typeCounts).reduce((s, n) => s + n, 0);
 
   const activeType = cpFilters.type;
   const pillClass = t => `cp-type-pill${activeType === t ? ' active-all' : ''}`;
 
-  // Count companies by type
-  const typeCounts = {};
-  cpAllCompanies.forEach(c => { const t = c.company_type || 'Unclassified'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
-
-  // Build type pills: All, PE Firm, then others sorted by count
   const typeOrder = ['PE Firm', 'Portfolio Company', 'Public Company', 'Private Company',
     'Consulting Firm', 'Investment Bank', 'Accounting Firm', 'Law Firm',
     'Government / Military', 'Nonprofit / Education', 'Other', 'Unclassified'];
@@ -207,10 +226,8 @@ function renderCompanyView() {
     .map(t => `<button class="${pillClass(t)}" data-type="${escapeHtml(t)}" onclick="setCpTypeFilter('${escapeHtml(t)}')">${escapeHtml(t === 'Unclassified' ? 'Unclassified' : t)} (${typeCounts[t].toLocaleString()})</button>`)
     .join('');
 
-  // Collect unique industry sectors for filter dropdown (high-level categories)
-  const industries = [...new Set(cpAllCompanies.map(c => c.industry_sector).filter(Boolean))].sort();
+  const industries = cpIndustrySectors;
 
-  // Size dropdown — show PE sizes + revenue tiers
   const sizeOpts = `
     <option value="all">All Sizes</option>
     <optgroup label="PE Firm Size">
@@ -232,19 +249,17 @@ function renderCompanyView() {
     <div class="pool-header">
       <div>
         <h1 class="pool-title">Company Pool</h1>
-        <div class="pool-subtitle" id="cp-count">${filtered.length.toLocaleString()} of ${cpAllCompanies.length.toLocaleString()} companies</div>
+        <div class="pool-subtitle" id="cp-count">Showing ${cpAllCompanies.length.toLocaleString()} of ${cpTotal.toLocaleString()} companies</div>
       </div>
       <button class="btn btn-primary" onclick="openAddCompanyModal()">+ Add Company</button>
     </div>
 
     <div class="pool-filter-bar" style="flex-wrap:wrap;gap:10px">
-      <!-- Type pills -->
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="${pillClass('all')}" data-type="all" onclick="setCpTypeFilter('all')">All (${cpAllCompanies.length.toLocaleString()})</button>
+        <button class="${pillClass('all')}" data-type="all" onclick="setCpTypeFilter('all')">All (${totalAll.toLocaleString()})</button>
         ${typePills}
       </div>
 
-      <!-- Hidden type select for onCpFilterChange compatibility -->
       <select id="cp-filter-type" style="display:none" onchange="onCpFilterChange()">
         <option value="all">All</option>
         ${typeOrder.filter(t => typeCounts[t] > 0).map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}
@@ -269,7 +284,7 @@ function renderCompanyView() {
              value="${escapeHtml(cpFilters.text)}" oninput="onCpFilterChange()">
     </div>
 
-    <div id="cp-table-container">${renderCompanyTable(sorted)}</div>
+    <div id="cp-table-container">${renderCompanyTable(cpAllCompanies)}</div>
   `;
 }
 
@@ -286,6 +301,15 @@ function renderCompanyTable(companies) {
   const isNonPE    = !isPE && !isAll;
 
   const sortIcon = field => cpSortField === field ? (cpSortAsc ? ' ↑' : ' ↓') : '';
+
+  const hasMore = cpAllCompanies.length < cpTotal;
+  const loadMoreBtn = hasMore
+    ? `<div style="text-align:center;padding:16px">
+        <button id="cp-load-more-btn" class="btn btn-secondary" onclick="cpLoadMore()">
+          Load more (${(cpTotal - cpAllCompanies.length).toLocaleString()} remaining)
+        </button>
+      </div>`
+    : '';
 
   return `
     <div class="pool-table-wrap">
@@ -318,6 +342,7 @@ function renderCompanyTable(companies) {
         </tbody>
       </table>
     </div>
+    ${loadMoreBtn}
   `;
 }
 

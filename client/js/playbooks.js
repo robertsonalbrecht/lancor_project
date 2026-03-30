@@ -176,7 +176,7 @@ async function renderPlaybooks() {
   content.innerHTML = `<div class="loading"><div class="spinner"></div> Loading playbooks…</div>`;
 
   try {
-    const data = await api('GET', '/playbooks');
+    const data = await api('GET', '/playbooks/summary');
     _rosterTitles = data.roster_titles || [];
     const sectors = data.sectors || [];
     renderSectorGrid(sectors);
@@ -190,8 +190,8 @@ async function renderPlaybooks() {
 function renderSectorGrid(sectors) {
   const content = document.getElementById('app-content');
   const cards = sectors.map(s => {
-    const peFirmCount = (s.pe_firms || []).length;
-    const companyCount = (s.target_companies || []).length;
+    const peFirmCount = s.pe_firm_count != null ? s.pe_firm_count : (s.pe_firms || []).length;
+    const companyCount = s.target_company_count != null ? s.target_company_count : (s.target_companies || []).length;
     const allstarCount = (s.allstar_pool || []).length;
     return `
       <div class="sector-card" onclick="renderSectorDetail('${s.sector_id}')">
