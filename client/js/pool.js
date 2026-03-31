@@ -90,7 +90,7 @@ async function renderPool() {
   content.innerHTML = `<div class="loading"><div class="spinner"></div> Loading candidate pool...</div>`;
 
   try {
-    const data = await api('GET', '/candidates');
+    const data = await api('GET', '/candidates?limit=2000');
     poolAllCandidates = data.candidates || [];
     renderPoolView();
   } catch (err) {
@@ -537,17 +537,16 @@ async function saveDetailField(candidateId, field, value) {
     const updates = {};
     updates[field] = value;
     const updated = await api('PUT', '/candidates/' + candidateId, updates);
-    // Update local cache
+    // Update local cache with the full server response
     const idx = poolAllCandidates.findIndex(c => c.candidate_id === candidateId);
-    if (idx !== -1) poolAllCandidates[idx] = Object.assign({}, poolAllCandidates[idx], updates);
-    // Re-render pill if availability changed
-    if (field === 'availability') {
-      const panel = document.getElementById('candidate-detail-panel');
-      if (panel) {
-        // Quick visual refresh — re-open with updated data
-        closeCandidateDetail();
-        renderCandidateDetailPanel(updated);
-      }
+    if (idx !== -1) poolAllCandidates[idx] = updated;
+    // Re-render the table to reflect changes
+    renderPoolView();
+    // Re-render detail panel if open
+    const panel = document.getElementById('candidate-detail-panel');
+    if (panel) {
+      closeCandidateDetail();
+      renderCandidateDetailPanel(updated);
     }
   } catch (err) {
     appAlert('Error saving: ' + err.message, { type: 'error' });
@@ -743,9 +742,9 @@ async function saveEditCandidate(candidateId) {
 
   try {
     const updated = await api('PUT', '/candidates/' + candidateId, updates);
-    // Update local cache
+    // Update local cache with full server response
     const idx = poolAllCandidates.findIndex(c => c.candidate_id === candidateId);
-    if (idx !== -1) poolAllCandidates[idx] = Object.assign({}, poolAllCandidates[idx], updates);
+    if (idx !== -1) poolAllCandidates[idx] = updated;
     closeEditCandidateForm();
     // Refresh detail panel if open
     closeCandidateDetail();

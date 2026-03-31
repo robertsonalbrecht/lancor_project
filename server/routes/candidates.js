@@ -34,7 +34,7 @@ async function findCompanyInPool(firmName, linkedinUrl) {
   const slug = extractLinkedInCompanySlug(linkedinUrl);
   if (slug) {
     const { rows } = await pool.query(
-      "SELECT id, slug, name, linkedin_company_url, company_type, size_tier, sector_focus_tags FROM companies WHERE linkedin_company_url ILIKE $1 LIMIT 1",
+      "SELECT id, slug, name, linkedin_company_url, company_type, size_tier FROM companies WHERE linkedin_company_url ILIKE $1 LIMIT 1",
       [`%/company/${slug}%`]
     );
     if (rows.length > 0) return rows[0];
@@ -113,7 +113,7 @@ async function autoAddPEFirmsToPlaybooks(workHistory) {
   for (const entry of workHistory) {
     if (!entry.company_id) continue;
     const { rows: coRows } = await pool.query(
-      "SELECT id, slug, name, company_type, hq, size_tier, strategy, sector_focus_tags FROM companies WHERE slug = $1",
+      "SELECT id, slug, name, company_type, hq, size_tier, strategy FROM companies WHERE slug = $1",
       [entry.company_id]
     );
     if (coRows.length === 0) continue;
@@ -217,7 +217,11 @@ async function buildCandidateResponses(rows) {
       dates: w.dates,
       dateRange: w.date_range,
       duration: w.duration,
-      description: w.description
+      description: w.description,
+      logo_url: w.logo_url || null,
+      start_date: w.start_date ? w.start_date.toISOString().slice(0, 10) : null,
+      end_date: w.end_date ? w.end_date.toISOString().slice(0, 10) : null,
+      is_current: w.is_current || false
     });
   }
 
@@ -270,11 +274,32 @@ async function syncSectorTags(candidateUuid, sectorSlugs) {
     const { rows } = await pool.query('SELECT id FROM sectors WHERE slug = $1', [slug]);
     if (rows.length > 0) {
       await pool.query(
-        'INSERT INTO candidate_sector_tags (candidate_id, sector_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [candidateUuid, rows[0].id]
+        'INSERT INTO candidate_sector_tags (candidate_id, sector_id, sector_slug) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [candidateUuid, rows[0].id, slug]
       );
     }
   }
+}
+
+/** Parse a dates text string into { startDate, endDate, isCurrent } */
+function _parseDatesText(datesStr) {
+  if (!datesStr) return { startDate: null, endDate: null, isCurrent: false };
+  const months = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
+  const clean = (datesStr || '').replace(/\s*[·•]\s*.*$/, '').trim();
+  const parts = clean.split(/\s*[-–]\s*/);
+  const parseOne = s => {
+    if (!s) return null;
+    const m = s.trim().match(/(?:(\w+)\s+)?(\d{4})/);
+    if (!m) return null;
+    const mo = m[1] ? (months[m[1].toLowerCase().slice(0,3)] || 1) : 1;
+    return `${m[2]}-${String(mo).padStart(2,'0')}-01`;
+  };
+  const isCurrent = /present/i.test(parts[1] || '');
+  return {
+    startDate: parseOne(parts[0]),
+    endDate: isCurrent ? null : parseOne(parts[1]),
+    isCurrent
+  };
 }
 
 // Sync work history
@@ -287,12 +312,25 @@ async function syncWorkHistory(candidateUuid, workHistory, primaryIdx) {
       const { rows } = await pool.query('SELECT id FROM companies WHERE slug = $1', [w.company_id]);
       if (rows.length > 0) companyUuid = rows[0].id;
     }
+
+    // Use structured dates if provided, otherwise parse from dates text
+    let startDate = w.start_date || null;
+    let endDate = w.end_date || null;
+    let isCurrent = w.is_current || false;
+    if (!startDate && w.dates) {
+      const parsed = _parseDatesText(w.dates);
+      startDate = parsed.startDate;
+      endDate = parsed.endDate;
+      isCurrent = parsed.isCurrent;
+    }
+
     await pool.query(
-      `INSERT INTO candidate_work_history (candidate_id, company_id, title, company_name, dates, date_range, duration, description, sort_order, is_primary)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `INSERT INTO candidate_work_history (candidate_id, company_id, title, company_name, dates, date_range, duration, description, sort_order, is_primary, start_date, end_date, is_current, logo_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
       [candidateUuid, companyUuid, w.title || null, w.company || w.company_name || null,
        w.dates || null, w.dateRange || w.date_range || null, w.duration || null,
-       w.description || null, i, primaryIdx === i]
+       w.description || null, i, primaryIdx === i,
+       startDate, endDate, isCurrent, w.logoUrl || w.logo_url || null]
     );
   }
 }
@@ -353,6 +391,48 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/candidates/slim — lightweight list for auto-linking (no work history descriptions, no sector tags, no search history)
+router.get('/slim', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT c.slug, c.name, c.current_title, c.current_firm, c.home_location, c.linkedin_url
+       FROM candidates c ORDER BY c.name`
+    );
+
+    // Minimal work history: only company, title, dates for current roles
+    const { rows: whRows } = await pool.query(
+      `SELECT cwh.candidate_id, cwh.company_name, cwh.title, cwh.dates
+       FROM candidate_work_history cwh
+       WHERE cwh.dates ILIKE '%present%'
+       ORDER BY cwh.candidate_id, cwh.sort_order`
+    );
+    const whMap = {};
+    for (const w of whRows) {
+      if (!whMap[w.candidate_id]) whMap[w.candidate_id] = [];
+      whMap[w.candidate_id].push({ company: w.company_name, title: w.title, dates: w.dates });
+    }
+
+    // Map slugs to UUIDs for work history lookup
+    const { rows: idRows } = await pool.query('SELECT id, slug FROM candidates');
+    const idMap = {};
+    for (const r of idRows) idMap[r.slug] = r.id;
+
+    const candidates = rows.map(r => ({
+      candidate_id: r.slug,
+      name: r.name,
+      current_title: r.current_title,
+      current_firm: r.current_firm,
+      home_location: r.home_location,
+      linkedin_url: r.linkedin_url,
+      work_history: whMap[idMap[r.slug]] || []
+    }));
+
+    res.json({ candidates, total: candidates.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/candidates/:id — single candidate
 router.get('/:id', async (req, res) => {
   try {
@@ -406,9 +486,25 @@ router.post('/', async (req, res) => {
 router.post('/prefill', async (req, res) => {
   try {
     const { fullName, currentTitle, currentCompany, location, linkedinUrl, photoUrl, workHistory } = req.body;
-    console.log('[prefill] Received:', { fullName, currentTitle, currentCompany, linkedinUrl: (linkedinUrl || '').slice(0, 60) });
+    console.log('\n═══════════════════════════════════════════════════════');
+    console.log('[prefill] INCOMING PAYLOAD:');
+    console.log('  fullName:', fullName);
+    console.log('  currentTitle:', currentTitle);
+    console.log('  currentCompany:', currentCompany);
+    console.log('  location:', location);
+    console.log('  linkedinUrl:', (linkedinUrl || '').slice(0, 80));
+    console.log('  photoUrl:', photoUrl ? '✓ (' + photoUrl.slice(0, 50) + '...)' : '✗ none');
+    console.log('  workHistory:', Array.isArray(workHistory) ? workHistory.length + ' entries' : 'none');
+    if (Array.isArray(workHistory) && workHistory.length > 0) {
+      workHistory.slice(0, 3).forEach((w, i) => {
+        console.log(`    [${i}] ${w.title || '?'} @ ${w.company || '?'} | dates: ${w.dates || '?'} | duration: ${w.duration || '?'}`);
+      });
+      if (workHistory.length > 3) console.log(`    ... and ${workHistory.length - 3} more`);
+    }
+    console.log('───────────────────────────────────────────────────────');
 
     if ((!fullName || !fullName.trim()) && (!linkedinUrl || !linkedinUrl.trim())) {
+      console.log('[prefill] REJECTED: no name and no LinkedIn URL');
       return res.status(400).json({ error: 'Name or LinkedIn URL is required' });
     }
     const nameProvided = fullName && fullName.trim() && !INVALID_NAMES.test(fullName.trim());
@@ -416,12 +512,14 @@ router.post('/prefill', async (req, res) => {
     // Clean company
     let safeCompany = currentCompany;
     if (isCorruptedFirm(currentCompany)) {
+      console.log('[prefill] Corrupted company detected:', currentCompany);
       const currentJob = (Array.isArray(workHistory) && workHistory.length > 0) ? workHistory[0] : null;
       if (currentJob && currentJob.company && !isCorruptedFirm(currentJob.company)) {
         safeCompany = currentJob.company;
       } else {
         safeCompany = '';
       }
+      console.log('[prefill] Safe company resolved to:', safeCompany || '(empty)');
     }
 
     // Clean + normalize work history
@@ -429,6 +527,7 @@ router.post('/prefill', async (req, res) => {
     if (Array.isArray(workHistory) && workHistory.length > 0) {
       cleanedHistory = workHistory.map(w => Object.assign({}, w, { company: cleanFirm(w.company) }));
       normalizeWorkHistory(cleanedHistory);
+      const beforeDedup = cleanedHistory.length;
       const seen = new Set();
       cleanedHistory = cleanedHistory.filter(w => {
         const key = [(w.title || '').toLowerCase().trim(), (w.company || '').toLowerCase().trim(), (w.dates || '').toLowerCase().trim()].join('|');
@@ -436,10 +535,14 @@ router.post('/prefill', async (req, res) => {
         seen.add(key);
         return true;
       });
+      if (cleanedHistory.length < beforeDedup) {
+        console.log(`[prefill] Deduped work history: ${beforeDedup} → ${cleanedHistory.length}`);
+      }
     }
 
     // ── Match existing candidate ──
     let existingRow = null;
+    let matchMethod = null;
 
     // 1. LinkedIn slug match
     const incomingSlug = extractLinkedInSlug(linkedinUrl);
@@ -448,49 +551,31 @@ router.post('/prefill', async (req, res) => {
         "SELECT * FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1",
         [`%/in/${incomingSlug}%`]
       );
-      if (rows.length > 0) existingRow = rows[0];
+      if (rows.length > 0) { existingRow = rows[0]; matchMethod = 'LinkedIn slug'; }
     }
 
-    // 2. Full URL match
-    if (!existingRow && linkedinUrl) {
-      const normLinkedin = normUrl(linkedinUrl);
-      const { rows } = await pool.query(
-        "SELECT * FROM candidates WHERE LOWER(REPLACE(REPLACE(linkedin_url, '?.*', ''), '/$', '')) = $1 LIMIT 1",
-        [normLinkedin]
-      );
-      // Fallback: ILIKE on the slug portion
-      if (rows.length === 0 && incomingSlug) {
-        const { rows: r2 } = await pool.query(
-          "SELECT * FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1",
-          [`%${incomingSlug}%`]
-        );
-        if (r2.length > 0) existingRow = r2[0];
-      } else if (rows.length > 0) {
-        existingRow = rows[0];
-      }
-    }
-
-    // 3. Name + firm match
+    // 2. Name + firm match
     if (!existingRow && fullName && safeCompany) {
       const { rows } = await pool.query(
         "SELECT * FROM candidates WHERE LOWER(name) = $1 AND LOWER(current_firm) = $2 LIMIT 1",
         [normName(fullName), normFirm(safeCompany)]
       );
-      if (rows.length > 0) existingRow = rows[0];
+      if (rows.length > 0) { existingRow = rows[0]; matchMethod = 'name + firm'; }
     }
 
-    // 4. Name-only single match
+    // 3. Name-only single match
     if (!existingRow && fullName) {
       const { rows } = await pool.query(
         "SELECT * FROM candidates WHERE LOWER(name) = $1",
         [normName(fullName)]
       );
-      if (rows.length === 1) existingRow = rows[0];
+      if (rows.length === 1) { existingRow = rows[0]; matchMethod = 'name-only (unique)'; }
     }
 
     const today = new Date().toISOString().slice(0, 10);
 
     if (existingRow) {
+      console.log(`[prefill] MATCHED existing candidate: ${existingRow.slug} (via ${matchMethod})`);
       // ── UPDATE existing ──
       const updates = [];
       const params = [];
@@ -499,18 +584,27 @@ router.post('/prefill', async (req, res) => {
       if (linkedinUrl && !existingRow.linkedin_url) {
         updates.push(`linkedin_url = $${idx++}`);
         params.push(linkedinUrl);
+        console.log('[prefill]   → set linkedin_url');
       }
       if (currentTitle) {
         updates.push(`current_title = $${idx++}`);
         params.push(currentTitle);
+        console.log('[prefill]   → update current_title:', currentTitle);
       }
       if (safeCompany) {
         updates.push(`current_firm = $${idx++}`);
         params.push(cleanFirm(safeCompany));
+        console.log('[prefill]   → update current_firm:', cleanFirm(safeCompany));
       }
-      if (location && !existingRow.home_location) {
+      if (location) {
         updates.push(`home_location = $${idx++}`);
         params.push(location);
+        console.log('[prefill]   → update home_location:', location);
+      }
+      if (photoUrl) {
+        updates.push(`photo_url = $${idx++}`);
+        params.push(photoUrl);
+        console.log('[prefill]   → update photo_url');
       }
       updates.push(`last_scraped = $${idx++}`);
       params.push(today);
@@ -518,43 +612,61 @@ router.post('/prefill', async (req, res) => {
       if (updates.length > 0) {
         params.push(existingRow.id);
         await pool.query(`UPDATE candidates SET ${updates.join(',')} WHERE id = $${idx}`, params);
+        console.log(`[prefill]   → ${updates.length} fields updated on candidate`);
       }
 
       // Replace work history
       if (cleanedHistory.length > 0) {
+        console.log(`[prefill]   → syncing ${cleanedHistory.length} work history entries`);
         await autoCreateCompaniesFromWorkHistory(cleanedHistory);
+        const companiesLinked = cleanedHistory.filter(w => w.company_id).length;
+        console.log(`[prefill]   → ${companiesLinked}/${cleanedHistory.length} work entries linked to companies`);
         await syncWorkHistory(existingRow.id, cleanedHistory, null);
         await autoAddPEFirmsToPlaybooks(cleanedHistory);
       }
 
+      console.log(`[prefill] RESULT: updated → ${existingRow.slug}`);
+      console.log('═══════════════════════════════════════════════════════\n');
       return res.json({ action: 'updated', id: existingRow.slug });
     }
 
     // ── CREATE new ──
     if (!nameProvided) {
+      console.log('[prefill] REJECTED: no valid name for new candidate');
       return res.status(400).json({ error: 'Cannot create new candidate without a name' });
     }
+    console.log('[prefill] NO MATCH — creating new candidate');
 
     const candidateSlug = `cand-${slugifyShared(fullName || 'unknown')}-${Date.now()}`;
+    console.log(`[prefill]   → slug: ${candidateSlug}`);
+    console.log(`[prefill]   → name: ${fullName}, title: ${currentTitle}, firm: ${cleanFirm(safeCompany)}`);
+    console.log(`[prefill]   → location: ${location}, linkedin: ${(linkedinUrl || '').slice(0, 60)}`);
+    console.log(`[prefill]   → photo: ${photoUrl ? '✓' : '✗'}`);
 
     const { rows: newRows } = await pool.query(
-      `INSERT INTO candidates (slug, name, current_title, current_firm, home_location, linkedin_url,
+      `INSERT INTO candidates (slug, name, current_title, current_firm, home_location, linkedin_url, photo_url,
          archetype, operator_background, availability, owned_pl, dq_reasons, notes, date_added, last_scraped)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [candidateSlug, fullName || '', currentTitle || '', cleanFirm(safeCompany) || '',
-       location || '', linkedinUrl || '', '', '{}', 'Unknown', false, '{}', '', today, today]
+       location || null, linkedinUrl || '', photoUrl || null, '', '{}', 'Unknown', false, '{}', '', today, today]
     );
 
     const newCandidate = newRows[0];
+    console.log(`[prefill]   → candidate row created (id: ${newCandidate.id})`);
 
     // Process work history
     if (cleanedHistory.length > 0) {
+      console.log(`[prefill]   → syncing ${cleanedHistory.length} work history entries`);
       await autoCreateCompaniesFromWorkHistory(cleanedHistory);
-      await syncWorkHistory(newCandidate.id, cleanedHistory, null);
+      const companiesLinked = cleanedHistory.filter(w => w.company_id).length;
+      console.log(`[prefill]   → ${companiesLinked}/${cleanedHistory.length} work entries linked to companies`);
+      await syncWorkHistory(newCandidate.id, cleanedHistory, 0);
       await autoAddPEFirmsToPlaybooks(cleanedHistory);
     }
 
+    console.log(`[prefill] RESULT: created → ${candidateSlug}`);
+    console.log('═══════════════════════════════════════════════════════\n');
     res.status(201).json({ action: 'created', id: candidateSlug });
   } catch (err) {
     console.error('[prefill] Error:', err);
@@ -673,8 +785,8 @@ router.post('/merge', async (req, res) => {
 
     // Merge sector tags
     await pool.query(
-      `INSERT INTO candidate_sector_tags (candidate_id, sector_id)
-       SELECT $1, sector_id FROM candidate_sector_tags WHERE candidate_id = $2
+      `INSERT INTO candidate_sector_tags (candidate_id, sector_id, sector_slug)
+       SELECT $1, sector_id, sector_slug FROM candidate_sector_tags WHERE candidate_id = $2
        ON CONFLICT DO NOTHING`,
       [keepUuid, removeUuid]
     );

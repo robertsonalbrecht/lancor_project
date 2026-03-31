@@ -545,7 +545,7 @@ function buildCompaniesTableHTML(companies, searchId) {
 
 async function autoLinkCandidatesToRosters(search) {
   try {
-    const poolResp = await api('GET', '/candidates');
+    const poolResp = await api('GET', '/candidates/slim');
     const candidates = poolResp.candidates || [];
     if (candidates.length === 0) return false;
 
@@ -561,20 +561,46 @@ async function autoLinkCandidatesToRosters(search) {
     function syncRoster(entity, entityName) {
       if (!entity.roster) entity.roster = [];
 
-      // 1. Add new matches (current employees)
-      const matched = candidates.filter(c => firmNamesMatch(c.current_firm, entityName));
+      // 1. Add new matches (current employees by current_firm OR concurrent roles at this firm)
+      // Blocklist: exclude board seats and passive roles; everything else gets linked
+      const EXCLUDED_TITLES = /\b(board\s*(member|director|advisor|observer)|independent\s*director|non[- ]executive\s*director|investor)\b/i;
+
+      const matched = candidates.filter(c => {
+        // Direct current_firm match
+        if (firmNamesMatch(c.current_firm, entityName)) return true;
+        // Check work history for concurrent roles at this firm (exclude board/passive roles)
+        if (Array.isArray(c.work_history)) {
+          return c.work_history.some(w =>
+            w.dates && /present/i.test(w.dates) &&
+            w.title && !EXCLUDED_TITLES.test(w.title) &&
+            firmNamesMatch(w.company, entityName)
+          );
+        }
+        return false;
+      });
+
       matched.forEach(c => {
         const alreadyOnRoster = entity.roster.some(r =>
           r.candidate_id === c.candidate_id ||
           (r.name || '').toLowerCase() === (c.name || '').toLowerCase()
         );
         if (!alreadyOnRoster) {
+          // Use the role title at this firm if matched via work history, otherwise current_title
+          let matchTitle = c.current_title || '';
+          if (!firmNamesMatch(c.current_firm, entityName) && Array.isArray(c.work_history)) {
+            const role = c.work_history.find(w =>
+              w.dates && /present/i.test(w.dates) &&
+              w.title && !EXCLUDED_TITLES.test(w.title) &&
+              firmNamesMatch(w.company, entityName)
+            );
+            if (role) matchTitle = role.title;
+          }
           entity.roster.push({
             candidate_id: c.candidate_id,
             name: c.name,
-            title: c.current_title || '',
+            title: matchTitle,
             linkedin_url: c.linkedin_url || '',
-            location: c.home_location || '',
+            location: c.home_location || null,
             roster_status: 'Identified',
             source: 'auto-linked',
             _new: true
@@ -587,22 +613,32 @@ async function autoLinkCandidatesToRosters(search) {
       entity.roster.forEach(r => {
         const poolCand = candidateById[r.candidate_id];
         if (!poolCand) return;
-        if (!r.location && poolCand.home_location) { r.location = poolCand.home_location; changed = true; }
-        if (!r.linkedin_url && poolCand.linkedin_url) { r.linkedin_url = poolCand.linkedin_url; changed = true; }
-        if ((!r.title || r.title === 'Identified') && poolCand.current_title) { r.title = poolCand.current_title; changed = true; }
+        if (!r.location && poolCand.home_location) { r.location = poolCand.home_location; r._enriched = true; changed = true; }
+        if (!r.linkedin_url && poolCand.linkedin_url) { r.linkedin_url = poolCand.linkedin_url; r._enriched = true; changed = true; }
+        if ((!r.title || r.title === 'Identified') && poolCand.current_title) { r.title = poolCand.current_title; r._enriched = true; changed = true; }
       });
 
-      // 2. Check all roster entries — remove if person no longer works there
+      // 2. Remove roster entries for people who no longer work at this firm
+      // Keep if: reviewed, status changed, current_firm matches, or has a current non-excluded role in work history
       entity.roster = entity.roster.filter(r => {
-        // Keep if person has been reviewed (user made a decision)
+        // Keep if user has reviewed or changed status (user made a deliberate decision)
         if (r.review_status === 'relevant' || r.review_status === 'not_relevant') return true;
-        // Keep if status changed from default (user took action)
         if (r.roster_status && r.roster_status !== 'Identified') return true;
-        // Check if person still works there
+        // Check candidate pool for current association
         const poolCandidate = candidateById[r.candidate_id];
-        if (!poolCandidate) return true; // keep if not in pool (manually added name without candidate_id match)
-        if (firmNamesMatch(poolCandidate.current_firm, entityName)) return true; // still there
-        // Person moved — remove from this roster
+        if (!poolCandidate) return true; // not in pool — keep (manually added without candidate match)
+        // Keep if current_firm matches
+        if (firmNamesMatch(poolCandidate.current_firm, entityName)) return true;
+        // Keep if they have a current (Present) non-excluded role at this firm in work history
+        if (Array.isArray(poolCandidate.work_history)) {
+          const hasCurrentRole = poolCandidate.work_history.some(w =>
+            w.dates && /present/i.test(w.dates) &&
+            w.title && !EXCLUDED_TITLES.test(w.title) &&
+            firmNamesMatch(w.company, entityName)
+          );
+          if (hasCurrentRole) return true;
+        }
+        // Person no longer at this firm — remove
         changed = true;
         return false;
       });
@@ -642,6 +678,34 @@ async function autoLinkCandidatesToRosters(search) {
               });
             } catch (e) { /* continue */ }
             delete r._new;
+          }
+        }
+      }
+
+      // PATCH enriched existing roster entries (title/location/linkedin filled from candidate pool)
+      for (const firm of (coverage.pe_firms || [])) {
+        for (const r of (firm.roster || [])) {
+          if (r._enriched) {
+            try {
+              await fetch('/api/searches/' + search.search_id + '/coverage/firms/' + firm.firm_id + '/roster/' + r.candidate_id, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: r.title, location: r.location, linkedin_url: r.linkedin_url })
+              });
+            } catch (e) { /* continue */ }
+            delete r._enriched;
+          }
+        }
+      }
+      for (const co of (coverage.companies || [])) {
+        for (const r of (co.roster || [])) {
+          if (r._enriched) {
+            try {
+              await fetch('/api/searches/' + search.search_id + '/coverage/companies/' + co.company_id + '/roster/' + r.candidate_id, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: r.title, location: r.location, linkedin_url: r.linkedin_url })
+              });
+            } catch (e) { /* continue */ }
+            delete r._enriched;
           }
         }
       }

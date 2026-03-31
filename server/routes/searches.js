@@ -173,7 +173,10 @@ async function fetchSourcingCoverage(searchUuid) {
   let firmRosterRows = [];
   if (firmIds.length > 0) {
     const result = await pool.query(
-      'SELECT * FROM coverage_firm_roster WHERE coverage_firm_id = ANY($1) ORDER BY name',
+      `SELECT cfr.*, c.home_location AS candidate_location
+       FROM coverage_firm_roster cfr
+       LEFT JOIN candidates c ON c.id = cfr.candidate_id
+       WHERE cfr.coverage_firm_id = ANY($1) ORDER BY cfr.name`,
       [firmIds]
     );
     firmRosterRows = result.rows;
@@ -186,7 +189,7 @@ async function fetchSourcingCoverage(searchUuid) {
       name: r.name,
       title: r.title,
       linkedin_url: r.linkedin_url,
-      location: r.location,
+      location: r.location || r.candidate_location || null,
       roster_status: r.roster_status,
       source: r.source,
       reviewed: r.reviewed,
@@ -224,7 +227,10 @@ async function fetchSourcingCoverage(searchUuid) {
   let coRosterRows = [];
   if (coIds.length > 0) {
     const result = await pool.query(
-      'SELECT * FROM coverage_company_roster WHERE coverage_company_id = ANY($1) ORDER BY name',
+      `SELECT ccr.*, c.home_location AS candidate_location
+       FROM coverage_company_roster ccr
+       LEFT JOIN candidates c ON c.id = ccr.candidate_id
+       WHERE ccr.coverage_company_id = ANY($1) ORDER BY ccr.name`,
       [coIds]
     );
     coRosterRows = result.rows;
@@ -237,7 +243,7 @@ async function fetchSourcingCoverage(searchUuid) {
       name: r.name,
       title: r.title,
       linkedin_url: r.linkedin_url,
-      location: r.location,
+      location: r.location || r.candidate_location || null,
       roster_status: r.roster_status,
       source: r.source,
       reviewed: r.reviewed,
@@ -1077,12 +1083,36 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
     console.log(`[roster POST] covFirmId=${covRows[0].id}`);
 
     const body = req.body;
-    const candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.firmId).slice(0, 20);
+    let candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.firmId).slice(0, 20);
     console.log(`[roster POST] candidateSlug=${candidateSlug}`);
 
-    // Resolve candidate UUID if exists
-    const { rows: candRows } = await pool.query('SELECT id FROM candidates WHERE slug = $1', [candidateSlug]);
-    const candidateUuid = candRows.length > 0 ? candRows[0].id : null;
+    // Resolve candidate — try slug, then LinkedIn URL, then name match
+    let { rows: candRows } = await pool.query('SELECT id, slug FROM candidates WHERE slug = $1', [candidateSlug]);
+    if (candRows.length === 0 && body.linkedin_url) {
+      const liSlug = (body.linkedin_url.match(/\/in\/([a-zA-Z0-9_-]+)/i) || [])[1];
+      if (liSlug) {
+        const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1', [`%/in/${liSlug}%`]);
+        if (rows.length > 0) { candRows = rows; candidateSlug = rows[0].slug; console.log(`[roster POST] matched by LinkedIn URL → ${candidateSlug}`); }
+      }
+    }
+    if (candRows.length === 0 && body.name) {
+      const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE LOWER(name) = $1 LIMIT 1', [body.name.toLowerCase().trim()]);
+      if (rows.length === 1) { candRows = rows; candidateSlug = rows[0].slug; console.log(`[roster POST] matched by name → ${candidateSlug}`); }
+    }
+    if (candRows.length === 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      const firmName = req.params.firmId;
+      const { rows: companyInfo } = await pool.query('SELECT name, size_tier FROM companies WHERE id = $1', [companyUuid]);
+      const firmSizeTier = companyInfo.length > 0 ? companyInfo[0].size_tier : null;
+      const firmDisplayName = companyInfo.length > 0 ? companyInfo[0].name : firmName;
+      const { rows: created } = await pool.query(
+        `INSERT INTO candidates (slug, name, current_title, current_firm, home_location, linkedin_url, firm_size_tier, date_added, added_from_search)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, slug`,
+        [candidateSlug, body.name, body.title || null, firmDisplayName, body.location || null, body.linkedin_url || null, firmSizeTier, today, req.params.id]);
+      candRows = created;
+      console.log(`[roster POST] created candidate stub slug=${candidateSlug} id=${created[0].id} firm_size_tier=${firmSizeTier}`);
+    }
+    const candidateUuid = candRows[0].id;
 
     const { rows } = await pool.query(
       `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, location, roster_status, source)
@@ -1154,10 +1184,33 @@ router.post('/:id/coverage/companies/:companyId/roster', async (req, res) => {
     if (covRows.length === 0) return res.status(404).json({ error: 'Coverage company not found' });
 
     const body = req.body;
-    const candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.companyId).slice(0, 20);
+    let candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.companyId).slice(0, 20);
 
-    const { rows: candRows } = await pool.query('SELECT id FROM candidates WHERE slug = $1', [candidateSlug]);
-    const candidateUuid = candRows.length > 0 ? candRows[0].id : null;
+    // Resolve candidate — try slug, then LinkedIn URL, then name match
+    let { rows: candRows } = await pool.query('SELECT id, slug FROM candidates WHERE slug = $1', [candidateSlug]);
+    if (candRows.length === 0 && body.linkedin_url) {
+      const liSlug = (body.linkedin_url.match(/\/in\/([a-zA-Z0-9_-]+)/i) || [])[1];
+      if (liSlug) {
+        const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1', [`%/in/${liSlug}%`]);
+        if (rows.length > 0) { candRows = rows; candidateSlug = rows[0].slug; }
+      }
+    }
+    if (candRows.length === 0 && body.name) {
+      const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE LOWER(name) = $1 LIMIT 1', [body.name.toLowerCase().trim()]);
+      if (rows.length === 1) { candRows = rows; candidateSlug = rows[0].slug; }
+    }
+    if (candRows.length === 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { rows: companyInfo } = await pool.query('SELECT name, revenue_tier FROM companies WHERE id = $1', [companyUuid]);
+      const companyDisplayName = companyInfo.length > 0 ? companyInfo[0].name : req.params.companyId;
+      const revTier = companyInfo.length > 0 ? companyInfo[0].revenue_tier : null;
+      const { rows: created } = await pool.query(
+        `INSERT INTO candidates (slug, name, current_title, current_firm, home_location, linkedin_url, company_revenue_tier, date_added, added_from_search)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, slug`,
+        [candidateSlug, body.name, body.title || null, companyDisplayName, body.location || null, body.linkedin_url || null, revTier, today, req.params.id]);
+      candRows = created;
+    }
+    const candidateUuid = candRows[0].id;
 
     const { rows } = await pool.query(
       `INSERT INTO coverage_company_roster (coverage_company_id, candidate_id, candidate_slug, name, title, linkedin_url, location, roster_status, source)

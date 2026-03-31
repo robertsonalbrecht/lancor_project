@@ -221,7 +221,57 @@ function navigateTo(module) {
   }
 }
 
-// ── Duration calculator for work history ───────────────────────────────────────
+// ── Work history date helpers ────────────────────────────────────────────────
+
+/** Parse "Jan 2020 - Present · 1 yr 3 mos" or "2020 - 2023" into { start: 'YYYY-MM', end: 'YYYY-MM', isPresent: bool } */
+function _parseWorkDates(dateStr) {
+  if (!dateStr) return { start: '', end: '', isPresent: false };
+  // Strip embedded duration after ·
+  const clean = dateStr.replace(/\s*[·•]\s*.*$/, '').trim();
+  const parts = clean.split(/\s*[-–]\s*/);
+  const months = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+  const parseOne = s => {
+    if (!s) return '';
+    const m = s.trim().match(/(?:(\w+)\s+)?(\d{4})/);
+    if (!m) return '';
+    const mo = m[1] ? (months[m[1].toLowerCase().slice(0,3)] || '01') : '01';
+    return m[2] + '-' + mo;
+  };
+  const isPresent = /present/i.test(parts[1] || '');
+  return {
+    start: parseOne(parts[0]),
+    end: isPresent ? '' : parseOne(parts[1]),
+    isPresent
+  };
+}
+
+/** Auto-calculate and display duration when date inputs change */
+function updateWhDuration(el) {
+  const entry = el.closest('.cp-wh-entry');
+  if (!entry) return;
+  const startVal = entry.querySelector('[data-field="start-date"]')?.value || '';
+  const endEl = entry.querySelector('[data-field="end-date"]');
+  const isPresent = entry.querySelector('[data-field="is-present"]')?.checked;
+  const durationEl = entry.querySelector('[data-field="duration-display"]');
+
+  if (isPresent && endEl) { endEl.value = ''; endEl.disabled = true; }
+  else if (endEl) { endEl.disabled = false; }
+
+  if (!startVal) { if (durationEl) durationEl.textContent = ''; return; }
+  const start = new Date(startVal + '-01');
+  const end = isPresent ? new Date() : (endEl?.value ? new Date(endEl.value + '-01') : null);
+  if (!end) { if (durationEl) durationEl.textContent = ''; return; }
+
+  let totalMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (totalMonths < 0) totalMonths = 0;
+  const yrs = Math.floor(totalMonths / 12);
+  const mos = totalMonths % 12;
+  let result = '';
+  if (yrs > 0) result += yrs + ' yr' + (yrs > 1 ? 's' : '');
+  if (mos > 0) result += (result ? ' ' : '') + mos + ' mo' + (mos > 1 ? 's' : '');
+  if (!result) result = '< 1 mo';
+  if (durationEl) durationEl.textContent = result;
+}
 
 function _calcDuration(dateStr) {
   if (!dateStr) return '';
@@ -277,6 +327,7 @@ async function openCandidatePanel(candidateId) {
     } catch (e2) { /* ignore */ }
   }
   if (!candidate) { appAlert('Candidate not found.', { type: 'warning' }); return; }
+  window._cpCurrentCandidate = candidate;
   renderCandidatePanel(candidate);
 }
 
@@ -486,22 +537,42 @@ function renderCandidatePanel(c) {
             <textarea class="form-control" id="cp-edit-notes" rows="3">${escapeHtml(c.notes||'')}</textarea>
           </div>
 
+          <!-- Sector Tags -->
+          <div class="form-group" style="margin-bottom:10px">
+            <label class="form-label">Sector Tags</label>
+            <div style="border:1px solid #ddd;border-radius:4px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:4px">
+              ${(typeof POOL_SECTORS !== 'undefined' ? POOL_SECTORS : CP_SECTORS || []).map(s => `
+                <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:2px 6px;border-radius:4px;background:${(c.sector_tags||[]).includes(s.id)?'#F3E8EF':'transparent'}">
+                  <input type="checkbox" name="cp-edit-sector" value="${s.id}" ${(c.sector_tags||[]).includes(s.id)?'checked':''} style="width:13px;height:13px;accent-color:#6B2D5B">
+                  ${escapeHtml(s.label)}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
           <!-- Work History Editor -->
           <div style="margin-bottom:10px">
             <label class="form-label">Work History</label>
             <div id="cp-edit-wh-list">
-              ${(c.work_history || []).map((w, i) => `
-                <div class="cp-wh-entry" data-idx="${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;padding:8px 10px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;align-items:start">
-                  <div>
-                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${escapeHtml(w.title||'')}" placeholder="Title" data-field="title">
+              ${(c.work_history || []).map((w, i) => {
+                const parsed = _parseWorkDates(w.dates || '');
+                return `
+                <div class="cp-wh-entry" data-idx="${i}" style="margin-bottom:8px;padding:10px;background:#fff;border:1px solid #e0e0e0;border-radius:6px">
+                  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:start">
+                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${escapeHtml(w.title||'')}" placeholder="Title" data-field="title">
                     <input class="form-control" style="font-size:12px;padding:4px 8px" value="${escapeHtml(w.company||'')}" placeholder="Company" data-field="company">
+                    <button onclick="this.closest('.cp-wh-entry').remove()" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px;padding:4px" title="Remove">&#10005;</button>
                   </div>
-                  <div>
-                    <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" value="${escapeHtml(w.dates||'')}" placeholder="Dates (e.g. 2020 - Present)" data-field="dates">
-                    <input class="form-control" style="font-size:12px;padding:4px 8px" value="${escapeHtml(w.duration||'')}" placeholder="Duration" data-field="duration">
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px;align-items:center">
+                    <input type="month" class="form-control" style="font-size:11px;padding:3px 6px" value="${escapeHtml(parsed.start)}" data-field="start-date" onchange="updateWhDuration(this)">
+                    <input type="month" class="form-control" style="font-size:11px;padding:3px 6px" value="${escapeHtml(parsed.end)}" placeholder="Present" data-field="end-date" onchange="updateWhDuration(this)">
+                    <div style="font-size:11px;color:#888" data-field="duration-display">${escapeHtml(w.duration || _calcDuration(w.dates) || '')}</div>
                   </div>
-                  <button onclick="this.closest('.cp-wh-entry').remove()" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px;padding:4px;margin-top:2px" title="Remove">&#10005;</button>
-                </div>`).join('')}
+                  <label style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:11px;color:#888;cursor:pointer">
+                    <input type="checkbox" data-field="is-present" ${parsed.isPresent ? 'checked' : ''} onchange="updateWhDuration(this)" style="width:12px;height:12px;accent-color:#6B2D5B"> Current role
+                  </label>
+                </div>`;
+              }).join('')}
             </div>
             <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="addEditWorkHistoryEntry()">+ Add Work History Entry</button>
           </div>
@@ -530,7 +601,7 @@ function renderCandidatePanel(c) {
             ${c.operator_background ? `<div><span style="color:#888">Background:</span> ${escapeHtml(Array.isArray(c.operator_background) ? c.operator_background.join(', ') : c.operator_background)}</div>` : ''}
             ${c.owned_pl ? `<div><span style="color:#888">Owned P&L:</span> Yes</div>` : ''}
             ${c.last_contact_date ? `<div><span style="color:#888">Last Contact:</span> ${escapeHtml(c.last_contact_date)}</div>` : ''}
-            ${c.date_added ? `<div><span style="color:#888">Added:</span> ${escapeHtml(c.date_added)}</div>` : ''}
+            ${c.date_added ? `<div><span style="color:#888">Added:</span> ${escapeHtml(c.date_added.slice(0, 10))}</div>` : ''}
           </div>
         </div>
 
@@ -594,17 +665,21 @@ function addEditWorkHistoryEntry() {
   if (!list) return;
   const div = document.createElement('div');
   div.className = 'cp-wh-entry';
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;padding:8px 10px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;align-items:start';
+  div.style.cssText = 'margin-bottom:8px;padding:10px;background:#fff;border:1px solid #e0e0e0;border-radius:6px';
   div.innerHTML = `
-    <div>
-      <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" placeholder="Title" data-field="title">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:start">
+      <input class="form-control" style="font-size:12px;padding:4px 8px" placeholder="Title" data-field="title">
       <input class="form-control" style="font-size:12px;padding:4px 8px" placeholder="Company" data-field="company">
+      <button onclick="this.closest('.cp-wh-entry').remove()" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px;padding:4px" title="Remove">&#10005;</button>
     </div>
-    <div>
-      <input class="form-control" style="font-size:12px;padding:4px 8px;margin-bottom:4px" placeholder="Dates (e.g. 2020 - Present)" data-field="dates">
-      <input class="form-control" style="font-size:12px;padding:4px 8px" placeholder="Duration" data-field="duration">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:6px;align-items:center">
+      <input type="month" class="form-control" style="font-size:11px;padding:3px 6px" data-field="start-date" onchange="updateWhDuration(this)">
+      <input type="month" class="form-control" style="font-size:11px;padding:3px 6px" data-field="end-date" onchange="updateWhDuration(this)">
+      <div style="font-size:11px;color:#888" data-field="duration-display"></div>
     </div>
-    <button onclick="this.closest('.cp-wh-entry').remove()" style="background:none;border:none;color:#c62828;cursor:pointer;font-size:14px;padding:4px;margin-top:2px" title="Remove">&#10005;</button>`;
+    <label style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:11px;color:#888;cursor:pointer">
+      <input type="checkbox" data-field="is-present" onchange="updateWhDuration(this)" style="width:12px;height:12px;accent-color:#6B2D5B"> Current role
+    </label>`;
   list.appendChild(div);
 }
 
@@ -616,15 +691,37 @@ async function saveCandidateEdits(candidateId) {
   btn.disabled = true;
   btn.textContent = 'Saving...';
 
+  // Collect sector tags
+  const selectedSectors = Array.from(document.querySelectorAll('input[name="cp-edit-sector"]:checked')).map(cb => cb.value);
+
   // Collect work history from the editor
   const whEntries = [];
   document.querySelectorAll('#cp-edit-wh-list .cp-wh-entry').forEach(entry => {
     const title = entry.querySelector('[data-field="title"]')?.value?.trim() || '';
     const company = entry.querySelector('[data-field="company"]')?.value?.trim() || '';
-    const dates = entry.querySelector('[data-field="dates"]')?.value?.trim() || '';
-    const duration = entry.querySelector('[data-field="duration"]')?.value?.trim() || '';
+    const startDate = entry.querySelector('[data-field="start-date"]')?.value || '';
+    const endDate = entry.querySelector('[data-field="end-date"]')?.value || '';
+    const isPresent = entry.querySelector('[data-field="is-present"]')?.checked;
+    const durationText = entry.querySelector('[data-field="duration-display"]')?.textContent?.trim() || '';
+
+    // Build dates string like "Jan 2020 - Present" or "Jan 2020 - Dec 2023"
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fmtDate = val => {
+      if (!val) return '';
+      const [y, m] = val.split('-');
+      return monthNames[parseInt(m) - 1] + ' ' + y;
+    };
+    const startStr = fmtDate(startDate);
+    const endStr = isPresent ? 'Present' : fmtDate(endDate);
+    const dates = startStr ? (startStr + (endStr ? ' - ' + endStr : '')) : '';
+
     if (title || company) {
-      whEntries.push({ title, company, dates, duration: duration || null, description: null });
+      whEntries.push({
+        title, company, dates, duration: durationText || null, description: null,
+        start_date: startDate || null,
+        end_date: isPresent ? null : (endDate || null),
+        is_current: isPresent
+      });
     }
   });
 
@@ -638,17 +735,22 @@ async function saveCandidateEdits(candidateId) {
     availability: document.getElementById('cp-edit-availability')?.value || 'Unknown',
     quality_rating: parseInt(document.getElementById('cp-edit-rating')?.value || '0'),
     notes: document.getElementById('cp-edit-notes')?.value || '',
-    work_history: whEntries
+    sector_tags: selectedSectors,
+    work_history: whEntries,
+    primary_experience_index: window._cpCurrentCandidate?.primary_experience_index ?? 0
   };
 
   try {
-    await api('PUT', '/candidates/' + encodeURIComponent(candidateId), updates);
+    const updated = await api('PUT', '/candidates/' + encodeURIComponent(candidateId), updates);
 
-    // Update local pool cache if available
+    // Update local pool cache with full server response
     if (typeof poolAllCandidates !== 'undefined' && Array.isArray(poolAllCandidates)) {
       const idx = poolAllCandidates.findIndex(c => c.candidate_id === candidateId);
-      if (idx !== -1) Object.assign(poolAllCandidates[idx], updates);
+      if (idx !== -1) poolAllCandidates[idx] = updated;
     }
+
+    // Re-render pool table to reflect changes
+    if (typeof renderPoolView === 'function') renderPoolView();
 
     // Re-open panel with fresh data
     openCandidatePanel(candidateId);
