@@ -246,12 +246,12 @@ function renderCompanyView() {
     </optgroup>`;
 
   content.innerHTML = `
-    <div class="pool-header">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
-        <h1 class="pool-title">Company Pool</h1>
+        <h1 class="pool-title" style="margin:0">Company Pool</h1>
         <div class="pool-subtitle" id="cp-count">Showing ${cpAllCompanies.length.toLocaleString()} of ${cpTotal.toLocaleString()} companies</div>
       </div>
-      <button class="btn btn-primary" onclick="openAddCompanyModal()">+ Add Company</button>
+      <button class="btn btn-primary btn-sm" onclick="openAddCompanyModal()" style="white-space:nowrap;padding:5px 12px;font-size:12px">+ Add Company</button>
     </div>
 
     <div class="pool-filter-bar" style="flex-wrap:wrap;gap:10px">
@@ -416,8 +416,8 @@ async function openCompanyDetail(companyId) {
   closeCompanyDetail();
   try {
     const company = await api('GET', '/companies/' + companyId);
-    // Fetch candidates for people sections
-    const poolResp = await api('GET', '/candidates');
+    // Fetch candidates for people sections (slim endpoint for speed)
+    const poolResp = await api('GET', '/candidates/slim');
     const allCandidates = poolResp.candidates || [];
     renderCompanyFullPage(company, allCandidates);
   } catch (err) {
@@ -431,13 +431,26 @@ function renderCompanyFullPage(company, allCandidates) {
   const isPub   = company.company_type === 'Public Company';
 
   // Match current employees and alumni from candidate pool (with alias support)
+  // Same logic as coverage auto-link: current_firm match OR current work history role (excluding board/passive)
   const companyName = company.name || '';
   const aliases = company.aliases || [];
-  const currentEmployees = allCandidates.filter(c =>
-    firmNamesMatch(c.current_firm, companyName, aliases)
-  );
+  const EXCLUDED_TITLES = /\b(board\s*(member|director|advisor|observer)|independent\s*director|non[- ]executive\s*director|investor)\b/i;
+
+  function isCurrentAtFirm(c) {
+    if (firmNamesMatch(c.current_firm, companyName, aliases)) return true;
+    if (Array.isArray(c.work_history)) {
+      return c.work_history.some(w =>
+        w.dates && /present/i.test(w.dates) &&
+        w.title && !EXCLUDED_TITLES.test(w.title) &&
+        firmNamesMatch(w.company, companyName, aliases)
+      );
+    }
+    return false;
+  }
+
+  const currentEmployees = allCandidates.filter(c => isCurrentAtFirm(c));
   const alumni = allCandidates.filter(c => {
-    if (firmNamesMatch(c.current_firm, companyName, aliases)) return false;
+    if (isCurrentAtFirm(c)) return false;
     return (c.work_history || []).some(w =>
       firmNamesMatch(w.company, companyName, aliases)
     );

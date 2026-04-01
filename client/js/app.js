@@ -40,7 +40,7 @@ let _companyAliasCache = null;
 async function loadCompanyAliases() {
   if (_companyAliasCache) return _companyAliasCache;
   try {
-    const resp = await api('GET', '/companies');
+    const resp = await api('GET', '/companies?type=PE+Firm&limit=500');
     const companies = resp.companies || [];
     _companyAliasCache = {};
     companies.forEach(c => {

@@ -118,7 +118,55 @@ let coverageFilters = {
   revenue_tier: 'all',
   text: ''
 };
+let coverageSortField = 'name';
+let coverageSortAsc = true;
+const SIZE_TIER_ORDER = { 'Mega': 0, 'Large': 1, 'Upper Middle Market': 2, 'Middle Market': 3, 'Lower Middle Market': 4, 'Small': 5 };
 let openAccordionId = null;
+
+function sortCoverageFirms(firms, type) {
+  const dir = coverageSortAsc ? 1 : -1;
+  return [...firms].sort((a, b) => {
+    // Archived/completed always last
+    if (a.archived_complete && !b.archived_complete) return 1;
+    if (!a.archived_complete && b.archived_complete) return -1;
+
+    let va, vb;
+    switch (coverageSortField) {
+      case 'name':
+        va = (a.name || '').toLowerCase();
+        vb = (b.name || '').toLowerCase();
+        return va < vb ? -dir : va > vb ? dir : 0;
+      case 'hq':
+        va = (a.hq || '').toLowerCase();
+        vb = (b.hq || '').toLowerCase();
+        return va < vb ? -dir : va > vb ? dir : 0;
+      case 'size_tier':
+        va = SIZE_TIER_ORDER[a.size_tier] ?? 99;
+        vb = SIZE_TIER_ORDER[b.size_tier] ?? 99;
+        return (va - vb) * dir;
+      case 'people':
+        va = (a.roster || []).length;
+        vb = (b.roster || []).length;
+        return (va - vb) * dir;
+      case 'coverage':
+        va = getCoveragePct(a, type).pct;
+        vb = getCoveragePct(b, type).pct;
+        return (va - vb) * dir;
+      default:
+        return 0;
+    }
+  });
+}
+
+function toggleCoverageSort(field, searchId) {
+  if (coverageSortField === field) {
+    coverageSortAsc = !coverageSortAsc;
+  } else {
+    coverageSortField = field;
+    coverageSortAsc = true;
+  }
+  applyCoverageFilters(searchId);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -264,12 +312,13 @@ function rosterTableHTML(roster, entityId, searchId, type) {
   }
   const stats = getReviewStats({ roster });
 
-  // Sort: pending first, then relevant, then not-relevant
+  // Sort: pending first, then relevant, then not-relevant; alphabetical within each group
   const sortOrder = { 'undefined': 0, 'null': 0, 'relevant': 1, 'not_relevant': 2 };
   const sorted = [...roster].sort((a, b) => {
     const sa = sortOrder[String(a.review_status)] ?? 0;
     const sb = sortOrder[String(b.review_status)] ?? 0;
-    return sa - sb;
+    if (sa !== sb) return sa - sb;
+    return (a.name || '').localeCompare(b.name || '');
   });
 
   const rows = sorted.map(p => {
@@ -372,14 +421,11 @@ function buildPEFirmsTableHTML(firms, searchId) {
     return true;
   });
 
-  // Sort: manual_complete last; within others, sort by pct ascending (Unsearched 0% first)
-  filtered.sort((a, b) => {
-    if (a.manual_complete && !b.manual_complete) return 1;
-    if (!a.manual_complete && b.manual_complete) return -1;
-    const pa = getCoveragePct(a, 'pe_firms').pct;
-    const pb = getCoveragePct(b, 'pe_firms').pct;
-    return pa - pb;
-  });
+  // Sort using the current sort state
+  const sorted = sortCoverageFirms(filtered, 'pe_firms');
+
+  const sortArrow = (field) => coverageSortField === field ? (coverageSortAsc ? ' ▲' : ' ▼') : '';
+  const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap';
 
   const filterBar = `
   <div class="filter-bar" id="coverage-filters" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
@@ -391,7 +437,7 @@ function buildPEFirmsTableHTML(firms, searchId) {
       <option value="Lower Middle Market" ${coverageFilters.size_tier === 'Lower Middle Market' ? 'selected' : ''}>Lower Middle Market</option>
     </select>
     <input type="text" id="cov-filter-text" value="${escapeHtml(coverageFilters.text)}" placeholder="Search firm name..." oninput="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
-    <span style="font-size:12px;color:#888">${filtered.length} firm${filtered.length !== 1 ? 's' : ''}</span>
+    <span style="font-size:12px;color:#888">${sorted.length} firm${sorted.length !== 1 ? 's' : ''}</span>
   </div>`;
 
   if (filtered.length === 0) {
@@ -419,8 +465,8 @@ function buildPEFirmsTableHTML(firms, searchId) {
   }
 
   // Split into active and completed
-  const active = filtered.filter(f => !f.archived_complete);
-  const completed = filtered.filter(f => f.archived_complete);
+  const active = sorted.filter(f => !f.archived_complete);
+  const completed = sorted.filter(f => f.archived_complete);
   const activeRows = active.flatMap(buildFirmRow);
   const completedRows = completed.flatMap(buildFirmRow);
 
@@ -440,12 +486,12 @@ function buildPEFirmsTableHTML(firms, searchId) {
   return filterBar + `
   <table class="coverage-table">
     <thead><tr>
-      <th>Firm Name</th>
-      <th>HQ</th>
-      <th>Size Tier</th>
-      <th style="text-align:center">People</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('name','${escapeHtml(searchId)}')">Firm Name${sortArrow('name')}</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('hq','${escapeHtml(searchId)}')">HQ${sortArrow('hq')}</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('size_tier','${escapeHtml(searchId)}')">Size Tier${sortArrow('size_tier')}</th>
+      <th style="${thStyle};text-align:center" onclick="toggleCoverageSort('people','${escapeHtml(searchId)}')">People${sortArrow('people')}</th>
       <th>Reviewed</th>
-      <th>Coverage</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('coverage','${escapeHtml(searchId)}')">Coverage${sortArrow('coverage')}</th>
     </tr></thead>
     <tbody>${activeRows.join('')}</tbody>
   </table>
@@ -464,13 +510,9 @@ function buildCompaniesTableHTML(companies, searchId) {
     return true;
   });
 
-  filtered.sort((a, b) => {
-    if (a.manual_complete && !b.manual_complete) return 1;
-    if (!a.manual_complete && b.manual_complete) return -1;
-    const pa = getCoveragePct(a, 'companies').pct;
-    const pb = getCoveragePct(b, 'companies').pct;
-    return pa - pb;
-  });
+  const sorted = sortCoverageFirms(filtered, 'companies');
+  const sortArrow = (field) => coverageSortField === field ? (coverageSortAsc ? ' ▲' : ' ▼') : '';
+  const thStyle = 'cursor:pointer;user-select:none;white-space:nowrap';
 
   const filterBar = `
   <div class="filter-bar" id="coverage-filters" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
@@ -482,7 +524,7 @@ function buildCompaniesTableHTML(companies, searchId) {
       <option value="Lower Middle" ${coverageFilters.revenue_tier === 'Lower Middle' ? 'selected' : ''}>Lower Middle</option>
     </select>
     <input type="text" id="cov-filter-text" value="${escapeHtml(coverageFilters.text)}" placeholder="Search company name..." oninput="applyCoverageFilters('${escapeHtml(searchId)}')" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;min-width:180px" />
-    <span style="font-size:12px;color:#888">${filtered.length} compan${filtered.length !== 1 ? 'ies' : 'y'}</span>
+    <span style="font-size:12px;color:#888">${sorted.length} compan${sorted.length !== 1 ? 'ies' : 'y'}</span>
   </div>`;
 
   if (filtered.length === 0) {
@@ -508,8 +550,8 @@ function buildCompaniesTableHTML(companies, searchId) {
     return [compRow, accRow];
   }
 
-  const active = filtered.filter(c => !c.archived_complete);
-  const completed = filtered.filter(c => c.archived_complete);
+  const active = sorted.filter(c => !c.archived_complete);
+  const completed = sorted.filter(c => c.archived_complete);
   const activeRows = active.flatMap(buildCompanyRow);
   const completedRows = completed.flatMap(buildCompanyRow);
 
@@ -529,12 +571,12 @@ function buildCompaniesTableHTML(companies, searchId) {
   return filterBar + `
   <table class="coverage-table">
     <thead><tr>
-      <th>Company Name</th>
-      <th>HQ</th>
-      <th>Revenue Tier</th>
-      <th style="text-align:center">People</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('name','${escapeHtml(searchId)}')">Company Name${sortArrow('name')}</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('hq','${escapeHtml(searchId)}')">HQ${sortArrow('hq')}</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('size_tier','${escapeHtml(searchId)}')">Revenue Tier${sortArrow('size_tier')}</th>
+      <th style="${thStyle};text-align:center" onclick="toggleCoverageSort('people','${escapeHtml(searchId)}')">People${sortArrow('people')}</th>
       <th>Reviewed</th>
-      <th>Coverage</th>
+      <th style="${thStyle}" onclick="toggleCoverageSort('coverage','${escapeHtml(searchId)}')">Coverage${sortArrow('coverage')}</th>
     </tr></thead>
     <tbody>${activeRows.join('')}</tbody>
   </table>
@@ -554,6 +596,21 @@ async function autoLinkCandidatesToRosters(search) {
 
     let changed = false;
 
+    // Build alias map from coverage data (server now includes aliases per firm/company)
+    const aliasMap = {};
+    const covEntities = [...(coverage.pe_firms || []), ...(coverage.companies || [])];
+    for (const entity of covEntities) {
+      const name = entity.name || '';
+      const aliases = entity.aliases || [];
+      if (!aliases.length) continue;
+      const key = normalizeFirmName(name);
+      if (key) aliasMap[key] = aliases;
+      aliases.forEach(alias => {
+        const ak = normalizeFirmName(alias);
+        if (ak && !aliasMap[ak]) aliasMap[ak] = [name, ...aliases.filter(a => normalizeFirmName(a) !== ak)];
+      });
+    }
+
     // Build candidate lookup by ID for stale-check
     const candidateById = {};
     candidates.forEach(c => { if (c.candidate_id) candidateById[c.candidate_id] = c; });
@@ -566,14 +623,14 @@ async function autoLinkCandidatesToRosters(search) {
       const EXCLUDED_TITLES = /\b(board\s*(member|director|advisor|observer)|independent\s*director|non[- ]executive\s*director|investor)\b/i;
 
       const matched = candidates.filter(c => {
-        // Direct current_firm match
-        if (firmNamesMatch(c.current_firm, entityName)) return true;
+        // Direct current_firm match (with aliases: TJC ↔ The Jordan Company etc.)
+        if (firmNamesMatchWithAliases(c.current_firm, entityName, aliasMap)) return true;
         // Check work history for concurrent roles at this firm (exclude board/passive roles)
         if (Array.isArray(c.work_history)) {
           return c.work_history.some(w =>
             w.dates && /present/i.test(w.dates) &&
             w.title && !EXCLUDED_TITLES.test(w.title) &&
-            firmNamesMatch(w.company, entityName)
+            firmNamesMatchWithAliases(w.company, entityName, aliasMap)
           );
         }
         return false;
@@ -587,11 +644,11 @@ async function autoLinkCandidatesToRosters(search) {
         if (!alreadyOnRoster) {
           // Use the role title at this firm if matched via work history, otherwise current_title
           let matchTitle = c.current_title || '';
-          if (!firmNamesMatch(c.current_firm, entityName) && Array.isArray(c.work_history)) {
+          if (!firmNamesMatchWithAliases(c.current_firm, entityName, aliasMap) && Array.isArray(c.work_history)) {
             const role = c.work_history.find(w =>
               w.dates && /present/i.test(w.dates) &&
               w.title && !EXCLUDED_TITLES.test(w.title) &&
-              firmNamesMatch(w.company, entityName)
+              firmNamesMatchWithAliases(w.company, entityName, aliasMap)
             );
             if (role) matchTitle = role.title;
           }
@@ -627,14 +684,14 @@ async function autoLinkCandidatesToRosters(search) {
         // Check candidate pool for current association
         const poolCandidate = candidateById[r.candidate_id];
         if (!poolCandidate) return true; // not in pool — keep (manually added without candidate match)
-        // Keep if current_firm matches
-        if (firmNamesMatch(poolCandidate.current_firm, entityName)) return true;
+        // Keep if current_firm matches (with aliases)
+        if (firmNamesMatchWithAliases(poolCandidate.current_firm, entityName, aliasMap)) return true;
         // Keep if they have a current (Present) non-excluded role at this firm in work history
         if (Array.isArray(poolCandidate.work_history)) {
           const hasCurrentRole = poolCandidate.work_history.some(w =>
             w.dates && /present/i.test(w.dates) &&
             w.title && !EXCLUDED_TITLES.test(w.title) &&
-            firmNamesMatch(w.company, entityName)
+            firmNamesMatchWithAliases(w.company, entityName, aliasMap)
           );
           if (hasCurrentRole) return true;
         }
@@ -721,10 +778,15 @@ let _covCompanyPoolLookup = {};
 
 async function loadCovCompanyPool() {
   try {
-    const resp = await api('GET', '/companies');
+    const resp = await api('GET', '/companies?limit=500');
     _covCompanyPoolLookup = {};
     (resp.companies || []).forEach(c => {
       _covCompanyPoolLookup[normalizeFirmName(c.name)] = c;
+      // Also index by aliases so "The Jordan Company" finds TJC
+      (c.aliases || []).forEach(alias => {
+        const key = normalizeFirmName(alias);
+        if (key && !_covCompanyPoolLookup[key]) _covCompanyPoolLookup[key] = c;
+      });
     });
   } catch (e) { /* ignore */ }
 }
@@ -739,23 +801,25 @@ function renderCoverageTabHTML(search) {
   coverageFilters = { size_tier: 'all', revenue_tier: 'all', text: '' };
   openAccordionId = null;
 
-  // Load company pool and candidate firm map (async, re-renders when loaded)
-  loadCovCompanyPool().then(() => {
-    const tableEl = document.getElementById('coverage-table');
-    if (tableEl) {
-      const cov = search.sourcing_coverage || { pe_firms: [], companies: [] };
-      if (coverageSubTab === 'pe-firms') tableEl.innerHTML = buildPEFirmsTableHTML(cov.pe_firms || [], search.search_id);
-      else tableEl.innerHTML = buildCompaniesTableHTML(cov.companies || [], search.search_id);
-    }
-  });
+  // Load company pool first, then auto-link (both need company data)
+  const covPoolReady = loadCovCompanyPool();
 
   const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
   const firms = coverage.pe_firms || [];
   const companies = coverage.companies || [];
   const searchId = search.search_id;
 
-  // Auto-link candidates from pool to rosters (async, re-renders when done)
-  autoLinkCandidatesToRosters(search).then(changed => {
+  // Auto-link after company pool is loaded so website icons render correctly
+  covPoolReady.then(() => {
+    // Re-render with company pool data (website URLs)
+    const tableEl = document.getElementById('coverage-table');
+    if (tableEl) {
+      const cov = search.sourcing_coverage || { pe_firms: [], companies: [] };
+      if (coverageSubTab === 'pe-firms') tableEl.innerHTML = buildPEFirmsTableHTML(cov.pe_firms || [], search.search_id);
+      else tableEl.innerHTML = buildCompaniesTableHTML(cov.companies || [], search.search_id);
+    }
+    return autoLinkCandidatesToRosters(search);
+  }).then(changed => {
     if (changed) {
       const tableEl = document.getElementById('coverage-table');
       if (tableEl) {

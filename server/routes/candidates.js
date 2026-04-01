@@ -314,8 +314,10 @@ async function syncWorkHistory(candidateUuid, workHistory, primaryIdx) {
     }
 
     // Use structured dates if provided, otherwise parse from dates text
-    let startDate = w.start_date || null;
-    let endDate = w.end_date || null;
+    // Month pickers send "YYYY-MM" — Postgres needs "YYYY-MM-DD"
+    const toFullDate = d => d && /^\d{4}-\d{2}$/.test(d) ? d + '-01' : d;
+    let startDate = toFullDate(w.start_date) || null;
+    let endDate = toFullDate(w.end_date) || null;
     let isCurrent = w.is_current || false;
     if (!startDate && w.dates) {
       const parsed = _parseDatesText(w.dates);

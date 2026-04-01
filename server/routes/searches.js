@@ -7,6 +7,52 @@ const pool = require('../db');
 const router = express.Router();
 const { slugify } = require('../utils/shared');
 
+// Resolve null candidate_id on roster entries by matching LinkedIn URL or name
+async function resolveUnlinkedRosterEntries() {
+  // Firm rosters
+  const { rows: firmUnlinked } = await pool.query(
+    'SELECT id, name, linkedin_url FROM coverage_firm_roster WHERE candidate_id IS NULL'
+  );
+  for (const r of firmUnlinked) {
+    let candId = null, candSlug = null;
+    if (r.linkedin_url) {
+      const liSlug = (r.linkedin_url.match(/\/in\/([a-zA-Z0-9_-]+)/i) || [])[1];
+      if (liSlug) {
+        const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1', [`%/in/${liSlug}%`]);
+        if (rows.length > 0) { candId = rows[0].id; candSlug = rows[0].slug; }
+      }
+    }
+    if (!candId && r.name) {
+      const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE LOWER(name) = $1', [r.name.toLowerCase().trim()]);
+      if (rows.length === 1) { candId = rows[0].id; candSlug = rows[0].slug; }
+    }
+    if (candId) {
+      await pool.query('UPDATE coverage_firm_roster SET candidate_id = $1, candidate_slug = $2 WHERE id = $3', [candId, candSlug, r.id]);
+    }
+  }
+  // Company rosters
+  const { rows: coUnlinked } = await pool.query(
+    'SELECT id, name, linkedin_url FROM coverage_company_roster WHERE candidate_id IS NULL'
+  );
+  for (const r of coUnlinked) {
+    let candId = null, candSlug = null;
+    if (r.linkedin_url) {
+      const liSlug = (r.linkedin_url.match(/\/in\/([a-zA-Z0-9_-]+)/i) || [])[1];
+      if (liSlug) {
+        const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE linkedin_url ILIKE $1 LIMIT 1', [`%/in/${liSlug}%`]);
+        if (rows.length > 0) { candId = rows[0].id; candSlug = rows[0].slug; }
+      }
+    }
+    if (!candId && r.name) {
+      const { rows } = await pool.query('SELECT id, slug FROM candidates WHERE LOWER(name) = $1', [r.name.toLowerCase().trim()]);
+      if (rows.length === 1) { candId = rows[0].id; candSlug = rows[0].slug; }
+    }
+    if (candId) {
+      await pool.query('UPDATE coverage_company_roster SET candidate_id = $1, candidate_slug = $2 WHERE id = $3', [candId, candSlug, r.id]);
+    }
+  }
+}
+
 // Lazy-init Anthropic client (server starts fine without API key)
 let _anthropic = null;
 function getAnthropicClient() {
@@ -162,7 +208,7 @@ async function fetchPipeline(searchUuid) {
 async function fetchSourcingCoverage(searchUuid) {
   // PE firms
   const { rows: firmRows } = await pool.query(
-    `SELECT scf.*, co.slug AS firm_slug
+    `SELECT scf.*, co.slug AS firm_slug, co.website_url AS website_url
      FROM search_coverage_firms scf
      JOIN companies co ON co.id = scf.company_id
      WHERE scf.search_id = $1 ORDER BY scf.name`,
@@ -198,6 +244,18 @@ async function fetchSourcingCoverage(searchUuid) {
     });
   }
 
+  // Fetch aliases for all coverage companies (firms + target companies)
+  const allCompanyIds = [...firmRows.map(f => f.company_id), ...coRows.map(c => c.company_id)];
+  const aliasMap = {};
+  if (allCompanyIds.length > 0) {
+    const { rows: aliasRows } = await pool.query(
+      'SELECT company_id, alias FROM company_aliases WHERE company_id = ANY($1)', [allCompanyIds]);
+    for (const a of aliasRows) {
+      if (!aliasMap[a.company_id]) aliasMap[a.company_id] = [];
+      aliasMap[a.company_id].push(a.alias);
+    }
+  }
+
   const pe_firms = firmRows.map(f => ({
     firm_id: f.firm_slug,
     name: f.name,
@@ -205,6 +263,8 @@ async function fetchSourcingCoverage(searchUuid) {
     size_tier: f.size_tier,
     strategy: f.strategy,
     sector_focus: f.sector_focus,
+    website_url: f.website_url || null,
+    aliases: aliasMap[f.company_id] || [],
     why_target: f.why_target || '',
     manual_complete: f.manual_complete,
     manual_complete_note: f.manual_complete_note || '',
@@ -216,7 +276,7 @@ async function fetchSourcingCoverage(searchUuid) {
 
   // Companies
   const { rows: coRows } = await pool.query(
-    `SELECT scc.*, co.slug AS company_slug
+    `SELECT scc.*, co.slug AS company_slug, co.website_url AS website_url
      FROM search_coverage_companies scc
      JOIN companies co ON co.id = scc.company_id
      WHERE scc.search_id = $1 ORDER BY scc.name`,
@@ -258,6 +318,8 @@ async function fetchSourcingCoverage(searchUuid) {
     hq: c.hq,
     revenue_tier: c.revenue_tier,
     ownership_type: c.ownership_type,
+    website_url: c.website_url || null,
+    aliases: aliasMap[c.company_id] || [],
     why_target: c.why_target || '',
     manual_complete: c.manual_complete,
     manual_complete_note: c.manual_complete_note || '',
@@ -364,6 +426,9 @@ async function seedCoverageFromPlaybook(searchUuid, sectorSlugs) {
       [searchUuid, sectorUuid]
     );
   }
+
+  // Resolve any roster entries that have null candidate_id by matching to existing candidates
+  await resolveUnlinkedRosterEntries();
 }
 
 // ── ROUTES: Core CRUD ────────────────────────────────────────────────────────
@@ -826,6 +891,9 @@ router.post('/:id/coverage/firms', async (req, res) => {
       }
     }
 
+    // Resolve any unlinked roster entries
+    await resolveUnlinkedRosterEntries();
+
     const coverage = await fetchSourcingCoverage(search.id);
     res.status(201).json(coverage);
   } catch (err) {
@@ -876,6 +944,9 @@ router.post('/:id/coverage/companies', async (req, res) => {
           [covCoId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
       }
     }
+
+    // Resolve any unlinked roster entries
+    await resolveUnlinkedRosterEntries();
 
     const coverage = await fetchSourcingCoverage(search.id);
     res.status(201).json(coverage);
