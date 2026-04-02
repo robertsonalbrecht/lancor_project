@@ -132,6 +132,34 @@ async function buildSearchResponse(dbRow) {
   // Sourcing coverage (read-only for Part A)
   const sourcingCoverage = await fetchSourcingCoverage(searchUuid);
 
+  // Search kit — per-search templates
+  const { rows: templateRows } = await pool.query(
+    'SELECT slug, template_type, name, content FROM search_templates WHERE search_id = $1 ORDER BY created_at',
+    [searchUuid]
+  );
+  const searchKit = {
+    boolean_strings: [],
+    outreach_messages: [],
+    ideal_candidate_profiles: [],
+    screen_question_guides: [],
+    pitchbook_params: []
+  };
+  for (const t of templateRows) {
+    let parsed;
+    try { parsed = JSON.parse(t.content); } catch { parsed = { content: t.content }; }
+    const item = typeof parsed === 'object' && parsed !== null ? parsed : { content: parsed };
+    if (!item.id) item.id = t.slug;
+    if (!item.name) item.name = t.name;
+    const typeMap = {
+      boolean_string: 'boolean_strings',
+      pitchbook_param: 'pitchbook_params',
+      ideal_candidate_profile: 'ideal_candidate_profiles',
+      screen_question_guide: 'screen_question_guides'
+    };
+    const bucket = typeMap[t.template_type];
+    if (bucket && searchKit[bucket]) searchKit[bucket].push(item);
+  }
+
   return {
     search_id: searchSlug,
     client_name: dbRow.client_name,
@@ -148,7 +176,7 @@ async function buildSearchResponse(dbRow) {
     pipeline,
     pipeline_stages: dbRow.pipeline_stages || JSON.parse(JSON.stringify(DEFAULT_PIPELINE_STAGES)),
     sourcing_coverage: sourcingCoverage,
-    search_kit: JSON.parse(JSON.stringify(EMPTY_SEARCH_KIT))
+    search_kit: searchKit
   };
 }
 
@@ -219,7 +247,7 @@ async function fetchSourcingCoverage(searchUuid) {
   let firmRosterRows = [];
   if (firmIds.length > 0) {
     const result = await pool.query(
-      `SELECT cfr.*, c.home_location AS candidate_location
+      `SELECT cfr.*, c.home_location AS candidate_location, c.last_scraped AS candidate_last_scraped
        FROM coverage_firm_roster cfr
        LEFT JOIN candidates c ON c.id = cfr.candidate_id
        WHERE cfr.coverage_firm_id = ANY($1) ORDER BY cfr.name`,
@@ -236,6 +264,7 @@ async function fetchSourcingCoverage(searchUuid) {
       title: r.title,
       linkedin_url: r.linkedin_url,
       location: r.location || r.candidate_location || null,
+      last_scraped: toISO(r.candidate_last_scraped),
       roster_status: r.roster_status,
       source: r.source,
       reviewed: r.reviewed,
@@ -243,6 +272,15 @@ async function fetchSourcingCoverage(searchUuid) {
       review_status: r.review_status
     });
   }
+
+  // Companies
+  const { rows: coRows } = await pool.query(
+    `SELECT scc.*, co.slug AS company_slug, co.website_url AS website_url
+     FROM search_coverage_companies scc
+     JOIN companies co ON co.id = scc.company_id
+     WHERE scc.search_id = $1 ORDER BY scc.name`,
+    [searchUuid]
+  );
 
   // Fetch aliases for all coverage companies (firms + target companies)
   const allCompanyIds = [...firmRows.map(f => f.company_id), ...coRows.map(c => c.company_id)];
@@ -274,20 +312,11 @@ async function fetchSourcingCoverage(searchUuid) {
     roster: firmRosterMap[f.id] || []
   }));
 
-  // Companies
-  const { rows: coRows } = await pool.query(
-    `SELECT scc.*, co.slug AS company_slug, co.website_url AS website_url
-     FROM search_coverage_companies scc
-     JOIN companies co ON co.id = scc.company_id
-     WHERE scc.search_id = $1 ORDER BY scc.name`,
-    [searchUuid]
-  );
-
   const coIds = coRows.map(c => c.id);
   let coRosterRows = [];
   if (coIds.length > 0) {
     const result = await pool.query(
-      `SELECT ccr.*, c.home_location AS candidate_location
+      `SELECT ccr.*, c.home_location AS candidate_location, c.last_scraped AS candidate_last_scraped
        FROM coverage_company_roster ccr
        LEFT JOIN candidates c ON c.id = ccr.candidate_id
        WHERE ccr.coverage_company_id = ANY($1) ORDER BY ccr.name`,
@@ -304,6 +333,7 @@ async function fetchSourcingCoverage(searchUuid) {
       title: r.title,
       linkedin_url: r.linkedin_url,
       location: r.location || r.candidate_location || null,
+      last_scraped: toISO(r.candidate_last_scraped),
       roster_status: r.roster_status,
       source: r.source,
       reviewed: r.reviewed,
@@ -544,6 +574,33 @@ router.put('/:id', async (req, res) => {
     if (body.sectors) await syncSectors(dbRow.id, body.sectors);
     if (body.client_contacts) await syncClientContacts(dbRow.id, body.client_contacts);
     if (body.lancor_team) await syncLancorTeam(dbRow.id, body.lancor_team);
+
+    // Sync search kit templates if provided
+    if (body.search_kit) {
+      const typeMap = {
+        boolean_strings: 'boolean_string',
+        pitchbook_params: 'pitchbook_param',
+        ideal_candidate_profiles: 'ideal_candidate_profile',
+        screen_question_guides: 'screen_question_guide'
+      };
+      // Delete existing per-search templates and re-insert
+      await pool.query('DELETE FROM search_templates WHERE search_id = $1', [dbRow.id]);
+      for (const [jsonKey, templateType] of Object.entries(typeMap)) {
+        const items = body.search_kit[jsonKey] || [];
+        for (const item of items) {
+          const content = JSON.stringify(item);
+          if (!content || content === '{}') continue;
+          const name = item.name || item.id || `${templateType}-${Date.now()}`;
+          const itemSlug = slugify(name) || `${templateType}-${Date.now()}`;
+          await pool.query(
+            `INSERT INTO search_templates (template_type, slug, name, content, search_id)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (slug) DO UPDATE SET content = EXCLUDED.content, name = EXCLUDED.name`,
+            [templateType, itemSlug, name, content, dbRow.id]
+          );
+        }
+      }
+    }
 
     // Refresh
     const updated = await fetchSearchBySlug(req.params.id);

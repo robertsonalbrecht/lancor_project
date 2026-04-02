@@ -123,6 +123,14 @@ let coverageSortAsc = true;
 const SIZE_TIER_ORDER = { 'Mega': 0, 'Large': 1, 'Upper Middle Market': 2, 'Middle Market': 3, 'Lower Middle Market': 4, 'Small': 5 };
 let openAccordionId = null;
 
+function scrapeFreshnessIcon(lastScraped) {
+  if (!lastScraped) return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c62828;vertical-align:middle;margin-left:2px" title="Never scraped"></span>';
+  const daysAgo = Math.floor((Date.now() - new Date(lastScraped).getTime()) / 86400000);
+  if (daysAgo <= 365) return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#2e7d32;vertical-align:middle;margin-left:2px" title="Scraped ' + daysAgo + 'd ago"></span>';
+  if (daysAgo <= 730) return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff9800;vertical-align:middle;margin-left:2px" title="Scraped ' + daysAgo + 'd ago"></span>';
+  return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#c62828;vertical-align:middle;margin-left:2px" title="Scraped ' + daysAgo + 'd ago"></span>';
+}
+
 function sortCoverageFirms(firms, type) {
   const dir = coverageSortAsc ? 1 : -1;
   return [...firms].sort((a, b) => {
@@ -357,7 +365,7 @@ function rosterTableHTML(roster, entityId, searchId, type) {
         <div style="${nameStyle}"><span class="cand-name-link" onclick="event.stopPropagation();openCandidatePanel('${escapeHtml(p.candidate_id)}')" style="color:inherit">${escapeHtml(p.name)}</span></div>
       </td>
       <td style="padding:6px 8px;font-size:12px;color:#666">${escapeHtml(p.title || '')}</td>
-      <td style="padding:6px 8px;font-size:11px;color:#888">${escapeHtml(p.location || '')}</td>
+      <td style="padding:6px 8px;font-size:11px;color:#888">${escapeHtml(p.location || '')} ${scrapeFreshnessIcon(p.last_scraped)}</td>
       <td style="padding:6px 8px;width:36px">
         <button onclick="event.stopPropagation();openAddToPipelineModal({candidate_id:'${escapeHtml(p.candidate_id).replace(/'/g,"\\'")}',name:'${escapeHtml(p.name).replace(/'/g,"\\'")}',current_title:'${escapeHtml(p.title||'').replace(/'/g,"\\'")}',current_firm:'',location:'',linkedin_url:'${escapeHtml(p.linkedin_url||'').replace(/'/g,"\\'")}',archetype:''},{preSelectSearchId:'${escapeHtml(searchId)}',source:'Sourcing Coverage'})" title="Add to Pipeline" style="background:#6B2D5B;color:#fff;border:none;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center">&#8594;</button>
       </td>
@@ -448,9 +456,7 @@ function buildPEFirmsTableHTML(firms, searchId) {
     const { pct, manual } = getCoveragePct(f, 'pe_firms');
     const isOpen = openAccordionId === f.firm_id;
     const rosterCount = (f.roster || []).length;
-    if (f.firm_id === 'blackstone') console.log('[buildFirmRow] blackstone roster.length=', rosterCount, 'roster=', (f.roster || []).map(r => r.name));
-    const poolRec = getCompanyPoolRecord(f.name);
-    const webUrl = f.website_url || (poolRec && poolRec.website_url) || '';
+    const webUrl = f.website_url || '';
     const firmWebsite = webUrl ? `<a href="${escapeHtml(webUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
     const firmRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escapeHtml(f.firm_id)}" onclick="toggleCoverageAccordion('${escapeHtml(searchId)}','pe_firms','${escapeHtml(f.firm_id)}')">
       <td><strong>${escapeHtml(f.name)}</strong>${firmWebsite}</td>
@@ -535,8 +541,7 @@ function buildCompaniesTableHTML(companies, searchId) {
     const { pct, manual } = getCoveragePct(c, 'companies');
     const isOpen = openAccordionId === c.company_id;
     const rosterCount = (c.roster || []).length;
-    const coPoolRec = getCompanyPoolRecord(c.name);
-    const coWebUrl = c.website_url || (coPoolRec && coPoolRec.website_url) || '';
+    const coWebUrl = c.website_url || '';
     const coWebsite = coWebUrl ? `<a href="${escapeHtml(coWebUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#0077B5;font-size:11px;margin-left:6px" title="Company website">&#127760;</a>` : '';
     const compRow = `<tr class="firm-row${isOpen ? ' open' : ''}" id="row-${escapeHtml(c.company_id)}" onclick="toggleCoverageAccordion('${escapeHtml(searchId)}','companies','${escapeHtml(c.company_id)}')">
       <td><strong>${escapeHtml(c.name)}</strong>${coWebsite}</td>
@@ -774,26 +779,6 @@ async function autoLinkCandidatesToRosters(search) {
   }
 }
 
-let _covCompanyPoolLookup = {};
-
-async function loadCovCompanyPool() {
-  try {
-    const resp = await api('GET', '/companies?limit=500');
-    _covCompanyPoolLookup = {};
-    (resp.companies || []).forEach(c => {
-      _covCompanyPoolLookup[normalizeFirmName(c.name)] = c;
-      // Also index by aliases so "The Jordan Company" finds TJC
-      (c.aliases || []).forEach(alias => {
-        const key = normalizeFirmName(alias);
-        if (key && !_covCompanyPoolLookup[key]) _covCompanyPoolLookup[key] = c;
-      });
-    });
-  } catch (e) { /* ignore */ }
-}
-
-function getCompanyPoolRecord(firmName) {
-  return _covCompanyPoolLookup[normalizeFirmName(firmName)] || null;
-}
 
 function renderCoverageTabHTML(search) {
   // Reset state when tab first loads
@@ -802,24 +787,13 @@ function renderCoverageTabHTML(search) {
   openAccordionId = null;
 
   // Load company pool first, then auto-link (both need company data)
-  const covPoolReady = loadCovCompanyPool();
-
   const coverage = search.sourcing_coverage || { pe_firms: [], companies: [] };
   const firms = coverage.pe_firms || [];
   const companies = coverage.companies || [];
   const searchId = search.search_id;
 
-  // Auto-link after company pool is loaded so website icons render correctly
-  covPoolReady.then(() => {
-    // Re-render with company pool data (website URLs)
-    const tableEl = document.getElementById('coverage-table');
-    if (tableEl) {
-      const cov = search.sourcing_coverage || { pe_firms: [], companies: [] };
-      if (coverageSubTab === 'pe-firms') tableEl.innerHTML = buildPEFirmsTableHTML(cov.pe_firms || [], search.search_id);
-      else tableEl.innerHTML = buildCompaniesTableHTML(cov.companies || [], search.search_id);
-    }
-    return autoLinkCandidatesToRosters(search);
-  }).then(changed => {
+  // Auto-link candidates from pool to rosters (async, re-renders when done)
+  autoLinkCandidatesToRosters(search).then(changed => {
     if (changed) {
       const tableEl = document.getElementById('coverage-table');
       if (tableEl) {

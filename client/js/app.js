@@ -26,10 +26,10 @@ function firmNamesMatch(a, b, aliases) {
     const longer = na.length > nb.length ? na : nb;
     if (longer.includes(shorter) && shorter.length >= longer.length * 0.6) return true;
   }
-  // Check aliases if provided
+  // Check aliases if provided (used by direct callers like company page)
   if (aliases && aliases.length) {
     const normalizedAliases = aliases.map(normalizeFirmName);
-    if (normalizedAliases.some(al => al && al === na)) return true;
+    if (normalizedAliases.some(al => al && al === nb)) return true;
   }
   return false;
 }
@@ -67,10 +67,18 @@ function firmNamesMatchWithAliases(a, b, aliasMap) {
   if (!aliasMap) return false;
   const na = normalizeFirmName(a);
   const nb = normalizeFirmName(b);
-  const aliasesA = aliasMap[na] || [];
-  const aliasesB = aliasMap[nb] || [];
-  if (firmNamesMatch(a, b, aliasesA)) return true;
-  if (firmNamesMatch(a, b, aliasesB)) return true;
+  // A's aliases are other names for company A. If B matches any alias of A, then A === B.
+  const aliasesA = (aliasMap[na] || []).map(normalizeFirmName).filter(Boolean);
+  for (const al of aliasesA) {
+    if (al === nb) return true;
+    if (firmNamesMatch(al, nb)) return true;
+  }
+  // B's aliases are other names for company B. If A matches any alias of B, then A === B.
+  const aliasesB = (aliasMap[nb] || []).map(normalizeFirmName).filter(Boolean);
+  for (const al of aliasesB) {
+    if (al === na) return true;
+    if (firmNamesMatch(al, na)) return true;
+  }
   return false;
 }
 

@@ -42,7 +42,7 @@ async function fetchGenericTemplates(dbType) {
   const { rows } = await pool.query(
     `SELECT slug AS id, name, content, notes,
             to_char(created_date, 'YYYY-MM-DD') AS created_date
-     FROM search_templates WHERE template_type = $1 ORDER BY created_at`,
+     FROM search_templates WHERE template_type = $1 AND search_id IS NULL ORDER BY created_at`,
     [dbType]
   );
   return rows;
