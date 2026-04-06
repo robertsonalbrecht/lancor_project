@@ -1,0 +1,1 @@
+ALTER TABLE company_sector_tags ADD COLUMN is_specialist BOOLEAN NOT NULL DEFAULT FALSE;

@@ -10,6 +10,7 @@ function normalizeFirmName(name) {
   return name
     .replace(/\s*·\s*(Full-time|Part-time|Contract|Seasonal|Internship|Self-employed|Freelance)/gi, '')
     .replace(/\s*\(.*?\)\s*/g, '')  // strip parenthetical like (GCI)
+    .replace(/,?\s*\b(LLC|Inc\.?|L\.?P\.?|LLP|Corp\.?|Ltd\.?|PLC|Co\.?)\s*$/gi, '')
     .trim()
     .toLowerCase();
 }

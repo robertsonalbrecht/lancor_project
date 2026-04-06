@@ -671,13 +671,13 @@ async function autoLinkCandidatesToRosters(search) {
         }
       });
 
-      // 1b. Enrich existing roster entries with missing data from candidate pool
+      // 1b. Sync roster entries with latest candidate pool data (location, title, linkedin)
       entity.roster.forEach(r => {
         const poolCand = candidateById[r.candidate_id];
         if (!poolCand) return;
-        if (!r.location && poolCand.home_location) { r.location = poolCand.home_location; r._enriched = true; changed = true; }
-        if (!r.linkedin_url && poolCand.linkedin_url) { r.linkedin_url = poolCand.linkedin_url; r._enriched = true; changed = true; }
-        if ((!r.title || r.title === 'Identified') && poolCand.current_title) { r.title = poolCand.current_title; r._enriched = true; changed = true; }
+        if (poolCand.home_location && r.location !== poolCand.home_location) { r.location = poolCand.home_location; r._enriched = true; changed = true; }
+        if (poolCand.linkedin_url && r.linkedin_url !== poolCand.linkedin_url) { r.linkedin_url = poolCand.linkedin_url; r._enriched = true; changed = true; }
+        if (poolCand.current_title && r.title !== poolCand.current_title) { r.title = poolCand.current_title; r._enriched = true; changed = true; }
       });
 
       // 2. Remove roster entries for people who no longer work at this firm
@@ -930,10 +930,8 @@ async function buildPlaybookTabHTML(search) {
         : topFirms.map((f, i) => {
             const added = isFirmAdded(f);
             const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
-            const tagBadge = f.firm_tag === 'Specialist'
+            const tagBadge = f.is_specialist
               ? `<span style="background:#fff8e1;color:#f57f17;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">&#9733; Specialist</span>`
-              : f.firm_tag === 'Generalist'
-              ? `<span style="background:#f5f5f5;color:#999;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600">Generalist</span>`
               : '';
             const statusBtn = added
               ? `<span style="color:#4caf50;font-size:16px;flex-shrink:0" title="Added to sourcing coverage">&#10003;</span>`

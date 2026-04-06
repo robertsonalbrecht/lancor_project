@@ -252,10 +252,8 @@ function _paintSectorDetail() {
     : topFirms.map((f, i) => {
         const cov = getCoverageInfo(f);
         const sizePill = f.size_tier ? `<span style="background:#F3E8EF;color:#6B2D5B;padding:1px 6px;border-radius:8px;font-size:10px;font-weight:600">${escapeHtml(f.size_tier)}</span>` : '';
-        const tagBadge = f.firm_tag === 'Specialist'
+        const tagBadge = f.is_specialist
           ? `<span style="background:#fff8e1;color:#f57f17;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">&#9733; Specialist</span>`
-          : f.firm_tag === 'Generalist'
-          ? `<span style="background:#f5f5f5;color:#999;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600">Generalist</span>`
           : '';
         return `<div draggable="true" data-id="${escapeHtml(f.firm_id)}" data-type="pe"
           ondragstart="_topDragStart(event)" ondragover="_topDragOver(event)" ondrop="_topDrop(event)" ondragend="_topDragEnd(event)"
@@ -664,7 +662,7 @@ function _renderPeFirmsTab() {
         : '';
       tableRows += `
         <tr class="firm-row" style="cursor:pointer;" onclick="_renderFirmDetail('${f.firm_id}')">
-          <td><strong>${f.name}</strong>${entityTypeBadge(f.entity_type)}${websiteIcon}</td>
+          <td><strong>${f.name}</strong>${entityTypeBadge(f.entity_type)}${f.is_specialist ? ' <span style="background:#fff8e1;color:#f57f17;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">&#9733; Specialist</span>' : ''}${websiteIcon}</td>
           <td>${f.hq || '—'}</td>
           <td>${sizeTierPill(f.size_tier)}</td>
           <td>${f.strategy ? genericPill(f.strategy) : '—'}</td>

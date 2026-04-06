@@ -36,9 +36,12 @@ async function fetchSectors(sectorSlug) {
             co.preferred_ebitda_min, co.preferred_ebitda_max,
             co.preferred_geography, co.last_investment_date,
             co.investments_last_2yr, co.active_portfolio_count,
-            co.dry_powder, co.last_fund_name, co.last_fund_size, co.last_fund_vintage
+            co.dry_powder, co.last_fund_name, co.last_fund_size, co.last_fund_vintage,
+            cst.is_specialist
      FROM sector_pe_firms spf
      JOIN companies co ON co.id = spf.company_id
+     LEFT JOIN company_sector_tags cst
+       ON cst.company_id = spf.company_id AND cst.sector_id = spf.sector_id
      WHERE spf.sector_id = ANY($1)
      ORDER BY spf.name`,
     [sectorIds]
@@ -162,7 +165,8 @@ async function fetchSectors(sectorSlug) {
       dry_powder: f.dry_powder ? Number(f.dry_powder) : null,
       last_fund_name: f.last_fund_name,
       last_fund_size: f.last_fund_size ? Number(f.last_fund_size) : null,
-      last_fund_vintage: f.last_fund_vintage
+      last_fund_vintage: f.last_fund_vintage,
+      is_specialist: f.is_specialist || false
     });
   }
 

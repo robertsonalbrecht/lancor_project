@@ -277,8 +277,8 @@ router.post('/', async (req, res) => {
       const { rows: sectorRows } = await pool.query('SELECT id FROM sectors WHERE slug = $1', [sectorSlug]);
       if (sectorRows.length > 0) {
         await pool.query(
-          'INSERT INTO company_sector_tags (company_id, sector_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [row.id, sectorRows[0].id]
+          'INSERT INTO company_sector_tags (company_id, sector_id, sector_slug) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [row.id, sectorRows[0].id, sectorSlug]
         );
       }
     }
@@ -340,8 +340,8 @@ router.put('/:id', async (req, res) => {
         const { rows: sectorRows } = await pool.query('SELECT id FROM sectors WHERE slug = $1', [sectorSlug]);
         if (sectorRows.length > 0) {
           await pool.query(
-            'INSERT INTO company_sector_tags (company_id, sector_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [row.id, sectorRows[0].id]
+            'INSERT INTO company_sector_tags (company_id, sector_id, sector_slug) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+            [row.id, sectorRows[0].id, sectorSlug]
           );
         }
       }
