@@ -27,10 +27,12 @@ function firmNamesMatch(a, b, aliases) {
     const longer = na.length > nb.length ? na : nb;
     if (longer.includes(shorter) && shorter.length >= longer.length * 0.6) return true;
   }
-  // Check aliases if provided (used by direct callers like company page)
+  // Check aliases if provided (used by direct callers like company page).
+  // `aliases` are alternate names for `b` (the company); compare them against
+  // `na` (the candidate's firm) to see if the candidate's firm is one of them.
   if (aliases && aliases.length) {
     const normalizedAliases = aliases.map(normalizeFirmName);
-    if (normalizedAliases.some(al => al && al === nb)) return true;
+    if (normalizedAliases.some(al => al && (al === na || firmNamesMatch(al, na)))) return true;
   }
   return false;
 }
