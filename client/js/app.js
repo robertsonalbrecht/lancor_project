@@ -219,6 +219,12 @@ function navigateTo(module) {
     case 'templates':
       if (typeof renderTemplates === 'function') renderTemplates();
       break;
+    case 'ai-search':
+      if (typeof renderAiSearch === 'function') renderAiSearch();
+      break;
+    case 'analytics':
+      if (typeof renderAnalytics === 'function') renderAnalytics();
+      break;
     case 'settings':
       content.innerHTML = `
         <div class="module-placeholder">

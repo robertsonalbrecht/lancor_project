@@ -9,9 +9,9 @@ const { slugify } = require('../utils/shared');
 
 // Resolve null candidate_id on roster entries by matching LinkedIn URL or name
 async function resolveUnlinkedRosterEntries() {
-  // Firm rosters
+  // Firm rosters (global firm_roster table)
   const { rows: firmUnlinked } = await pool.query(
-    'SELECT id, name, linkedin_url FROM coverage_firm_roster WHERE candidate_id IS NULL'
+    'SELECT id, name, linkedin_url FROM firm_roster WHERE candidate_id IS NULL'
   );
   for (const r of firmUnlinked) {
     let candId = null, candSlug = null;
@@ -27,10 +27,10 @@ async function resolveUnlinkedRosterEntries() {
       if (rows.length === 1) { candId = rows[0].id; candSlug = rows[0].slug; }
     }
     if (candId) {
-      await pool.query('UPDATE coverage_firm_roster SET candidate_id = $1, candidate_slug = $2 WHERE id = $3', [candId, candSlug, r.id]);
+      await pool.query('UPDATE firm_roster SET candidate_id = $1 WHERE id = $2', [candId, r.id]);
     }
   }
-  // Company rosters
+  // Company rosters (unchanged — still uses coverage_company_roster)
   const { rows: coUnlinked } = await pool.query(
     'SELECT id, name, linkedin_url FROM coverage_company_roster WHERE candidate_id IS NULL'
   );
@@ -234,32 +234,50 @@ async function fetchPipeline(searchUuid) {
 }
 
 async function fetchSourcingCoverage(searchUuid) {
-  // PE firms
+  // PE firms — now reads verification from companies table
   const { rows: firmRows } = await pool.query(
-    `SELECT scf.*, co.slug AS firm_slug, co.website_url AS website_url
+    `SELECT scf.*, co.slug AS firm_slug, co.website_url AS website_url,
+            co.roster_last_verified, co.roster_verified_by
      FROM search_coverage_firms scf
      JOIN companies co ON co.id = scf.company_id
      WHERE scf.search_id = $1 ORDER BY scf.name`,
     [searchUuid]
   );
 
-  const firmIds = firmRows.map(f => f.id);
+  // Firm roster — read from global firm_roster + per-search search_firm_review
+  const companyIds = firmRows.map(f => f.company_id);
   let firmRosterRows = [];
-  if (firmIds.length > 0) {
+  if (companyIds.length > 0) {
     const result = await pool.query(
-      `SELECT cfr.*, c.home_location AS candidate_location, c.last_scraped AS candidate_last_scraped
-       FROM coverage_firm_roster cfr
-       LEFT JOIN candidates c ON c.id = cfr.candidate_id
-       WHERE cfr.coverage_firm_id = ANY($1) ORDER BY cfr.name`,
-      [firmIds]
+      `SELECT fr.*,
+              c.slug AS candidate_slug,
+              c.home_location AS candidate_location,
+              c.last_scraped AS candidate_last_scraped,
+              sfr.review_status,
+              sfr.reviewed_at
+       FROM firm_roster fr
+       LEFT JOIN candidates c ON c.id = fr.candidate_id
+       LEFT JOIN search_firm_review sfr ON sfr.firm_roster_id = fr.id AND sfr.search_id = $1
+       WHERE fr.company_id = ANY($2)
+       ORDER BY fr.name`,
+      [searchUuid, companyIds]
     );
     firmRosterRows = result.rows;
+
+    // DEBUG: log Arsenal Capital roster count
+    const arsenalFirm = firmRows.find(f => /arsenal/i.test(f.name));
+    if (arsenalFirm) {
+      const arsenalRoster = firmRosterRows.filter(r => r.company_id === arsenalFirm.company_id);
+      const withReview = arsenalRoster.filter(r => r.review_status != null);
+      console.log(`[DEBUG] Arsenal Capital — firm_roster rows: ${arsenalRoster.length}, with review_status: ${withReview.length}, search: ${searchUuid}`);
+      arsenalRoster.forEach(r => console.log(`  ${r.name} | review_status=${r.review_status} | candidate_slug=${r.candidate_slug}`));
+    }
   }
   const firmRosterMap = {};
   for (const r of firmRosterRows) {
-    if (!firmRosterMap[r.coverage_firm_id]) firmRosterMap[r.coverage_firm_id] = [];
-    firmRosterMap[r.coverage_firm_id].push({
-      candidate_id: r.candidate_slug,
+    if (!firmRosterMap[r.company_id]) firmRosterMap[r.company_id] = [];
+    firmRosterMap[r.company_id].push({
+      candidate_id: r.candidate_slug || null,
       name: r.name,
       title: r.title,
       linkedin_url: r.linkedin_url,
@@ -267,8 +285,8 @@ async function fetchSourcingCoverage(searchUuid) {
       last_scraped: toISO(r.candidate_last_scraped),
       roster_status: r.roster_status,
       source: r.source,
-      reviewed: r.reviewed,
-      reviewed_date: toISO(r.reviewed_date),
+      reviewed: r.review_status != null,
+      reviewed_date: toISO(r.reviewed_at),
       review_status: r.review_status
     });
   }
@@ -294,6 +312,12 @@ async function fetchSourcingCoverage(searchUuid) {
     }
   }
 
+  // DEBUG: log Arsenal verification for Patient Square
+  const _arsenalDebug = firmRows.find(f => /arsenal/i.test(f.name));
+  if (_arsenalDebug) {
+    console.log(`[DEBUG] Arsenal firm object build — roster_last_verified=${_arsenalDebug.roster_last_verified}, scf.last_verified=${_arsenalDebug.last_verified}, roster_verified_by=${_arsenalDebug.roster_verified_by}, search=${searchUuid}`);
+  }
+
   const pe_firms = firmRows.map(f => ({
     firm_id: f.firm_slug,
     name: f.name,
@@ -306,10 +330,10 @@ async function fetchSourcingCoverage(searchUuid) {
     why_target: f.why_target || '',
     manual_complete: f.manual_complete,
     manual_complete_note: f.manual_complete_note || '',
-    last_verified: toISO(f.last_verified),
-    verified_by: f.verified_by,
+    last_verified: toISO(f.roster_last_verified),
+    verified_by: f.roster_verified_by,
     archived_complete: f.archived_complete,
-    roster: firmRosterMap[f.id] || []
+    roster: firmRosterMap[f.company_id] || []
   }));
 
   const coIds = coRows.map(c => c.id);
@@ -416,18 +440,25 @@ async function seedCoverageFromPlaybook(searchUuid, sectorSlugs) {
       [searchUuid, sectorUuid]
     );
 
-    // Bulk insert firm rosters: join playbook roster → newly created coverage firms
+    // Bulk insert firm rosters into global firm_roster
     await pool.query(
-      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-       SELECT scf.id, pfr.candidate_id, pfr.candidate_slug, pfr.name, pfr.title, pfr.linkedin_url, pfr.roster_status
+      `INSERT INTO firm_roster (company_id, candidate_id, name, title, linkedin_url, source)
+       SELECT spf.company_id, pfr.candidate_id, pfr.name, pfr.title, pfr.linkedin_url, 'playbook-import'
        FROM playbook_firm_roster pfr
        JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
-       JOIN search_coverage_firms scf ON scf.company_id = spf.company_id AND scf.search_id = $1
-       WHERE spf.sector_id = $2
-         AND NOT EXISTS (
-           SELECT 1 FROM coverage_firm_roster cfr
-           WHERE cfr.coverage_firm_id = scf.id AND cfr.candidate_slug = pfr.candidate_slug
-         )`,
+       WHERE spf.sector_id = $1 AND pfr.candidate_id IS NOT NULL
+       ON CONFLICT (company_id, candidate_id) WHERE candidate_id IS NOT NULL DO NOTHING`,
+      [sectorUuid]
+    );
+
+    // Create search_firm_review entries for this search for each firm_roster row at these firms
+    await pool.query(
+      `INSERT INTO search_firm_review (search_id, firm_roster_id)
+       SELECT $1, fr.id
+       FROM firm_roster fr
+       JOIN search_coverage_firms scf ON scf.company_id = fr.company_id AND scf.search_id = $1
+       JOIN sector_pe_firms spf ON spf.company_id = fr.company_id AND spf.sector_id = $2
+       ON CONFLICT (search_id, firm_roster_id) DO NOTHING`,
       [searchUuid, sectorUuid]
     );
 
@@ -864,15 +895,25 @@ router.post('/:id/coverage/seed', async (req, res) => {
       );
     }
 
-    // Bulk copy rosters for newly added coverage entries
+    // Bulk copy rosters into global firm_roster
     await pool.query(
-      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-       SELECT scf.id, pfr.candidate_id, pfr.candidate_slug, pfr.name, pfr.title, pfr.linkedin_url, pfr.roster_status
+      `INSERT INTO firm_roster (company_id, candidate_id, name, title, linkedin_url, source)
+       SELECT spf.company_id, pfr.candidate_id, pfr.name, pfr.title, pfr.linkedin_url, 'playbook-import'
        FROM playbook_firm_roster pfr
        JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
-       JOIN search_coverage_firms scf ON scf.company_id = spf.company_id AND scf.search_id = $1
-       WHERE spf.sector_id = $2
-         AND NOT EXISTS (SELECT 1 FROM coverage_firm_roster cfr WHERE cfr.coverage_firm_id = scf.id AND cfr.candidate_slug = pfr.candidate_slug)`,
+       WHERE spf.sector_id = $1 AND pfr.candidate_id IS NOT NULL
+       ON CONFLICT (company_id, candidate_id) WHERE candidate_id IS NOT NULL DO NOTHING`,
+      [sectorUuid]
+    );
+
+    // Create search_firm_review entries for each roster member at firms in this search
+    await pool.query(
+      `INSERT INTO search_firm_review (search_id, firm_roster_id)
+       SELECT $1, fr.id
+       FROM firm_roster fr
+       JOIN search_coverage_firms scf ON scf.company_id = fr.company_id AND scf.search_id = $1
+       JOIN sector_pe_firms spf ON spf.company_id = fr.company_id AND spf.sector_id = $2
+       ON CONFLICT (search_id, firm_roster_id) DO NOTHING`,
       [search.id, sectorUuid]
     );
 
@@ -926,25 +967,39 @@ router.post('/:id/coverage/firms', async (req, res) => {
 
     console.log(`[coverage/firms POST] inserted=${inserted.length} rows`);
 
-    if (inserted.length > 0) {
-      const covFirmId = inserted[0].id;
-      // Copy roster from playbook — check ALL sectors (firm may have roster in a different sector than the search)
-      const { rows: pbFirms } = await pool.query(
-        `SELECT pfr.* FROM playbook_firm_roster pfr
-         JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
-         WHERE spf.company_id = $1
-         ORDER BY pfr.name`,
-        [companyUuid]);
-      // Dedupe by candidate_slug (same person may appear across sectors)
-      const seen = new Set();
-      for (const person of pbFirms) {
-        const key = person.candidate_slug || person.name;
-        if (seen.has(key)) continue;
-        seen.add(key);
+    // Copy roster from playbook into global firm_roster (idempotent)
+    const { rows: pbFirms } = await pool.query(
+      `SELECT pfr.* FROM playbook_firm_roster pfr
+       JOIN sector_pe_firms spf ON spf.id = pfr.sector_pe_firm_id
+       WHERE spf.company_id = $1
+       ORDER BY pfr.name`,
+      [companyUuid]);
+    const seen = new Set();
+    for (const person of pbFirms) {
+      const key = person.candidate_id || person.name;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { rows: frRows } = await pool.query(
+        `INSERT INTO firm_roster (company_id, candidate_id, name, title, linkedin_url, source)
+         VALUES ($1,$2,$3,$4,$5,'playbook-import')
+         ON CONFLICT (company_id, candidate_id) WHERE candidate_id IS NOT NULL DO NOTHING
+         RETURNING id`,
+        [companyUuid, person.candidate_id, person.name, person.title, person.linkedin_url]);
+      // Get the id whether inserted or existing
+      let firmRosterId;
+      if (frRows.length > 0) {
+        firmRosterId = frRows[0].id;
+      } else if (person.candidate_id) {
+        const { rows: existing } = await pool.query(
+          'SELECT id FROM firm_roster WHERE company_id = $1 AND candidate_id = $2', [companyUuid, person.candidate_id]);
+        if (existing.length > 0) firmRosterId = existing[0].id;
+      }
+      // Create search_firm_review entry for this search
+      if (firmRosterId) {
         await pool.query(
-          `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, roster_status)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [covFirmId, person.candidate_id, person.candidate_slug, person.name, person.title, person.linkedin_url, person.roster_status]);
+          `INSERT INTO search_firm_review (search_id, firm_roster_id) VALUES ($1, $2)
+           ON CONFLICT (search_id, firm_roster_id) DO NOTHING`,
+          [search.id, firmRosterId]);
       }
     }
 
@@ -1051,7 +1106,21 @@ router.patch('/:id/coverage/firms/:firmId', async (req, res) => {
     if (error) return res.status(404).json({ error });
 
     const body = req.body;
-    const allowed = ['manual_complete', 'manual_complete_note', 'last_verified', 'verified_by',
+
+    // Verification fields go to companies table (global, firm-level)
+    if (body.last_verified !== undefined || body.verified_by !== undefined) {
+      const vUpdates = [];
+      const vParams = [];
+      let vi = 1;
+      if (body.last_verified !== undefined) { vUpdates.push(`roster_last_verified = $${vi++}`); vParams.push(body.last_verified); }
+      if (body.verified_by !== undefined) { vUpdates.push(`roster_verified_by = $${vi++}`); vParams.push(body.verified_by); }
+      if (body.verified_note !== undefined) { vUpdates.push(`roster_verified_note = $${vi++}`); vParams.push(body.verified_note); }
+      vParams.push(companyUuid);
+      await pool.query(`UPDATE companies SET ${vUpdates.join(',')} WHERE id = $${vi}`, vParams);
+    }
+
+    // Operational fields stay on search_coverage_firms
+    const allowed = ['manual_complete', 'manual_complete_note',
                      'archived_complete', 'why_target', 'name', 'hq', 'size_tier', 'strategy', 'sector_focus'];
     const updates = [];
     const params = [];
@@ -1062,17 +1131,17 @@ router.patch('/:id/coverage/firms/:firmId', async (req, res) => {
         params.push(body[col]);
       }
     }
-    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
 
-    params.push(searchUuid, companyUuid);
-    const { rows } = await pool.query(
-      `UPDATE search_coverage_firms SET ${updates.join(',')} WHERE search_id = $${idx} AND company_id = $${idx + 1} RETURNING *`,
-      params);
-    if (rows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+    if (updates.length > 0) {
+      params.push(searchUuid, companyUuid);
+      await pool.query(
+        `UPDATE search_coverage_firms SET ${updates.join(',')} WHERE search_id = $${idx} AND company_id = $${idx + 1}`,
+        params);
+    }
 
     const coverage = await fetchSourcingCoverage(searchUuid);
     const firm = coverage.pe_firms.find(f => f.firm_id === req.params.firmId);
-    res.json(firm || rows[0]);
+    res.json(firm || {});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1118,36 +1187,59 @@ router.patch('/:id/coverage/firms/:firmId/roster/:candidateId', async (req, res)
     const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
     if (error) return res.status(404).json({ error });
 
-    // Find the coverage firm
-    const { rows: covRows } = await pool.query(
-      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
-      [searchUuid, companyUuid]);
-    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
+    // Find the firm_roster row by company + candidate slug
+    const { rows: frRows } = await pool.query(
+      `SELECT fr.id FROM firm_roster fr
+       JOIN candidates c ON c.id = fr.candidate_id
+       WHERE fr.company_id = $1 AND c.slug = $2`,
+      [companyUuid, req.params.candidateId]);
+    if (frRows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    const firmRosterId = frRows[0].id;
 
     const body = req.body;
-    const allowed = ['reviewed', 'reviewed_date', 'review_status', 'roster_status', 'name', 'title', 'linkedin_url', 'location', 'source'];
-    const updates = [];
-    const params = [];
-    let idx = 1;
-    for (const col of allowed) {
+
+    // Global fields → firm_roster
+    const frAllowed = ['name', 'title', 'linkedin_url', 'location', 'source', 'roster_status'];
+    const frUpdates = [];
+    const frParams = [];
+    let fi = 1;
+    for (const col of frAllowed) {
       if (body[col] !== undefined) {
-        updates.push(`${col} = $${idx++}`);
-        params.push(body[col]);
+        frUpdates.push(`${col} = $${fi++}`);
+        frParams.push(body[col]);
       }
     }
-    if (updates.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+    if (frUpdates.length > 0) {
+      frParams.push(firmRosterId);
+      await pool.query(`UPDATE firm_roster SET ${frUpdates.join(',')} WHERE id = $${fi}`, frParams);
+    }
 
-    params.push(covRows[0].id, req.params.candidateId);
-    const { rows } = await pool.query(
-      `UPDATE coverage_firm_roster SET ${updates.join(',')} WHERE coverage_firm_id = $${idx} AND candidate_slug = $${idx + 1} RETURNING *`,
-      params);
-    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+    // Per-search fields → search_firm_review
+    if (body.review_status !== undefined || body.reviewed !== undefined || body.reviewed_date !== undefined) {
+      await pool.query(
+        `INSERT INTO search_firm_review (search_id, firm_roster_id, review_status, reviewed_at)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (search_id, firm_roster_id) DO UPDATE SET
+           review_status = EXCLUDED.review_status,
+           reviewed_at = EXCLUDED.reviewed_at`,
+        [searchUuid, firmRosterId, body.review_status || null, body.reviewed_date || new Date().toISOString()]);
+    }
+
+    // Return combined result
+    const { rows: result } = await pool.query(
+      `SELECT fr.*, c.slug AS candidate_slug, sfr.review_status, sfr.reviewed_at
+       FROM firm_roster fr
+       LEFT JOIN candidates c ON c.id = fr.candidate_id
+       LEFT JOIN search_firm_review sfr ON sfr.firm_roster_id = fr.id AND sfr.search_id = $1
+       WHERE fr.id = $2`,
+      [searchUuid, firmRosterId]);
+    const r = result[0];
     res.json({
-      candidate_id: rows[0].candidate_slug,
-      name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
-      location: rows[0].location, roster_status: rows[0].roster_status,
-      source: rows[0].source, reviewed: rows[0].reviewed,
-      reviewed_date: toISO(rows[0].reviewed_date), review_status: rows[0].review_status
+      candidate_id: r.candidate_slug,
+      name: r.name, title: r.title, linkedin_url: r.linkedin_url,
+      location: r.location, roster_status: r.roster_status,
+      source: r.source, reviewed: r.review_status != null,
+      reviewed_date: toISO(r.reviewed_at), review_status: r.review_status
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1203,13 +1295,6 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
     const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
     if (error) { console.log(`[roster POST] resolve error: ${error}`); return res.status(404).json({ error }); }
 
-    const { rows: covRows } = await pool.query(
-      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
-      [searchUuid, companyUuid]);
-    if (covRows.length === 0) { console.log('[roster POST] coverage firm not found'); return res.status(404).json({ error: 'Coverage firm not found' }); }
-
-    console.log(`[roster POST] covFirmId=${covRows[0].id}`);
-
     const body = req.body;
     let candidateSlug = body.candidate_id || slugify(body.name || 'person') + '-' + slugify(req.params.firmId).slice(0, 20);
     console.log(`[roster POST] candidateSlug=${candidateSlug}`);
@@ -1242,19 +1327,32 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
     }
     const candidateUuid = candRows[0].id;
 
+    // Insert into global firm_roster (upsert on company+candidate)
     const { rows } = await pool.query(
-      `INSERT INTO coverage_firm_roster (coverage_firm_id, candidate_id, candidate_slug, name, title, linkedin_url, location, roster_status, source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-      [covRows[0].id, candidateUuid, candidateSlug, body.name, body.title || null,
+      `INSERT INTO firm_roster (company_id, candidate_id, name, title, linkedin_url, location, roster_status, source)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (company_id, candidate_id) WHERE candidate_id IS NOT NULL
+       DO UPDATE SET name = EXCLUDED.name, title = EXCLUDED.title, updated_at = NOW()
+       RETURNING *`,
+      [companyUuid, candidateUuid, body.name, body.title || null,
        body.linkedin_url || null, body.location || null, body.roster_status || 'Identified', body.source || null]);
 
-    console.log(`[roster POST] inserted id=${rows[0].id} name=${rows[0].name}`);
+    const firmRosterId = rows[0].id;
+
+    // Upsert search_firm_review for this search (no review yet)
+    await pool.query(
+      `INSERT INTO search_firm_review (search_id, firm_roster_id)
+       VALUES ($1, $2)
+       ON CONFLICT (search_id, firm_roster_id) DO NOTHING`,
+      [searchUuid, firmRosterId]);
+
+    console.log(`[roster POST] inserted firm_roster id=${firmRosterId} name=${rows[0].name}`);
 
     res.status(201).json({
-      candidate_id: rows[0].candidate_slug,
+      candidate_id: candidateSlug,
       name: rows[0].name, title: rows[0].title, linkedin_url: rows[0].linkedin_url,
       location: rows[0].location, roster_status: rows[0].roster_status,
-      source: rows[0].source, reviewed: rows[0].reviewed,
+      source: rows[0].source, reviewed: false,
       reviewed_date: null, review_status: null
     });
   } catch (err) {
@@ -1262,19 +1360,25 @@ router.post('/:id/coverage/firms/:firmId/roster', async (req, res) => {
   }
 });
 
-// DELETE /api/searches/:id/coverage/firms/:firmId/roster/:candidateId — remove roster person
+// DELETE /api/searches/:id/coverage/firms/:firmId/roster/:candidateId — remove from this search only
 router.delete('/:id/coverage/firms/:firmId/roster/:candidateId', async (req, res) => {
   try {
     const { searchUuid, companyUuid, error } = await resolveCoverageIds(req.params.id, req.params.firmId);
     if (error) return res.status(404).json({ error });
-    const { rows: covRows } = await pool.query(
-      'SELECT id FROM search_coverage_firms WHERE search_id = $1 AND company_id = $2',
-      [searchUuid, companyUuid]);
-    if (covRows.length === 0) return res.status(404).json({ error: 'Coverage firm not found' });
-    const { rows } = await pool.query(
-      'DELETE FROM coverage_firm_roster WHERE coverage_firm_id = $1 AND candidate_slug = $2 RETURNING id',
-      [covRows[0].id, req.params.candidateId]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+
+    // Find the firm_roster row
+    const { rows: frRows } = await pool.query(
+      `SELECT fr.id FROM firm_roster fr
+       JOIN candidates c ON c.id = fr.candidate_id
+       WHERE fr.company_id = $1 AND c.slug = $2`,
+      [companyUuid, req.params.candidateId]);
+    if (frRows.length === 0) return res.status(404).json({ error: 'Roster person not found' });
+
+    // Only delete the per-search review overlay — the global firm_roster row persists
+    await pool.query(
+      'DELETE FROM search_firm_review WHERE search_id = $1 AND firm_roster_id = $2',
+      [searchUuid, frRows[0].id]);
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1705,5 +1809,302 @@ function parseDashboardHTML(html, search) {
   }
   return candidates;
 }
+
+// ── GET /api/searches/:id/analytics ─────────────────────────────────────────
+
+router.get('/:id/analytics', async (req, res) => {
+  try {
+    const dbRow = await fetchSearchBySlug(req.params.id);
+    if (!dbRow) return res.status(404).json({ error: 'Search not found' });
+    const searchUuid = dbRow.id;
+
+    const [pipeline, coverage, geography, velocity] = await Promise.all([
+      // ── Pipeline analytics ──
+      (async () => {
+        try {
+          const [stageDistrib, archetypeBreakdown, dqReasons, meetingCount] = await Promise.all([
+            pool.query(
+              `SELECT COALESCE(stage, 'Unknown') AS stage, COUNT(*)::int AS cnt
+               FROM search_pipeline WHERE search_id = $1 GROUP BY stage ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            pool.query(
+              `SELECT COALESCE(archetype, 'Untagged') AS archetype, COUNT(*)::int AS cnt
+               FROM search_pipeline WHERE search_id = $1 GROUP BY archetype ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            pool.query(
+              `SELECT COALESCE(dq_reason, 'No reason given') AS reason, COUNT(*)::int AS cnt
+               FROM search_pipeline
+               WHERE search_id = $1 AND stage IN ('DQ', 'DQ/Not Interested')
+                 AND dq_reason IS NOT NULL AND dq_reason != ''
+               GROUP BY dq_reason ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            pool.query(
+              `SELECT COUNT(*)::int AS cnt
+               FROM pipeline_client_meetings pcm
+               JOIN search_pipeline sp ON sp.id = pcm.pipeline_entry_id
+               WHERE sp.search_id = $1`,
+              [searchUuid]
+            ).then(r => r.rows[0].cnt)
+          ]);
+          return { stages: stageDistrib, archetypes: archetypeBreakdown, dq_reasons: dqReasons, client_meetings: meetingCount };
+        } catch (err) { console.error('Pipeline analytics error:', err.message); return null; }
+      })(),
+
+      // ── Coverage analytics ──
+      (async () => {
+        try {
+          const [firmStatus, topYielding, reviewStatus] = await Promise.all([
+            // Coverage status derived from manual_complete / archived_complete
+            pool.query(
+              `SELECT
+                 CASE
+                   WHEN archived_complete THEN 'Archived'
+                   WHEN manual_complete THEN 'Complete'
+                   ELSE 'In Progress'
+                 END AS status,
+                 COUNT(*)::int AS cnt
+               FROM search_coverage_firms WHERE search_id = $1
+               GROUP BY status ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            // Top firms by pipeline yield: roster members who made it into pipeline
+            pool.query(
+              `SELECT scf.name AS firm_name, scf.size_tier,
+                      COUNT(DISTINCT sp.candidate_id)::int AS pipeline_count
+               FROM search_coverage_firms scf
+               JOIN firm_roster fr ON fr.company_id = scf.company_id
+               JOIN search_pipeline sp ON sp.candidate_id = fr.candidate_id AND sp.search_id = $1
+               WHERE scf.search_id = $1
+               GROUP BY scf.name, scf.size_tier
+               HAVING COUNT(DISTINCT sp.candidate_id) > 0
+               ORDER BY pipeline_count DESC
+               LIMIT 10`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            // Reviewed vs unreviewed via search_firm_review
+            pool.query(
+              `SELECT
+                 CASE WHEN sfr.review_status IS NOT NULL THEN 'Reviewed' ELSE 'Unreviewed' END AS status,
+                 COUNT(*)::int AS cnt
+               FROM search_coverage_firms scf
+               JOIN firm_roster fr ON fr.company_id = scf.company_id
+               LEFT JOIN search_firm_review sfr ON sfr.firm_roster_id = fr.id AND sfr.search_id = $1
+               WHERE scf.search_id = $1
+               GROUP BY status ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows)
+          ]);
+          return { firm_status: firmStatus, top_yielding: topYielding, review_status: reviewStatus };
+        } catch (err) { console.error('Coverage analytics error:', err.message); return null; }
+      })(),
+
+      // ── Geography analytics ──
+      (async () => {
+        try {
+          const [pipelineGeo, rosterGeo] = await Promise.all([
+            pool.query(
+              `SELECT TRIM(SPLIT_PART(location, ',', 2)) AS state, COUNT(*)::int AS cnt
+               FROM search_pipeline
+               WHERE search_id = $1 AND location IS NOT NULL AND location != ''
+                 AND TRIM(SPLIT_PART(location, ',', 2)) != ''
+               GROUP BY state ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            pool.query(
+              `SELECT TRIM(SPLIT_PART(fr.location, ',', 2)) AS state, COUNT(*)::int AS cnt
+               FROM search_coverage_firms scf
+               JOIN firm_roster fr ON fr.company_id = scf.company_id
+               WHERE scf.search_id = $1 AND fr.location IS NOT NULL AND fr.location != ''
+                 AND TRIM(SPLIT_PART(fr.location, ',', 2)) != ''
+               GROUP BY state ORDER BY cnt DESC`,
+              [searchUuid]
+            ).then(r => r.rows)
+          ]);
+          return { pipeline: pipelineGeo, roster: rosterGeo };
+        } catch (err) { console.error('Geography analytics error:', err.message); return null; }
+      })(),
+
+      // ── Velocity analytics ──
+      (async () => {
+        try {
+          const [addedPerWeek, reviewsPerWeek] = await Promise.all([
+            pool.query(
+              `SELECT DATE_TRUNC('week', date_added::timestamptz) AS week, COUNT(*)::int AS cnt
+               FROM search_pipeline
+               WHERE search_id = $1 AND date_added IS NOT NULL
+                 AND date_added::timestamptz >= NOW() - INTERVAL '12 weeks'
+               GROUP BY week ORDER BY week`,
+              [searchUuid]
+            ).then(r => r.rows),
+
+            pool.query(
+              `SELECT DATE_TRUNC('week', sfr.reviewed_at) AS week, COUNT(*)::int AS cnt
+               FROM search_firm_review sfr
+               JOIN firm_roster fr ON fr.id = sfr.firm_roster_id
+               JOIN search_coverage_firms scf ON scf.company_id = fr.company_id AND scf.search_id = $1
+               WHERE sfr.search_id = $1 AND sfr.reviewed_at IS NOT NULL
+                 AND sfr.reviewed_at >= NOW() - INTERVAL '12 weeks'
+               GROUP BY week ORDER BY week`,
+              [searchUuid]
+            ).then(r => r.rows)
+          ]);
+          return { candidates_added: addedPerWeek, reviews_completed: reviewsPerWeek };
+        } catch (err) { console.error('Velocity analytics error:', err.message); return null; }
+      })()
+    ]);
+
+    res.json({ pipeline, coverage, geography, velocity });
+  } catch (err) {
+    console.error('Search analytics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/searches/:id/export ─────────────────────────────────────────────
+
+router.get('/:id/export', async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const dbRow = await fetchSearchBySlug(req.params.id);
+    if (!dbRow) return res.status(404).json({ error: 'Search not found' });
+    const searchUuid = dbRow.id;
+    const searchName = `${dbRow.client_name} — ${dbRow.role_title || dbRow.slug}`;
+
+    const [pipelineRows, coverageRows, rosterRows] = await Promise.all([
+      pool.query(
+        `SELECT sp.name, sp.current_title, sp.current_firm, sp.archetype,
+                sp.location, sp.linkedin_url, sp.stage, sp.source,
+                sp.lancor_screener, sp.screen_date, sp.lancor_assessment,
+                sp.dq_reason, sp.notes, sp.date_added,
+                (SELECT COUNT(*)::int FROM pipeline_client_meetings pcm
+                 WHERE pcm.pipeline_entry_id = sp.id) AS client_meetings
+         FROM search_pipeline sp WHERE sp.search_id = $1
+         ORDER BY sp.stage, sp.name`,
+        [searchUuid]
+      ).then(r => r.rows),
+
+      pool.query(
+        `SELECT scf.name AS firm_name, scf.size_tier, scf.hq, scf.strategy,
+                scf.sector_focus, scf.manual_complete, scf.archived_complete,
+                COUNT(DISTINCT fr.id)::int AS roster_count,
+                COUNT(DISTINCT CASE WHEN sfr.review_status IS NOT NULL THEN fr.id END)::int AS reviewed_count
+         FROM search_coverage_firms scf
+         LEFT JOIN firm_roster fr ON fr.company_id = scf.company_id
+         LEFT JOIN search_firm_review sfr ON sfr.firm_roster_id = fr.id AND sfr.search_id = $1
+         WHERE scf.search_id = $1
+         GROUP BY scf.id, scf.name, scf.size_tier, scf.hq, scf.strategy,
+                  scf.sector_focus, scf.manual_complete, scf.archived_complete
+         ORDER BY scf.name`,
+        [searchUuid]
+      ).then(r => r.rows),
+
+      pool.query(
+        `SELECT fr.name, fr.title, fr.location, fr.linkedin_url, fr.roster_status,
+                scf.name AS firm_name, sfr.review_status, sfr.reviewed_by
+         FROM search_coverage_firms scf
+         JOIN firm_roster fr ON fr.company_id = scf.company_id
+         LEFT JOIN search_firm_review sfr ON sfr.firm_roster_id = fr.id AND sfr.search_id = $1
+         WHERE scf.search_id = $1
+         ORDER BY scf.name, fr.name`,
+        [searchUuid]
+      ).then(r => r.rows)
+    ]);
+
+    const wb = new ExcelJS.Workbook();
+    const headerStyle = {
+      font: { bold: true, color: { argb: 'FFFFFFFF' } },
+      fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6B2D5B' } }
+    };
+
+    // Sheet 1: Pipeline
+    const wsPipeline = wb.addWorksheet('Pipeline');
+    wsPipeline.columns = [
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Current Title', key: 'current_title', width: 28 },
+      { header: 'Current Firm', key: 'current_firm', width: 25 },
+      { header: 'Archetype', key: 'archetype', width: 16 },
+      { header: 'Location', key: 'location', width: 22 },
+      { header: 'Stage', key: 'stage', width: 18 },
+      { header: 'Source', key: 'source', width: 18 },
+      { header: 'Screener', key: 'lancor_screener', width: 14 },
+      { header: 'Screen Date', key: 'screen_date', width: 14 },
+      { header: 'Assessment', key: 'lancor_assessment', width: 20 },
+      { header: 'DQ Reason', key: 'dq_reason', width: 22 },
+      { header: 'Client Meetings', key: 'client_meetings', width: 16 },
+      { header: 'Date Added', key: 'date_added', width: 14 },
+      { header: 'LinkedIn', key: 'linkedin_url', width: 35 },
+      { header: 'Notes', key: 'notes', width: 35 }
+    ];
+    wsPipeline.getRow(1).font = headerStyle.font;
+    wsPipeline.getRow(1).fill = headerStyle.fill;
+    for (const row of pipelineRows) {
+      wsPipeline.addRow({
+        ...row,
+        date_added: row.date_added ? new Date(row.date_added).toLocaleDateString() : '',
+        screen_date: row.screen_date ? new Date(row.screen_date).toLocaleDateString() : ''
+      });
+    }
+
+    // Sheet 2: Coverage Firms
+    const wsCoverage = wb.addWorksheet('Coverage Firms');
+    wsCoverage.columns = [
+      { header: 'Firm', key: 'firm_name', width: 28 },
+      { header: 'Tier', key: 'size_tier', width: 18 },
+      { header: 'HQ', key: 'hq', width: 18 },
+      { header: 'Strategy', key: 'strategy', width: 18 },
+      { header: 'Sector Focus', key: 'sector_focus', width: 22 },
+      { header: 'Roster Count', key: 'roster_count', width: 14 },
+      { header: 'Reviewed', key: 'reviewed_count', width: 14 },
+      { header: 'Status', key: 'status', width: 14 }
+    ];
+    wsCoverage.getRow(1).font = headerStyle.font;
+    wsCoverage.getRow(1).fill = headerStyle.fill;
+    for (const row of coverageRows) {
+      wsCoverage.addRow({
+        ...row,
+        status: row.archived_complete ? 'Archived' : row.manual_complete ? 'Complete' : 'In Progress'
+      });
+    }
+
+    // Sheet 3: Roster Detail
+    const wsRoster = wb.addWorksheet('Roster Detail');
+    wsRoster.columns = [
+      { header: 'Firm', key: 'firm_name', width: 28 },
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Title', key: 'title', width: 28 },
+      { header: 'Location', key: 'location', width: 22 },
+      { header: 'Roster Status', key: 'roster_status', width: 16 },
+      { header: 'Review Status', key: 'review_status', width: 16 },
+      { header: 'Reviewed By', key: 'reviewed_by', width: 14 },
+      { header: 'LinkedIn', key: 'linkedin_url', width: 35 }
+    ];
+    wsRoster.getRow(1).font = headerStyle.font;
+    wsRoster.getRow(1).fill = headerStyle.fill;
+    for (const row of rosterRows) {
+      wsRoster.addRow(row);
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const safeSlug = dbRow.slug.replace(/[^a-z0-9-]/g, '');
+    const filename = `lancor-${safeSlug}-export-${today}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Search export error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

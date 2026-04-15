@@ -113,12 +113,16 @@ const searchesRouter   = require('./routes/searches');
 const candidatesRouter = require('./routes/candidates');
 const templatesRouter  = require('./routes/templates');
 const companiesRouter  = require('./routes/companies');
+const aiSearchRouter   = require('./routes/ai-search');
+const analyticsRouter  = require('./routes/analytics');
 
 app.use('/api/playbooks',  playbooksRouter);
 app.use('/api/searches',   searchesRouter);
 app.use('/api/candidates', candidatesRouter);
 app.use('/api/templates',  templatesRouter);
 app.use('/api/companies',  companiesRouter);
+app.use('/api/ai-search',  aiSearchRouter);
+app.use('/api/analytics',  analyticsRouter);
 
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 

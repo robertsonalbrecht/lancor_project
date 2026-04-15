@@ -418,7 +418,7 @@ function renderSearchDetailView(search, tab) {
     ? `<span class="pill pill-active">Active</span>`
     : `<span class="pill pill-closed">Closed</span>`;
 
-  const tabsHTML = ['Pipeline', 'Sourcing Coverage', 'Weekly Updates', 'Search Kit'].map(t => {
+  const tabsHTML = ['Pipeline', 'Sourcing Coverage', 'Weekly Updates', 'Search Kit', 'Analytics'].map(t => {
     const key = t.toLowerCase().replace(/ /g, '-');
     return `<div class="tab ${tab === key ? 'active' : ''}" onclick="switchSearchTab('${key}')">${t}</div>`;
   }).join('');
@@ -434,6 +434,10 @@ function renderSearchDetailView(search, tab) {
       tabContent = renderWeeklyUpdatesHTML(search);
     } else if (tab === 'search-kit') {
       tabContent = `<div id="search-kit-content"><div class="loading"><div class="spinner"></div> Loading...</div></div>`;
+    } else if (tab === 'analytics') {
+      tabContent = typeof renderSearchAnalyticsTabHTML === 'function'
+        ? renderSearchAnalyticsTabHTML()
+        : '<div class="error-banner">search-analytics.js not loaded</div>';
     }
   } catch (err) {
     console.error('renderSearchDetailView tab error [' + tab + ']:', err);
@@ -481,6 +485,9 @@ function renderSearchDetailView(search, tab) {
   }
   if (tab === 'search-kit') {
     loadSearchKitTab(search);
+  }
+  if (tab === 'analytics') {
+    loadSearchAnalyticsTab();
   }
 }
 
