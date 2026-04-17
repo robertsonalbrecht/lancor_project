@@ -124,6 +124,14 @@ app.use('/api/companies',  companiesRouter);
 app.use('/api/ai-search',  aiSearchRouter);
 app.use('/api/analytics',  analyticsRouter);
 
+// ── Feature flags ──────────────────────────────────────────────────────────
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    aiFeaturesEnabled: process.env.ENABLE_AI_FEATURES !== 'false'
+  });
+});
+
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 
 app.get('/api/stats', async (req, res) => {

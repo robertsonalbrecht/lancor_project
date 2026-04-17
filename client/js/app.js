@@ -220,6 +220,10 @@ function navigateTo(module) {
       if (typeof renderTemplates === 'function') renderTemplates();
       break;
     case 'ai-search':
+      if (window.APP_CONFIG && window.APP_CONFIG.aiFeaturesEnabled === false) {
+        loadHome();
+        return;
+      }
       if (typeof renderAiSearch === 'function') renderAiSearch();
       break;
     case 'analytics':
@@ -1302,8 +1306,29 @@ function getTimeOfDay() {
   return 'evening';
 }
 
+// ── Feature flags ─────────────────────────────────────────────────────────────
+
+window.APP_CONFIG = { aiFeaturesEnabled: true };
+
+async function loadAppConfig() {
+  try {
+    window.APP_CONFIG = await api('GET', '/config');
+  } catch (_) { /* keep defaults */ }
+  applyFeatureFlagsToNav();
+}
+
+function applyFeatureFlagsToNav() {
+  if (!window.APP_CONFIG.aiFeaturesEnabled) {
+    document.querySelectorAll('[data-module="ai-search"]').forEach(el => {
+      const li = el.closest('li');
+      (li || el).style.display = 'none';
+    });
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadAppConfig();
   loadHome();
 });

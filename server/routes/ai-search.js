@@ -4,6 +4,8 @@ const express = require('express');
 const router  = express.Router();
 const pool    = require('../db');
 
+const AI_FEATURES_ENABLED = process.env.ENABLE_AI_FEATURES !== 'false';
+
 let _anthropic = null;
 function getAnthropicClient() {
   if (!_anthropic && process.env.ANTHROPIC_API_KEY) {
@@ -74,6 +76,10 @@ IMPORTANT:
 
 router.post('/', async (req, res) => {
   try {
+    if (!AI_FEATURES_ENABLED) {
+      return res.status(503).json({ error: 'AI features are disabled' });
+    }
+
     const { query } = req.body;
     if (!query || !query.trim()) {
       return res.status(400).json({ error: 'Query is required' });

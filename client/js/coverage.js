@@ -204,8 +204,8 @@ function getReviewStats(entity) {
 }
 
 function coverageBar(pct, manual_complete, entity) {
-  // If verified/complete, show freshness + checkmark instead of bar
-  if (manual_complete && entity && entity.last_verified) {
+  // If verified, show freshness indicator (Fresh/Review/Stale) regardless of manual_complete
+  if (entity && entity.last_verified) {
     const daysAgo = Math.floor((Date.now() - new Date(entity.last_verified).getTime()) / 86400000);
     const freshness = daysAgo <= 365 ? { color: '#2e7d32', label: 'Fresh', bg: '#e8f5e9' }
                     : daysAgo <= 730 ? { color: '#e65100', label: 'Review', bg: '#fff3e0' }
@@ -680,30 +680,8 @@ async function autoLinkCandidatesToRosters(search) {
         if (poolCand.current_title && r.title !== poolCand.current_title) { r.title = poolCand.current_title; r._enriched = true; changed = true; }
       });
 
-      // 2. Remove roster entries for people who no longer work at this firm
-      // Keep if: reviewed, status changed, current_firm matches, or has a current non-excluded role in work history
-      entity.roster = entity.roster.filter(r => {
-        // Keep if user has reviewed or changed status (user made a deliberate decision)
-        if (r.review_status === 'relevant' || r.review_status === 'not_relevant') return true;
-        if (r.roster_status && r.roster_status !== 'Identified') return true;
-        // Check candidate pool for current association
-        const poolCandidate = candidateById[r.candidate_id];
-        if (!poolCandidate) return true; // not in pool — keep (manually added without candidate match)
-        // Keep if current_firm matches (with aliases)
-        if (firmNamesMatchWithAliases(poolCandidate.current_firm, entityName, aliasMap)) return true;
-        // Keep if they have a current (Present) non-excluded role at this firm in work history
-        if (Array.isArray(poolCandidate.work_history)) {
-          const hasCurrentRole = poolCandidate.work_history.some(w =>
-            w.dates && /present/i.test(w.dates) &&
-            w.title && !EXCLUDED_TITLES.test(w.title) &&
-            firmNamesMatchWithAliases(w.company, entityName, aliasMap)
-          );
-          if (hasCurrentRole) return true;
-        }
-        // Person no longer at this firm — remove
-        changed = true;
-        return false;
-      });
+      // Note: roster pruning removed — under the global firm_roster model,
+      // people are only removed via explicit user DELETE action.
     }
 
     // Match PE firms

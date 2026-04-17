@@ -817,7 +817,7 @@ router.post('/merge', async (req, res) => {
     updated += pipelineCount;
 
     // Coverage rosters
-    await pool.query('UPDATE coverage_firm_roster SET candidate_id = $1 WHERE candidate_id = $2', [keepUuid, removeUuid]);
+    await pool.query('UPDATE firm_roster SET candidate_id = $1 WHERE candidate_id = $2', [keepUuid, removeUuid]);
     await pool.query('UPDATE coverage_company_roster SET candidate_id = $1 WHERE candidate_id = $2', [keepUuid, removeUuid]);
 
     // Playbook rosters

@@ -89,6 +89,11 @@ function buildProfileText(candidate, workHistory, sectors) {
 // ── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
+  if (process.env.ENABLE_AI_FEATURES === 'false') {
+    console.log('AI features are disabled (ENABLE_AI_FEATURES=false). Skipping embedding generation.');
+    process.exit(0);
+  }
+
   if (!VOYAGE_API_KEY) {
     console.error('ERROR: VOYAGE_API_KEY not set in .env');
     console.error('Get a free key at https://dash.voyageai.com/');
