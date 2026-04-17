@@ -146,8 +146,17 @@ app.get('/api/config', (req, res) => {
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 
 app.get('/api/stats', async (req, res) => {
+  console.log('=== API Endpoint Debug ===');
+  console.log('Endpoint:', req.path);
+  console.log('Method:', req.method);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'MISSING');
+  console.log('ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING');
+  console.log('VOYAGE_API_KEY:', process.env.VOYAGE_API_KEY ? 'SET' : 'MISSING');
+  console.log('ENABLE_AI_FEATURES:', process.env.ENABLE_AI_FEATURES || '(unset)');
+
   try {
     const db = require('./db');
+    console.log('[/api/stats] Running 5 COUNT queries in parallel...');
     const [searches, candidates, companies, playbooks, templates] = await Promise.all([
       db.query("SELECT COUNT(*)::int AS cnt FROM searches WHERE status IN ('active', 'open')"),
       db.query('SELECT COUNT(*)::int AS cnt FROM candidates'),
@@ -155,14 +164,20 @@ app.get('/api/stats', async (req, res) => {
       db.query("SELECT COUNT(*)::int AS cnt FROM sectors WHERE build_status != 'pending'"),
       db.query('SELECT (SELECT COUNT(*) FROM outreach_messages) + (SELECT COUNT(*) FROM search_templates) AS cnt')
     ]);
-    res.json({
+    const payload = {
       activeSearches: searches.rows[0].cnt,
       totalCandidates: candidates.rows[0].cnt,
       totalCompanies: companies.rows[0].cnt,
       playbooksBuilt: playbooks.rows[0].cnt,
       totalTemplates: parseInt(templates.rows[0].cnt)
-    });
+    };
+    console.log('[/api/stats] Database queries successful:', payload);
+    res.json(payload);
   } catch (err) {
+    console.error('[/api/stats] Database query failed:', err.message);
+    if (err.code) console.error('[/api/stats] Code:', err.code);
+    if (err.detail) console.error('[/api/stats] Detail:', err.detail);
+    console.error('[/api/stats] Full error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -173,10 +188,42 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'client', 'index.html'));
 });
 
+// ── Express error handler (final fallback) ─────────────────────────────────
+
+app.use((err, req, res, next) => {
+  console.error('[express-error]', req.method, req.originalUrl, '→', err.message);
+  if (err.code) console.error('[express-error] Code:', err.code);
+  console.error(err.stack);
+  if (!res.headersSent) res.status(500).json({ error: err.message });
+});
+
 // ── Start ──────────────────────────────────────────────────────────────────
 
+function logBootConfig() {
+  console.log('=== Lancor Search OS Boot ===');
+  console.log('NODE_ENV:', process.env.NODE_ENV || '(unset)');
+  console.log('PORT:', PORT);
+  console.log('DATA_PATH:', DATA_PATH);
+  console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'MISSING');
+  console.log('ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? 'SET' : 'MISSING');
+  console.log('VOYAGE_API_KEY:', process.env.VOYAGE_API_KEY ? 'SET' : 'MISSING');
+  console.log('ENABLE_AI_FEATURES:', process.env.ENABLE_AI_FEATURES || '(unset, default enabled)');
+  console.log('=============================');
+}
+
+logBootConfig();
 ensureDataFiles();
 
 app.listen(PORT, () => {
   console.log(`Lancor Search OS running at http://localhost:${PORT}`);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandled-rejection]', reason && reason.message ? reason.message : reason);
+  if (reason && reason.stack) console.error(reason.stack);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaught-exception]', err.message);
+  console.error(err.stack);
 });
