@@ -106,6 +106,17 @@ function ensureDataFiles() {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
+// Request logger for /api/* — logs method, path, status, duration
+app.use('/api', (req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const dur = Date.now() - start;
+    const tag = res.statusCode >= 500 ? '[api-err]' : '[api]';
+    console.log(`${tag} ${req.method} ${req.originalUrl} → ${res.statusCode} (${dur}ms)`);
+  });
+  next();
+});
+
 // ── API Routes ─────────────────────────────────────────────────────────────
 
 const playbooksRouter  = require('./routes/playbooks');
