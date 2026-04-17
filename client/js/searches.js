@@ -27,15 +27,27 @@ const SECTORS = [
   { id: 'logistics',          label: 'Logistics & Distribution' }
 ];
 
-const LANCOR_TEAM_DEFAULT = [
-  { initials: 'CC', full_name: 'Chris Conti',      role: 'Partner' },
-  { initials: 'SM', full_name: 'Shannon Mace',      role: 'Consultant' },
-  { initials: 'RA', full_name: 'Robby Albrecht',    role: 'Partner' },
-  { initials: 'KC', full_name: 'Kelli Colacarro',   role: 'Consultant' },
-  { initials: 'BD', full_name: 'Brett Dubin',       role: 'Consultant' },
-  { initials: 'TO', full_name: 'Tim OToole',        role: 'Consultant' },
-  { initials: 'TH', full_name: 'Trever Helwig',     role: 'Consultant' }
-];
+// Team is now sourced from /api/users/team at wizard-open time.
+// Cached after first fetch so reopening the wizard is instant.
+let _teamCache = null;
+async function fetchTeamDefaults() {
+  if (_teamCache) return _teamCache;
+  try {
+    const { users } = await api('GET', '/users/team');
+    _teamCache = (users || []).map(u => ({
+      initials: u.initials,
+      full_name: `${u.first_name} ${u.last_name}`.trim(),
+      role: roleTitle(u.role)
+    }));
+  } catch (_) {
+    _teamCache = [];
+  }
+  return _teamCache;
+}
+function roleTitle(role) {
+  if (!role) return '';
+  return role.charAt(0).toUpperCase() + role.slice(1); // admin→Admin, consultant→Consultant, analyst→Analyst
+}
 
 const DEFAULT_PIPELINE_STAGES = [
   { name: 'Pursuing',      color_bg: '#eeeeee', color_text: '#616161' },
@@ -149,6 +161,10 @@ function searchCardHTML(search) {
     ? `<span class="pill pill-active">Active</span>`
     : `<span class="pill pill-closed">Closed</span>`;
 
+  const visibilityBadge = search.visibility === 'private'
+    ? `<span class="pill pill-private" title="Only you and users you share with can see this">🔒 Private</span>`
+    : '';
+
   return `
     <div class="search-card" onclick="renderSearchDetail('${escapeHtml(search.search_id)}')">
       <div class="search-card-header">
@@ -157,6 +173,7 @@ function searchCardHTML(search) {
           <div class="search-role">${escapeHtml(search.role_title || '')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          ${visibilityBadge}
           ${statusBadge}
         </div>
       </div>
@@ -186,17 +203,21 @@ async function toggleArchivedSearches(includeArchived) {
 let wizardData = {};
 let wizardStep = 1;
 
-function renderNewSearchWizard() {
+async function renderNewSearchWizard() {
+  const team = await fetchTeamDefaults();
   wizardData = {
     client_name: '',
     role_title: '',
-    lead_recruiter: 'Robby Albrecht',
+    lead_recruiter: window.CURRENT_USER
+      ? `${window.CURRENT_USER.firstName} ${window.CURRENT_USER.lastName}`.trim()
+      : '',
     date_opened: new Date().toISOString().slice(0, 10),
     archetypes_requested: [],
     ideal_candidate_profile: '',
     sectors: [],
     client_contacts: [],
-    lancor_team: JSON.parse(JSON.stringify(LANCOR_TEAM_DEFAULT))
+    lancor_team: JSON.parse(JSON.stringify(team)),
+    visibility: 'public'
   };
   wizardStep = 1;
   renderWizardStep();
@@ -248,6 +269,21 @@ function renderWizardStep() {
       <div class="form-group">
         <label class="form-label">Ideal Candidate Profile</label>
         <textarea class="form-control" id="wiz-profile" rows="4" placeholder="Describe the ideal candidate...">${escapeHtml(wizardData.ideal_candidate_profile)}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Visibility</label>
+        <div style="display:flex;gap:20px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer">
+            <input type="radio" name="wiz-visibility" value="public" ${wizardData.visibility !== 'private' ? 'checked' : ''}
+              onchange="wizardData.visibility='public'">
+            <span><strong>Public</strong> — visible to everyone on the team</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer">
+            <input type="radio" name="wiz-visibility" value="private" ${wizardData.visibility === 'private' ? 'checked' : ''}
+              onchange="wizardData.visibility='private'">
+            <span>🔒 <strong>Private</strong> — only you and people you share with</span>
+          </label>
+        </div>
       </div>
     `;
   } else if (wizardStep === 2) {

@@ -95,6 +95,44 @@ router.post('/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/auth/change-password — self-serve, requires current password
+router.post('/change-password', async (req, res) => {
+  try {
+    const user = await loadSession(req);
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const current = req.body.current_password || '';
+    const next = req.body.new_password || '';
+
+    if (next.length < 12) return res.status(400).json({ error: 'New password must be at least 12 characters' });
+    if (!/[a-z]/.test(next)) return res.status(400).json({ error: 'New password must contain a lowercase letter' });
+    if (!/[A-Z]/.test(next)) return res.status(400).json({ error: 'New password must contain an uppercase letter' });
+    if (!/[0-9]/.test(next)) return res.status(400).json({ error: 'New password must contain a digit' });
+
+    const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [user.id]);
+    if (rows.length === 0) return res.status(401).json({ error: 'Not authenticated' });
+
+    const ok = await bcrypt.compare(current, rows[0].password_hash);
+    if (!ok) return res.status(400).json({ error: 'Current password is incorrect' });
+
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+    const newHash = await bcrypt.hash(next, rounds);
+    await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      [newHash, user.id]
+    );
+    // Kill all sessions except the current one
+    await pool.query(
+      'DELETE FROM user_sessions WHERE user_id = $1 AND id <> $2',
+      [user.id, user.sessionId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth] change-password error:', err.message);
+    res.status(500).json({ error: 'Change password failed' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', async (req, res) => {
   const user = await loadSession(req);

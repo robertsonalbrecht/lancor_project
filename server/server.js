@@ -158,6 +158,7 @@ const templatesRouter  = require('./routes/templates');
 const companiesRouter  = require('./routes/companies');
 const aiSearchRouter   = require('./routes/ai-search');
 const analyticsRouter  = require('./routes/analytics');
+const usersRouter      = require('./routes/users');
 
 app.use('/api/playbooks',  playbooksRouter);
 app.use('/api/searches',   searchesRouter);
@@ -166,6 +167,7 @@ app.use('/api/templates',  templatesRouter);
 app.use('/api/companies',  companiesRouter);
 app.use('/api/ai-search',  aiSearchRouter);
 app.use('/api/analytics',  analyticsRouter);
+app.use('/api/users',      usersRouter);
 
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 

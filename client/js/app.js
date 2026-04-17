@@ -235,12 +235,7 @@ function navigateTo(module) {
       if (typeof renderAnalytics === 'function') renderAnalytics();
       break;
     case 'settings':
-      content.innerHTML = `
-        <div class="module-placeholder">
-          <div class="empty-state-icon">&#9881;</div>
-          <h2>Settings</h2>
-          <p>Settings panel coming in a future session.</p>
-        </div>`;
+      if (typeof renderSettings === 'function') renderSettings();
       break;
     default:
       loadHome();
@@ -1329,6 +1324,10 @@ async function loadCurrentUser() {
     window.CURRENT_USER = r.user;
     const el = document.getElementById('nav-user');
     if (el) el.textContent = `${r.user.firstName} ${r.user.lastName} (${r.user.role})`;
+    // Reveal nav items gated by role
+    document.querySelectorAll('[data-role-required]').forEach(li => {
+      if (li.getAttribute('data-role-required') === r.user.role) li.style.display = '';
+    });
   } catch (_) {
     // api() already redirects to /login on 401; nothing to do here
   }
