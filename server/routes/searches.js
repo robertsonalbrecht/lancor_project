@@ -6,6 +6,24 @@ const fs = require('fs');
 const pool = require('../db');
 const router = express.Router();
 const { slugify } = require('../utils/shared');
+const {
+  loadSearchAccess,
+  requireSearchLevel,
+  visibilityClause,
+  computeAccess
+} = require('../middleware/search-access');
+
+// Run loadSearchAccess for every route that has an :id param. This attaches
+// req.search and req.searchAccess, 404s on missing, 403s on no-access.
+router.param('id', loadSearchAccess);
+
+// Blanket rule: any mutating request on an :id route requires at least 'edit'
+// level. Individual routes can layer requireSearchLevel('admin') on top for
+// ownership-only operations (e.g. DELETE /:id, visibility changes, sharing).
+router.use('/:id', (req, res, next) => {
+  if (req.method === 'GET') return next();
+  return requireSearchLevel('edit')(req, res, next);
+});
 
 // Resolve null candidate_id on roster entries by matching LinkedIn URL or name
 async function resolveUnlinkedRosterEntries() {
@@ -176,7 +194,10 @@ async function buildSearchResponse(dbRow) {
     pipeline,
     pipeline_stages: dbRow.pipeline_stages || JSON.parse(JSON.stringify(DEFAULT_PIPELINE_STAGES)),
     sourcing_coverage: sourcingCoverage,
-    search_kit: searchKit
+    search_kit: searchKit,
+    visibility: dbRow.visibility || 'public',
+    created_by: dbRow.created_by || null,
+    updated_by: dbRow.updated_by || null
   };
 }
 
@@ -498,8 +519,22 @@ async function seedCoverageFromPlaybook(searchUuid, sectorSlugs) {
 router.get('/', async (req, res) => {
   try {
     const includeClosed = req.query.include === 'closed';
-    const whereClause = includeClosed ? '' : "WHERE status != 'closed'";
-    const { rows } = await pool.query(`SELECT * FROM searches ${whereClause} ORDER BY date_opened DESC`);
+    const conditions = [];
+    const params = [];
+    let p = 1;
+
+    if (!includeClosed) conditions.push("s.status != 'closed'");
+
+    const vis = visibilityClause(req.user, p);
+    conditions.push(vis.sql);
+    params.push(...vis.params);
+    p += vis.params.length;
+
+    const whereSql = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+    const { rows } = await pool.query(
+      `SELECT s.* FROM searches s ${whereSql} ORDER BY s.date_opened DESC`,
+      params
+    );
     const searches = await Promise.all(rows.map(r => buildSearchResponse(r)));
     res.json({ searches });
   } catch (err) {
@@ -510,8 +545,15 @@ router.get('/', async (req, res) => {
 // GET /api/searches/active — return active searches as [{id, name}]
 router.get('/active', async (req, res) => {
   try {
+    const vis = visibilityClause(req.user, 1);
+    const params = [...vis.params];
     const { rows } = await pool.query(
-      "SELECT slug, client_name, role_title FROM searches WHERE status IN ('active', 'open') ORDER BY client_name"
+      `SELECT s.slug, s.client_name, s.role_title
+         FROM searches s
+        WHERE s.status IN ('active', 'open')
+          AND ${vis.sql}
+        ORDER BY s.client_name`,
+      params
     );
     res.json(rows.map(r => ({ id: r.slug, name: `${r.client_name} \u2014 ${r.role_title}` })));
   } catch (err) {
@@ -542,14 +584,17 @@ router.post('/', async (req, res) => {
     }
     const today = new Date().toISOString();
 
+    const visibility = body.visibility === 'private' ? 'private' : 'public';
     const { rows } = await pool.query(
       `INSERT INTO searches (slug, client_name, role_title, status, lead_recruiter,
-         ideal_candidate_profile, archetypes_requested, date_opened, pipeline_stages)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+         ideal_candidate_profile, archetypes_requested, date_opened, pipeline_stages,
+         visibility, created_by, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11) RETURNING *`,
       [searchSlug, body.client_name, body.role_title || null, 'active',
        body.lead_recruiter || null, body.ideal_candidate_profile || '',
        body.archetypes_requested || '{}', body.date_opened || today,
-       JSON.stringify(body.pipeline_stages || DEFAULT_PIPELINE_STAGES)]
+       JSON.stringify(body.pipeline_stages || DEFAULT_PIPELINE_STAGES),
+       visibility, req.user.id]
     );
     const dbRow = rows[0];
 
@@ -565,8 +610,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/searches/:id — update search
-router.put('/:id', async (req, res) => {
+// PUT /api/searches/:id — update search (edit-level access required)
+router.put('/:id', requireSearchLevel('edit'), async (req, res) => {
   try {
     const dbRow = await fetchSearchBySlug(req.params.id);
     if (!dbRow) return res.status(404).json({ error: 'Search not found' });
@@ -595,6 +640,21 @@ router.put('/:id', async (req, res) => {
       updates.push(`pipeline_stages = $${idx++}`);
       params.push(JSON.stringify(body.pipeline_stages));
     }
+    // Visibility change requires admin-level access on the search
+    if (body.visibility !== undefined) {
+      if (req.searchAccess !== 'admin') {
+        return res.status(403).json({ error: 'Only the owner or an admin can change visibility' });
+      }
+      if (body.visibility !== 'public' && body.visibility !== 'private') {
+        return res.status(400).json({ error: 'visibility must be "public" or "private"' });
+      }
+      updates.push(`visibility = $${idx++}`);
+      params.push(body.visibility);
+    }
+
+    // Always update updated_by on mutation
+    updates.push(`updated_by = $${idx++}`);
+    params.push(req.user.id);
 
     if (updates.length > 0) {
       params.push(req.params.id);
@@ -641,12 +701,12 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/searches/:id/close — close a search
-router.put('/:id/close', async (req, res) => {
+// PUT /api/searches/:id/close — close a search (edit-level access)
+router.put('/:id/close', requireSearchLevel('edit'), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      "UPDATE searches SET status = 'closed', date_closed = NOW() WHERE slug = $1 RETURNING *",
-      [req.params.id]
+      "UPDATE searches SET status = 'closed', date_closed = NOW(), updated_by = $2 WHERE slug = $1 RETURNING *",
+      [req.params.id, req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Search not found' });
     res.json(await buildSearchResponse(rows[0]));
@@ -655,8 +715,8 @@ router.put('/:id/close', async (req, res) => {
   }
 });
 
-// DELETE /api/searches/:id — delete search (cascades handle children)
-router.delete('/:id', async (req, res) => {
+// DELETE /api/searches/:id — delete search (admin-level = owner or system admin)
+router.delete('/:id', requireSearchLevel('admin'), async (req, res) => {
   try {
     const { rows } = await pool.query('DELETE FROM searches WHERE slug = $1 RETURNING id', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Search not found' });
@@ -2103,6 +2163,104 @@ router.get('/:id/export', async (req, res) => {
     res.end();
   } catch (err) {
     console.error('Search export error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Sharing API ──────────────────────────────────────────────────────────────
+
+// GET /api/searches/:id/access — list users with explicit access (admin only)
+router.get('/:id/access', requireSearchLevel('admin'), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.id, u.email, u.first_name, u.last_name, u.role,
+              sua.access_level, sua.created_at, sua.granted_by
+         FROM search_user_access sua
+         JOIN users u ON u.id = sua.user_id
+        WHERE sua.search_id = $1
+        ORDER BY u.last_name, u.first_name`,
+      [req.search.id]
+    );
+    // Also include the owner as a synthetic entry for clarity
+    const { rows: ownerRows } = await pool.query(
+      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
+      [req.search.created_by]
+    );
+    res.json({
+      owner: ownerRows[0] || null,
+      grants: rows.map(r => ({
+        user_id: r.id,
+        email: r.email,
+        first_name: r.first_name,
+        last_name: r.last_name,
+        role: r.role,
+        access_level: r.access_level,
+        granted_at: r.created_at,
+        granted_by: r.granted_by
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/searches/:id/share — grant access (admin only)
+// Body: { email: string, access_level?: 'view' | 'edit' | 'admin' }
+router.post('/:id/share', requireSearchLevel('admin'), async (req, res) => {
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    const accessLevel = req.body.access_level || 'view';
+    if (!email) return res.status(400).json({ error: 'email is required' });
+    if (!['view', 'edit', 'admin'].includes(accessLevel)) {
+      return res.status(400).json({ error: 'access_level must be view, edit, or admin' });
+    }
+
+    const { rows: userRows } = await pool.query(
+      'SELECT id, email, first_name, last_name, role, is_active FROM users WHERE LOWER(email) = $1',
+      [email]
+    );
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
+    const target = userRows[0];
+    if (!target.is_active) return res.status(400).json({ error: 'User is deactivated' });
+    if (target.id === req.search.created_by) {
+      return res.status(400).json({ error: 'User is already the owner' });
+    }
+
+    await pool.query(
+      `INSERT INTO search_user_access (search_id, user_id, access_level, granted_by)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (search_id, user_id)
+         DO UPDATE SET access_level = EXCLUDED.access_level,
+                       granted_by = EXCLUDED.granted_by,
+                       created_at = NOW()`,
+      [req.search.id, target.id, accessLevel, req.user.id]
+    );
+
+    res.json({
+      ok: true,
+      grant: {
+        user_id: target.id,
+        email: target.email,
+        first_name: target.first_name,
+        last_name: target.last_name,
+        access_level: accessLevel
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/searches/:id/access/:userId — revoke access (admin only)
+router.delete('/:id/access/:userId', requireSearchLevel('admin'), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM search_user_access WHERE search_id = $1 AND user_id = $2',
+      [req.search.id, req.params.userId]
+    );
+    if (rowCount === 0) return res.status(404).json({ error: 'Grant not found' });
+    res.json({ ok: true });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

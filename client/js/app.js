@@ -132,6 +132,11 @@ async function api(method, path, body) {
   }
   try {
     const res = await fetch('/api' + path, opts);
+    if (res.status === 401) {
+      const current = window.location.pathname + window.location.search;
+      window.location.href = '/login?redirect=' + encodeURIComponent(current);
+      throw new Error('Not authenticated');
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(err.error || `HTTP ${res.status}`);
@@ -230,12 +235,7 @@ function navigateTo(module) {
       if (typeof renderAnalytics === 'function') renderAnalytics();
       break;
     case 'settings':
-      content.innerHTML = `
-        <div class="module-placeholder">
-          <div class="empty-state-icon">&#9881;</div>
-          <h2>Settings</h2>
-          <p>Settings panel coming in a future session.</p>
-        </div>`;
+      if (typeof renderSettings === 'function') renderSettings();
       break;
     default:
       loadHome();
@@ -1306,15 +1306,38 @@ function getTimeOfDay() {
   return 'evening';
 }
 
-// ── Feature flags ─────────────────────────────────────────────────────────────
+// ── Feature flags + current user ──────────────────────────────────────────────
 
 window.APP_CONFIG = { aiFeaturesEnabled: true };
+window.CURRENT_USER = null;
 
 async function loadAppConfig() {
   try {
     window.APP_CONFIG = await api('GET', '/config');
   } catch (_) { /* keep defaults */ }
   applyFeatureFlagsToNav();
+}
+
+async function loadCurrentUser() {
+  try {
+    const r = await api('GET', '/auth/me');
+    window.CURRENT_USER = r.user;
+    const el = document.getElementById('nav-user');
+    if (el) el.textContent = `${r.user.firstName} ${r.user.lastName} (${r.user.role})`;
+    // Reveal nav items gated by role
+    document.querySelectorAll('[data-role-required]').forEach(li => {
+      if (li.getAttribute('data-role-required') === r.user.role) li.style.display = '';
+    });
+  } catch (_) {
+    // api() already redirects to /login on 401; nothing to do here
+  }
+}
+
+async function logout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  } catch (_) { /* ignore */ }
+  window.location.href = '/login';
 }
 
 function applyFeatureFlagsToNav() {
@@ -1330,5 +1353,6 @@ function applyFeatureFlagsToNav() {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadAppConfig();
+  loadCurrentUser();
   loadHome();
 });

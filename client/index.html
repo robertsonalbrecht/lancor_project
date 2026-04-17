@@ -70,8 +70,11 @@
     </ul>
 
     <div class="navbar-right">
+      <span id="nav-user" class="nav-user" style="font-size:0.82rem;color:var(--lancor-text-muted);margin-right:10px;"></span>
       <button class="icon-btn" title="Settings" aria-label="Settings"
               onclick="navigateTo('settings')">&#9881;</button>
+      <button class="icon-btn" title="Sign out" aria-label="Sign out"
+              onclick="logout()" style="margin-left:4px;">&#x23FB;</button>
     </div>
   </nav>
 
@@ -94,6 +97,7 @@
   <script src="/js/ai-search.js?v=17"></script>
   <script src="/js/analytics.js?v=17"></script>
   <script src="/js/search-analytics.js?v=17"></script>
+  <script src="/js/settings.js?v=17"></script>
 
 </body>
 </html>

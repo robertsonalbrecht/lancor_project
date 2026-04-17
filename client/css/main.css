@@ -614,6 +614,7 @@ tbody tr:hover {
 .pill-closed  { background: #fafafa; color: var(--lancor-text-muted); border: 1px solid var(--lancor-border); }
 .pill-pending { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
 .pill-partial { background: var(--lancor-light); color: var(--lancor-purple); border: 1px solid #ce93d8; }
+.pill-private { background: var(--lancor-light); color: var(--lancor-purple); border: 1px solid #ce93d8; font-weight: 600; }
 
 /* ── Coverage Bands ───────────────────────────────────────────────────────── */
 
@@ -1797,3 +1798,97 @@ tr.row-open > td {
   font-size: 0.82rem;
   font-weight: 600;
 }
+
+/* ── Settings / Admin ──────────────────────────────────────────────────────── */
+.settings-page { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.settings-header { margin-bottom: 16px; }
+.settings-header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--lancor-text); }
+.settings-card {
+  background: var(--lancor-white);
+  border: 1px solid var(--lancor-border);
+  border-radius: 8px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+}
+.settings-card h2 { margin: 0 0 14px; font-size: 1.05rem; font-weight: 700; color: var(--lancor-text); }
+.settings-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; }
+.settings-kv > div { display: flex; flex-direction: column; gap: 2px; }
+.settings-k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--lancor-text-muted); font-weight: 600; }
+.settings-v { font-size: 0.92rem; color: var(--lancor-text); }
+
+.admin-page { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.admin-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.admin-header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--lancor-text); }
+.admin-header > div { display: flex; gap: 8px; }
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--lancor-white);
+  border: 1px solid var(--lancor-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+.admin-users-table th {
+  background: var(--lancor-gray);
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  color: var(--lancor-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--lancor-border);
+}
+.admin-users-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--lancor-border);
+  vertical-align: middle;
+}
+.admin-users-table tr:last-child td { border-bottom: none; }
+.admin-actions-col { text-align: right; white-space: nowrap; }
+
+.admin-user-cell { display: flex; align-items: center; gap: 10px; }
+.admin-initials {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--lancor-light); color: var(--lancor-purple);
+  font-weight: 700; font-size: 0.78rem; flex-shrink: 0;
+}
+.admin-name { font-weight: 600; color: var(--lancor-text); }
+.admin-email { font-size: 0.82rem; color: var(--lancor-text-muted); }
+.admin-you { font-size: 0.75rem; color: var(--lancor-purple); font-weight: 600; margin-left: 4px; }
+
+.admin-role-select { font-size: 0.85rem; padding: 4px 8px; min-width: 120px; }
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--lancor-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.btn-icon:hover:not(:disabled) { background: var(--lancor-light); border-color: var(--lancor-purple); }
+.btn-icon:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.admin-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.admin-modal {
+  background: var(--lancor-white);
+  border-radius: 8px;
+  padding: 28px;
+  width: 100%; max-width: 440px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+.admin-modal h2 { margin: 0 0 18px; font-size: 1.1rem; font-weight: 700; }
+.form-hint { font-size: 0.78rem; color: var(--lancor-text-muted); margin-top: 4px; }

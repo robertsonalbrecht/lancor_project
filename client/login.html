@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Lancor Search OS</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: var(--lancor-gray);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      padding: 36px 32px;
+      background: var(--lancor-white);
+      border: 1px solid var(--lancor-border);
+      border-radius: 8px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.04);
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-header img {
+      height: 44px;
+      margin-bottom: 10px;
+    }
+    .login-header .subtitle {
+      display: block;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      color: var(--lancor-text-muted);
+      font-weight: 600;
+    }
+    .login-form label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--lancor-text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .login-form input {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      border: 1px solid var(--lancor-border);
+      border-radius: 4px;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+    .login-form input:focus {
+      outline: none;
+      border-color: var(--lancor-purple);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--lancor-purple);
+      color: var(--lancor-white);
+      border: none;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+    .login-btn:hover { background: var(--lancor-purple-dark); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error {
+      color: #c62828;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      text-align: center;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-header">
+      <img src="/img/lancor-logo.png" alt="Lancor">
+      <span class="subtitle">SEARCH OS</span>
+    </div>
+    <form id="login-form" class="login-form" autocomplete="on">
+      <div id="login-error" class="login-error"></div>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required autofocus>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button id="login-btn" type="submit" class="login-btn">Sign in</button>
+    </form>
+  </div>
+  <script src="/js/login.js"></script>
+</body>
+</html>
