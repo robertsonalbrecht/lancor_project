@@ -103,7 +103,23 @@ function ensureDataFiles() {
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const { requireAuth } = require('./middleware/auth');
+
+app.use(helmet({
+  // CSP is disabled because the existing SPA uses inline onclick handlers.
+  // Revisit once the client is refactored to use addEventListener.
+  contentSecurityPolicy: false
+}));
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
+
+// Serve the login page before the static middleware so /login always resolves.
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'client', 'login.html'));
+});
+
 app.use(express.static(path.join(__dirname, '..', 'client')));
 
 // Request logger for /api/* — logs method, path, status, duration
@@ -117,7 +133,23 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// ── API Routes ─────────────────────────────────────────────────────────────
+// ── Public API (no auth required) ──────────────────────────────────────────
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    aiFeaturesEnabled: process.env.ENABLE_AI_FEATURES !== 'false'
+  });
+});
+
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
+// ── Auth lockdown: everything under /api below this line requires a session
+// (or, for /api/candidates/prefill, a valid X-API-Token header) ─────────────
+
+app.use('/api', requireAuth);
+
+// ── Protected API Routes ───────────────────────────────────────────────────
 
 const playbooksRouter  = require('./routes/playbooks');
 const searchesRouter   = require('./routes/searches');
@@ -134,14 +166,6 @@ app.use('/api/templates',  templatesRouter);
 app.use('/api/companies',  companiesRouter);
 app.use('/api/ai-search',  aiSearchRouter);
 app.use('/api/analytics',  analyticsRouter);
-
-// ── Feature flags ──────────────────────────────────────────────────────────
-
-app.get('/api/config', (req, res) => {
-  res.json({
-    aiFeaturesEnabled: process.env.ENABLE_AI_FEATURES !== 'false'
-  });
-});
 
 // ── Stats endpoint (used by home dashboard) ────────────────────────────────
 
