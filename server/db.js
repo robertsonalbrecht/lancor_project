@@ -29,6 +29,96 @@ console.log('[db]   database:', dbInfo.database);
 console.log('[db]   user:', dbInfo.user);
 if (dbInfo.parseError) console.error('[db]   parse error:', dbInfo.parseError);
 
+// ── DATABASE_URL detailed diagnostics ─────────────────────────────────────
+// Goal: figure out why URL parsing fails without leaking the password.
+// Enable raw value logging with DEBUG_RAW_DB_URL=true (USE ONCE, THEN REMOVE).
+
+function diagnoseDatabaseUrl(raw) {
+  console.log('=== DATABASE_URL DIAGNOSTICS ===');
+
+  if (!raw) {
+    console.log('  value: (missing)');
+    console.log('================================');
+    return;
+  }
+
+  console.log('  length:', raw.length);
+  console.log('  first 15 chars:', JSON.stringify(raw.slice(0, 15)));
+  console.log('  last 10 chars: ', JSON.stringify(raw.slice(-10)));
+
+  // Whitespace / newline at boundaries — a common copy-paste mistake
+  if (/^\s/.test(raw))   console.warn('  ⚠  leading whitespace detected');
+  if (/\s$/.test(raw))   console.warn('  ⚠  trailing whitespace detected');
+  if (/\r|\n/.test(raw)) console.warn('  ⚠  embedded CR/LF detected');
+
+  // Structural char counts — a normal URL should have: 2 ":" in the authority,
+  // exactly one "@" separating user:pass from host, and 1+ "/" before the db name.
+  const count = (ch) => (raw.split(ch).length - 1);
+  console.log('  char counts:',
+    `@=${count('@')}`,
+    `:=${count(':')}`,
+    `/=${count('/')}`,
+    `?=${count('?')}`,
+    `#=${count('#')}`,
+    `%=${count('%')}`);
+
+  // Scan for chars outside the URL-safe set. If the password contains any of
+  // these (unencoded), the URL parser will misread the structure.
+  const URL_SAFE = /[a-zA-Z0-9\-._~:/?#\[\]@!$&'()*+,;=%]/;
+  const suspicious = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (!URL_SAFE.test(raw[i])) {
+      suspicious.push({ index: i, char: JSON.stringify(raw[i]), code: raw.charCodeAt(i) });
+    }
+  }
+  if (suspicious.length) {
+    console.warn(`  ⚠  ${suspicious.length} non-URL-safe char(s) found (first 10 shown):`);
+    suspicious.slice(0, 10).forEach(s =>
+      console.warn(`     index ${s.index}: ${s.char} (char code ${s.code})`)
+    );
+  } else {
+    console.log('  no non-URL-safe chars detected');
+  }
+
+  // Explicit WHATWG URL parse
+  console.log('  --- WHATWG URL.parse ---');
+  try {
+    const u = new URL(raw);
+    console.log('    OK  protocol:', u.protocol, 'host:', u.hostname, 'port:', u.port, 'pathname:', u.pathname, 'hasPassword:', !!u.password);
+  } catch (err) {
+    console.error('    FAILED:', err.message);
+    if (err.code) console.error('    code:', err.code);
+    console.error('    stack:', err.stack);
+  }
+
+  // pg-connection-string is what pg itself uses to parse the URL.
+  // If THIS fails, that's the actual parser blowing up at connection time.
+  console.log('  --- pg-connection-string.parse ---');
+  try {
+    const { parse } = require('pg-connection-string');
+    const p = parse(raw);
+    console.log('    OK  host:', p.host, 'port:', p.port, 'database:', p.database, 'user:', p.user, 'hasPassword:', !!p.password);
+  } catch (err) {
+    console.error('    FAILED:', err.message);
+    if (err.code) console.error('    code:', err.code);
+    if (err.input) console.error('    input (redacted):', String(err.input).replace(/:[^:@/]+@/, ':***@'));
+    console.error('    stack:', err.stack);
+  }
+
+  // Last-resort raw dump, gated behind an explicit env var. Leaks password.
+  if (process.env.DEBUG_RAW_DB_URL === 'true') {
+    console.warn('  ⚠  DEBUG_RAW_DB_URL=true — RAW URL (INCLUDES PASSWORD) will be printed');
+    console.warn('  ⚠  remove this env var after debugging and rotate the password if logs have been shared');
+    console.log('  raw DATABASE_URL:', raw);
+  } else {
+    console.log('  (set DEBUG_RAW_DB_URL=true for one deploy to print the raw value — leaks the password)');
+  }
+
+  console.log('================================');
+}
+
+diagnoseDatabaseUrl(process.env.DATABASE_URL);
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
