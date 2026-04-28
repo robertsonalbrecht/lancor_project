@@ -1544,6 +1544,33 @@ router.post('/:id/dashboard', async (req, res) => {
   }
 });
 
+// ── GET /api/searches/:id/dashboard.pdf ─────────────────────────────────────
+// Streams a PDF of the current pipeline dashboard. The browser sees the
+// Content-Disposition: attachment header and drops the file in Downloads —
+// no print dialog, no user interaction beyond clicking the button.
+
+router.get('/:id/dashboard.pdf', async (req, res) => {
+  try {
+    const dbRow = await fetchSearchBySlug(req.params.id);
+    if (!dbRow) return res.status(404).json({ error: 'Search not found' });
+    const search = await buildSearchResponse(dbRow);
+
+    const html = generateDashboardHTML(search);
+    const pdf = await renderPdfFromHtml(html);
+
+    const safeName = s => (s || '').replace(/[^a-zA-Z0-9]/g, '');
+    const filename = `${safeName(search.client_name)}_${safeName(search.role_title)}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdf.length);
+    res.end(pdf);
+  } catch (err) {
+    console.error('[dashboard.pdf] render failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── ROUTES: Import dashboard ─────────────────────────────────────────────────
 
 router.post('/:id/import-dashboard', async (req, res) => {
@@ -1803,30 +1830,301 @@ router.post('/:id/ai/generate-pitchbook-params', async (req, res) => {
   }
 });
 
-// ── Dashboard HTML generator (unchanged) ─────────────────────────────────────
+// ── Dashboard HTML generator ─────────────────────────────────────────────────
+// Renders the Lancor weekly pipeline update (matches the pipeline-update.skill
+// layout). Deterministic template render — no AI, no parser. Consumes the
+// buildSearchResponse() payload and writes a self-contained HTML file to
+// outputs/dashboards/. A matching PDF is rendered on demand by Puppeteer.
+
+// ── Puppeteer singleton + PDF renderer ──────────────────────────────────────
+// We keep one headless Chromium alive for the life of the process. First call
+// triggers launch (1-2s); subsequent calls reuse the browser and just open a
+// new page.
+
+let _browserPromise = null;
+async function _getBrowser() {
+  if (!_browserPromise) {
+    const puppeteer = require('puppeteer');
+    _browserPromise = puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }).catch(err => { _browserPromise = null; throw err; });
+  }
+  return _browserPromise;
+}
+
+async function renderPdfFromHtml(html) {
+  const browser = await _getBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdf = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.55in', bottom: '0.7in', left: '0.55in', right: '0.55in' },
+      preferCSSPageSize: true
+    });
+    return pdf;
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+
+const DASH_PURPLE      = '#5E1B5F';
+const DASH_GRAY        = '#6E6E6E';
+const DASH_GRAY_LIGHT  = '#F5F5F5';
+const DASH_BORDER      = '#E3E3E3';
+
+const STATUS_STYLES = {
+  'Interviewing': { bg: '#E6F4EA', fg: '#1E7A3C' },
+  'Qualifying':   { bg: '#EAF1FB', fg: '#1F4E8C' },
+  'Scheduling':   { bg: '#FFF4D6', fg: '#8A6100' },
+  'On Hold':      { bg: '#EDEDED', fg: '#555555' },
+  'Pursuing':     { bg: '#F3E9F4', fg: DASH_PURPLE },
+  'DQ / NI':      { bg: '#FBEAEA', fg: '#A02020' }
+};
+
+// Order sections are rendered and KPI tiles appear in.
+const SECTION_ORDER = ['Interviewing', 'Qualifying', 'Scheduling', 'On Hold', 'Pursuing', 'DQ / NI'];
+
+// Map an app pipeline stage to the display section it belongs in.
+function _sectionForStage(stage) {
+  switch (stage) {
+    case 'Interviewing':        return 'Interviewing';
+    case 'Qualifying':          return 'Qualifying';
+    case 'Scheduling':          return 'Scheduling';
+    case 'Hold':                return 'On Hold';
+    case 'Pursuing':
+    case 'Outreach Sent':       return 'Pursuing';
+    case 'DQ':
+    case 'NI':
+    case 'DQ/Not Interested':   return 'DQ / NI';
+    default:                    return null;
+  }
+}
+
+// Lazily-loaded, cached base64 data URI of the Lancor logo, so generated HTML
+// is self-contained and prints correctly offline.
+let _logoDataUriCache = null;
+function _logoDataUri() {
+  if (_logoDataUriCache !== null) return _logoDataUriCache;
+  try {
+    const logoPath = path.join(__dirname, '..', '..', 'client', 'img', 'lancor-logo.png');
+    const buf = fs.readFileSync(logoPath);
+    _logoDataUriCache = 'data:image/png;base64,' + buf.toString('base64');
+  } catch (e) {
+    _logoDataUriCache = '';
+  }
+  return _logoDataUriCache;
+}
+
+function _esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Shorten working-doc-style note phrases for the client-facing view.
+function _condenseNote(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/\bMet with\b/gi, 'Met w/')
+    .replace(/\bSpoke with\b/gi, 'Spoke w/')
+    .replace(/\bScheduled with\b/gi, 'Scheduled w/')
+    .replace(/\s+on\s+(\d)/g, ' $1')
+    .replace(/\.\s*$/, '')
+    .trim();
+}
+
+function _statusPill(section) {
+  const s = STATUS_STYLES[section] || { bg: '#EEE', fg: '#333' };
+  return `<span class="pill" style="background:${s.bg};color:${s.fg};">${_esc(section)}</span>`;
+}
+
+// Map a client-meeting status to the ✓ / S / · glyph with its accent color.
+function _teamGlyph(status) {
+  if (status === 'Met')       return { glyph: '✓', color: '#1E7A3C' };
+  if (status === 'Scheduled') return { glyph: 'S', color: '#8A6100' };
+  return { glyph: '·', color: '#BBB' };
+}
+
+// Build rendered props for a single candidate — used by all section renderers.
+// Every name is hyperlinked: direct LinkedIn profile if we have it, else a
+// LinkedIn people-search URL on "{name} {current_firm}" as a fallback.
+function _candProps(c) {
+  const firmTitle = [c.current_title, c.current_firm].filter(Boolean).join(' @ ');
+  let url = c.linkedin_url;
+  if (!url && c.name) {
+    const query = [c.name, c.current_firm].filter(Boolean).join(' ');
+    url = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}`;
+  }
+  const nameLink = `<a href="${_esc(url)}" style="color:${DASH_PURPLE};text-decoration:none;"><b>${_esc(c.name)}</b></a>`;
+  return { firmTitle, nameLink, location: c.location || '' };
+}
+
+function _candidateTable(candidates, teamNames, section) {
+  const teamHeaders = teamNames.map(t => `<th>${_esc(t)}</th>`).join('');
+  const rows = candidates.map(c => {
+    const p = _candProps(c);
+    const meta = p.firmTitle + (p.location ? ` &middot; ${_esc(p.location)}` : '');
+    const teamCells = teamNames.map(t => {
+      const meeting = (c.client_meetings || []).find(m => m.contact_name === t);
+      const g = _teamGlyph(meeting ? meeting.status : '—');
+      return `<td class="team" style="color:${g.color};">${g.glyph}</td>`;
+    }).join('');
+    // Note list: client feedback, next step, then free-form notes (all condensed)
+    const noteBits = [c.client_feedback, c.next_step, c.notes]
+      .map(x => _condenseNote(x)).filter(Boolean);
+    const notes = noteBits.map(n => _esc(n)).join(' &middot; ');
+    return (
+      `<tr>` +
+        `<td class="cand">${p.nameLink}<div class="meta">${_esc(meta)}</div></td>` +
+        `<td>${_statusPill(section)}</td>` +
+        teamCells +
+        `<td class="notes">${notes}</td>` +
+      `</tr>`
+    );
+  }).join('');
+  return (
+    `<table>` +
+      `<thead><tr><th>Candidate</th><th>Status</th>${teamHeaders}<th>Notes</th></tr></thead>` +
+      `<tbody>${rows}</tbody>` +
+    `</table>`
+  );
+}
+
+function _pursuingTwoColumn(candidates) {
+  const items = candidates.map(c => {
+    const p = _candProps(c);
+    const meta = p.firmTitle + (p.location ? ` · ${_esc(p.location)}` : '');
+    return (
+      `<div class="row">${p.nameLink}<br>` +
+      `<span style="color:${DASH_GRAY};">${_esc(meta)}</span></div>`
+    );
+  }).join('');
+  return `<div class="two-col">${items}</div>`;
+}
+
+function _dqTable(candidates) {
+  const rows = candidates.map(c => {
+    const p = _candProps(c);
+    const meta = p.firmTitle + (p.location ? ` &middot; ${_esc(p.location)}` : '');
+    const reason = c.dq_reason || '';
+    return (
+      `<tr class="dq">` +
+        `<td style="width:30%;">${p.nameLink}</td>` +
+        `<td>${_esc(meta)}</td>` +
+        `<td class="reason">${_esc(reason)}</td>` +
+      `</tr>`
+    );
+  }).join('');
+  return (
+    `<table>` +
+      `<thead><tr><th>Candidate</th><th>Firm / Location</th><th>Reason</th></tr></thead>` +
+      `<tbody>${rows}</tbody>` +
+    `</table>`
+  );
+}
 
 function generateDashboardHTML(search) {
-  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const pipeline = search.pipeline || [];
-  const active     = pipeline.filter(c => ['Qualifying', 'Scheduling'].includes(c.stage));
-  const onHold     = pipeline.filter(c => c.stage === 'Hold');
-  const dqni       = pipeline.filter(c => ['DQ', 'NI'].includes(c.stage));
-  const counts = {
-    Qualifying: pipeline.filter(c => c.stage === 'Qualifying').length,
-    Scheduling: pipeline.filter(c => c.stage === 'Scheduling').length,
-    Hold:       pipeline.filter(c => c.stage === 'Hold').length,
-    'DQ/NI':    dqni.length
-  };
-  const clientContacts = (search.client_contacts || []).filter(c => c.display_in_matrix);
-  const stageColor = { 'Qualifying': { bg: '#e8f5e9', color: '#2e7d32' }, 'Scheduling': { bg: '#fff3e0', color: '#e65100' }, 'Hold': { bg: '#efebe9', color: '#4e342e' }, 'DQ': { bg: '#ffebee', color: '#c62828' }, 'NI': { bg: '#fffde7', color: '#f57f17' } };
-  const stagePill = (stage) => { const c = stageColor[stage] || { bg: '#eee', color: '#333' }; return `<span style="background:${c.bg};color:${c.color};padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700;display:inline-block">${stage}</span>`; };
-  const meetingDot = (status) => { const map = { 'Met': '#4caf50', 'Scheduled': '#ff9800', '—': '#e0e0e0' }; const color = map[status] || '#e0e0e0'; return `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${color}">&nbsp;</span>`; };
-  const activeRows = active.map(c => { const meetingCells = clientContacts.map(contact => { const meeting = (c.client_meetings || []).find(m => m.contact_name === contact.name); return `<td style="text-align:center;padding:8px">${meetingDot(meeting ? meeting.status : '—')}</td>`; }).join(''); const nameDisplay = c.linkedin_url ? `<a href="${c.linkedin_url}" style="color:#5C2D91;font-weight:700;text-decoration:none">${c.name}</a>` : `<strong>${c.name}</strong>`; return `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:10px 12px">${nameDisplay}<br><span style="font-size:12px;color:#666">${c.current_title || ''}${c.current_firm ? ' @ ' + c.current_firm : ''}</span><br><span style="font-size:11px;color:#999">${c.location || ''}</span></td><td style="padding:10px 12px">${stagePill(c.stage)}</td>${meetingCells}<td style="padding:10px 12px;font-size:12px;color:#444">${c.client_feedback || ''}</td><td style="padding:10px 12px;font-size:12px"><div style="font-weight:600">${c.next_step || ''}</div><div style="color:#888;font-size:11px">${c.next_step_owner || ''}${c.next_step_date ? ' · ' + c.next_step_date : ''}</div></td></tr>`; }).join('') || `<tr><td colspan="${4 + clientContacts.length}" style="padding:20px;text-align:center;color:#999;font-style:italic">No active candidates at this time</td></tr>`;
-  const holdRows = onHold.map(c => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 12px"><strong>${c.name}</strong><br><span style="font-size:12px;color:#666">${c.current_title || ''}${c.current_firm ? ' @ ' + c.current_firm : ''}</span></td><td style="padding:8px 12px;font-size:12px;color:#444">${c.client_feedback || ''}</td><td style="padding:8px 12px;font-size:12px">${c.next_step || ''}</td></tr>`).join('');
-  const dqRows = dqni.map(c => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:8px 12px">${c.name}<br><span style="font-size:12px;color:#888">${c.current_title || ''}${c.current_firm ? ' @ ' + c.current_firm : ''}</span></td><td style="padding:8px 12px">${stagePill(c.stage)}</td></tr>`).join('');
-  const meetingHeaders = clientContacts.map(c => `<th style="background:#5C2D91;color:white;padding:8px 10px;text-align:center;font-size:11px">${c.name}</th>`).join('');
 
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${search.client_name} \u2014 ${search.role_title} | Lancor Partners</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:system-ui,-apple-system,Arial,sans-serif;color:#1a1a1a;background:#f8f8f8}.page{max-width:960px;margin:0 auto;background:white;min-height:100vh}.header{background:#5C2D91;color:white;padding:28px 40px}.header-wordmark{font-size:13px;letter-spacing:4px;font-weight:800;opacity:0.85;margin-bottom:10px}.header-title{font-size:22px;font-weight:700;margin-bottom:4px}.header-sub{font-size:14px;opacity:0.8}.summary-bar{display:flex;gap:0;border-bottom:3px solid #5C2D91}.summary-item{flex:1;padding:16px 20px;text-align:center;border-right:1px solid #e0e0e0}.summary-item:last-child{border-right:none}.summary-count{font-size:28px;font-weight:800;color:#5C2D91}.summary-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}.section{padding:28px 40px;border-bottom:1px solid #eee}.section-title{font-size:15px;font-weight:700;color:#5C2D91;margin-bottom:16px;text-transform:uppercase;letter-spacing:0.5px}table{width:100%;border-collapse:collapse}th{background:#5C2D91;color:white;padding:9px 12px;text-align:left;font-size:12px;font-weight:600}td{padding:10px 12px;vertical-align:top}.footer{padding:20px 40px;text-align:center;color:#aaa;font-size:11px;background:#fafafa}details summary{cursor:pointer;font-weight:600;color:#5C2D91;font-size:14px;list-style:none;padding:4px 0}details summary::before{content:'\\25b6 ';font-size:10px}details[open] summary::before{content:'\\25bc '}@media print{body{background:white}.page{box-shadow:none}}</style></head><body><div class="page"><div class="header"><div class="header-wordmark">LANCOR PARTNERS</div><div class="header-title">${search.client_name} \u2014 ${search.role_title}</div><div class="header-sub">Search Update &middot; ${today}</div></div><div class="summary-bar"><div class="summary-item"><div class="summary-count" style="color:#2e7d32">${counts.Qualifying}</div><div class="summary-label">Qualifying</div></div><div class="summary-item"><div class="summary-count" style="color:#e65100">${counts.Scheduling}</div><div class="summary-label">Scheduling</div></div><div class="summary-item"><div class="summary-count" style="color:#4e342e">${counts.Hold}</div><div class="summary-label">On Hold</div></div><div class="summary-item"><div class="summary-count" style="color:#c62828">${counts['DQ/NI']}</div><div class="summary-label">DQ / NI</div></div></div><div class="section"><div class="section-title">Active Candidates</div><table><thead><tr><th style="width:25%">Candidate</th><th style="width:100px">Status</th>${meetingHeaders}<th>Client Feedback</th><th>Next Step</th></tr></thead><tbody>${activeRows}</tbody></table></div>${onHold.length > 0 ? `<div class="section"><div class="section-title">Holding Pattern</div><table><thead><tr><th style="width:30%">Candidate</th><th>Notes</th><th>Next Step</th></tr></thead><tbody>${holdRows}</tbody></table></div>` : ''}${dqni.length > 0 ? `<div class="section"><details><summary>Not Proceeding (${dqni.length})</summary><table style="margin-top:12px"><thead><tr><th style="width:40%">Candidate</th><th>Status</th></tr></thead><tbody>${dqRows}</tbody></table></details></div>` : ''}<div class="footer">Prepared by Lancor Partners LLC &middot; Confidential &middot; ${today}</div></div></body></html>`;
+  // Bucket candidates into sections
+  const bySection = {};
+  for (const c of pipeline) {
+    const sec = _sectionForStage(c.stage);
+    if (!sec) continue;
+    (bySection[sec] ||= []).push(c);
+  }
+
+  // Team column headers: first 4 client_contacts with display_in_matrix
+  const teamNames = (search.client_contacts || [])
+    .filter(c => c.display_in_matrix)
+    .slice(0, 4)
+    .map(c => c.name);
+
+  // Date in MM/DD/YY to match skill
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${String(now.getFullYear()).slice(-2)}`;
+
+  const titleFull = `${search.client_name || ''} \u2014 ${search.role_title || ''}`.trim();
+  const titleShort = titleFull; // No "Lancor /" prefix in app data → already short-form
+
+  // KPI tiles: one per non-empty section, in SECTION_ORDER
+  const kpiHtml = SECTION_ORDER
+    .filter(s => (bySection[s] || []).length > 0)
+    .map(s => `<div class="kpi"><div class="n">${bySection[s].length}</div><div class="l">${_esc(s)}</div></div>`)
+    .join('');
+
+  // Section bodies
+  const sectionParts = [];
+  for (const s of ['Interviewing', 'Qualifying', 'Scheduling', 'On Hold']) {
+    if ((bySection[s] || []).length > 0) {
+      sectionParts.push(`<h2 class="section">${_esc(s)}</h2>`);
+      sectionParts.push(_candidateTable(bySection[s], teamNames, s));
+    }
+  }
+  if ((bySection['Pursuing'] || []).length > 0) {
+    sectionParts.push(`<h2 class="section">Pursuing (${bySection['Pursuing'].length})</h2>`);
+    sectionParts.push(_pursuingTwoColumn(bySection['Pursuing']));
+  }
+  if ((bySection['DQ / NI'] || []).length > 0) {
+    sectionParts.push(`<h2 class="section">Disqualified / Not Interested (${bySection['DQ / NI'].length})</h2>`);
+    sectionParts.push(_dqTable(bySection['DQ / NI']));
+  }
+
+  const logoTag = _logoDataUri()
+    ? `<img src="${_logoDataUri()}" alt="Lancor">`
+    : '';
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><title>${_esc(titleShort)}</title>
+<style>
+  @page { size: Letter; margin: 0.55in 0.55in 0.7in 0.55in; }
+  @page { @bottom-center { content: "Lancor Partners LLC  \u00b7  ${_esc(titleShort)}  \u00b7  As of ${_esc(dateStr)}"; color: ${DASH_GRAY}; font-size: 8.5px; font-style: italic; } }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #222; font-size: 10.5px; line-height: 1.35; }
+  .hdr { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid ${DASH_PURPLE}; padding-bottom: 10px; margin-bottom: 14px; }
+  .hdr .titleblock h1 { margin: 0; font-size: 20px; color: ${DASH_PURPLE}; font-weight: 700; letter-spacing: -0.3px; }
+  .hdr .titleblock .sub { color: ${DASH_GRAY}; font-size: 11px; margin-top: 4px; }
+  .hdr .sub .date { color: ${DASH_PURPLE}; font-weight: 600; }
+  .hdr img { height: 42px; }
+  .kpis { display: flex; gap: 8px; margin-bottom: 16px; }
+  .kpi { flex: 1; border: 1px solid ${DASH_BORDER}; border-radius: 6px; padding: 10px 12px; background: #fff; }
+  .kpi .n { font-size: 26px; font-weight: 700; color: ${DASH_PURPLE}; line-height: 1; }
+  .kpi .l { font-size: 9px; color: ${DASH_GRAY}; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; font-weight: 600; }
+  h2.section { color: ${DASH_PURPLE}; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1.5px solid ${DASH_PURPLE}; padding-bottom: 3px; margin: 18px 0 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  th { background: ${DASH_GRAY_LIGHT}; color: #333; text-align: left; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid ${DASH_BORDER}; font-size: 9.5px; }
+  td { padding: 7px 8px; border-bottom: 1px solid ${DASH_BORDER}; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFAFA; }
+  td.cand b { color: ${DASH_PURPLE}; font-weight: 600; }
+  td.cand .meta { color: ${DASH_GRAY}; font-size: 9.5px; margin-top: 1px; }
+  td.team { text-align: center; font-weight: 600; width: 36px; }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 9px; font-weight: 700; }
+  .notes { color: #444; }
+  .two-col { column-count: 2; column-gap: 18px; font-size: 9.5px; }
+  .two-col .row { break-inside: avoid; padding: 3px 0; border-bottom: 1px dotted #DDD; }
+  .two-col b { color: ${DASH_PURPLE}; }
+  .dq .reason { color: #A02020; font-weight: 600; font-size: 9px; }
+  @media print { body { background: #fff; } }
+</style></head>
+<body>
+
+<div class="hdr">
+  <div class="titleblock">
+    <h1>${_esc(titleShort)}</h1>
+    <div class="sub">Lancor Partners LLC &middot; Weekly Pipeline Update &middot; <span class="date">${_esc(dateStr)}</span></div>
+  </div>
+  ${logoTag}
+</div>
+
+<div class="kpis">${kpiHtml}</div>
+
+${sectionParts.join('\n')}
+
+</body></html>`;
 }
 
 // ── parseDashboardHTML (unchanged) ───────────────────────────────────────────

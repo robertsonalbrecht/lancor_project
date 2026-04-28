@@ -72,15 +72,15 @@ async function previewDashboard(searchId) {
 }
 
 async function printDashboard(searchId) {
-  try {
-    const result = await api('POST', '/searches/' + searchId + '/dashboard', {});
-    const win = window.open('', '_blank');
-    win.document.write(result.html);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
-  } catch (e) {
-    appAlert('Error printing dashboard: ' + e.message, { type: 'error' });
-  }
+  // Streams an application/pdf response with Content-Disposition: attachment,
+  // so the browser drops the file in Downloads automatically — no print
+  // dialog. Session cookie is sent along with the navigation.
+  const a = document.createElement('a');
+  a.href = '/api/searches/' + encodeURIComponent(searchId) + '/dashboard.pdf';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 function renderDashboardHistory(containerEl, weeklyUpdates) {
