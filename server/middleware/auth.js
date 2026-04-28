@@ -60,12 +60,15 @@ function attachUser(req, res, next) {
   loadSession(req).then((user) => { req.user = user; next(); });
 }
 
-// Middleware: require a valid session OR the Chrome-extension token on
-// /api/candidates/prefill. 401 otherwise.
+// Paths the Chrome extension is allowed to hit using X-API-Token instead of a
+// session cookie. Mounted under /api, so paths here are relative to that.
+const EXTENSION_TOKEN_PATHS = new Set(['/candidates/prefill', '/searches/active']);
+
+// Middleware: require a valid session OR the Chrome-extension token on the
+// paths in EXTENSION_TOKEN_PATHS. 401 otherwise.
 function requireAuth(req, res, next) {
-  // Chrome extension token path — exempts /candidates/prefill only
   const extensionToken = process.env.CHROME_EXTENSION_TOKEN;
-  if (req.path === '/candidates/prefill' && extensionToken) {
+  if (EXTENSION_TOKEN_PATHS.has(req.path) && extensionToken) {
     const presented = req.get('X-API-Token');
     if (presented && presented === extensionToken) {
       req.user = { id: null, role: 'extension', email: 'chrome-extension' };
