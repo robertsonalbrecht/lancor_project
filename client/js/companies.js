@@ -21,6 +21,7 @@ let cpLimit = 100;
 let cpOffset = 0;
 let cpTypeCounts = {};     // { 'PE Firm': 2640, ... }
 let cpIndustrySectors = []; // for filter dropdown
+let cpDuplicateCount = 0;   // pairs of probable duplicates above the similarity threshold
 let _cpFilterTimer = null; // debounce timer for text input
 
 // ── Sector definitions (shared with pool.js context) ─────────────────────────
@@ -196,12 +197,14 @@ async function renderCompanies() {
 
   try {
     // Fetch counts + first page in parallel
-    const [countsData] = await Promise.all([
+    const [countsData, dupData] = await Promise.all([
       api('GET', '/companies/counts'),
+      api('GET', '/companies/duplicates/count').catch(() => ({ count: 0 })),
       _cpFetchPage(false)
     ]);
     cpTypeCounts = countsData.type_counts || {};
     cpIndustrySectors = countsData.industry_sectors || [];
+    cpDuplicateCount = (dupData && dupData.count) || 0;
     renderCompanyView();
   } catch (err) {
     content.innerHTML = `<div class="error-banner">Failed to load companies: ${escapeHtml(err.message)}</div>`;
@@ -251,7 +254,16 @@ function renderCompanyView() {
         <h1 class="pool-title" style="margin:0">Company Pool</h1>
         <div class="pool-subtitle" id="cp-count">Showing ${cpAllCompanies.length.toLocaleString()} of ${cpTotal.toLocaleString()} companies</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddCompanyModal()" style="white-space:nowrap;padding:5px 12px;font-size:12px">+ Add Company</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${cpDuplicateCount > 0
+          ? `<button class="btn btn-ghost btn-sm" onclick="openDuplicatesReview()"
+                     title="Review companies whose names look like the same firm under different spellings"
+                     style="white-space:nowrap;padding:5px 12px;font-size:12px;border:1px solid #E0B500;background:#FFFBEB;color:#8A6100">
+               ⚠ Possible duplicates (${cpDuplicateCount})
+             </button>`
+          : ''}
+        <button class="btn btn-primary btn-sm" onclick="openAddCompanyModal()" style="white-space:nowrap;padding:5px 12px;font-size:12px">+ Add Company</button>
+      </div>
     </div>
 
     <div class="pool-filter-bar" style="flex-wrap:wrap;gap:10px">
@@ -518,7 +530,10 @@ function renderCompanyFullPage(company, allCandidates) {
             ${isPE && company.sector_focus_tags && company.sector_focus_tags.length ? `<button onclick="openFirmInPlaybook('${escapeHtml(company.company_id)}','${escapeHtml(company.sector_focus_tags[0])}')" style="background:#fff;border:1px solid #6B2D5B;color:#6B2D5B;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;cursor:pointer">View in Playbook →</button>` : ''}
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${escapeHtml(company.company_id)}')">Edit</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openMergeIntoPicker('${escapeHtml(company.company_id)}', '${escapeHtml(company.name).replace(/'/g, "\\'")}')">Merge into…</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditCompanyForm('${escapeHtml(company.company_id)}')">Edit</button>
+        </div>
       </div>
 
       ${company.description ? `
@@ -914,5 +929,226 @@ async function removeCompanyAlias(companyId, index) {
     openCompanyDetail(companyId);
   } catch (err) {
     appAlert('Error removing alias: ' + err.message, { type: 'error' });
+  }
+}
+
+// ── Merge & duplicate-review UI ──────────────────────────────────────────────
+
+// Pretty-print a similarity score from pg_trgm (0..1) as a percentage.
+function _fmtSim(sim) {
+  return Math.round(Number(sim || 0) * 100) + '%';
+}
+
+// Generic full-screen modal. Returns the overlay element so the caller can
+// query its inner nodes by id and close it (overlay.remove()).
+function _openModal(innerHtml) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cp-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px;overflow-y:auto';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:10px;max-width:760px;width:100%;box-shadow:0 12px 36px rgba(0,0,0,0.18);overflow:hidden">
+      ${innerHtml}
+    </div>`;
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+// ── Merge target picker ──────────────────────────────────────────────────────
+// Opens a modal that lets the user search the Company Pool for the canonical
+// company to fold the duplicate into. On confirm, calls the merge endpoint.
+
+async function openMergeIntoPicker(duplicateSlug, duplicateName) {
+  const overlay = _openModal(`
+    <div style="padding:20px 24px;border-bottom:1px solid #eee">
+      <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;margin-bottom:4px">Merge duplicate</div>
+      <div style="font-size:16px;font-weight:700;color:#1a1a1a">${escapeHtml(duplicateName)}</div>
+      <div style="font-size:13px;color:#666;margin-top:4px">Pick the canonical company to fold this record into. The duplicate's work history, aliases, sector tags, and search-coverage entries will be re-pointed; the duplicate's name will become an alias on the canonical.</div>
+    </div>
+    <div style="padding:16px 24px">
+      <input type="text" id="mip-search" placeholder="Search for canonical company…" autocomplete="off"
+             style="width:100%;padding:10px 14px;border:1px solid #ccc;border-radius:6px;font-size:14px;outline:none">
+      <div id="mip-results" style="margin-top:12px;max-height:340px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:6px;display:none"></div>
+      <div id="mip-status" style="font-size:12px;color:#888;margin-top:10px">Type at least 2 characters to search.</div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid #eee;display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="this.closest('.cp-modal-overlay').remove()">Cancel</button>
+    </div>`);
+
+  const search = overlay.querySelector('#mip-search');
+  const results = overlay.querySelector('#mip-results');
+  const status = overlay.querySelector('#mip-status');
+  let timer = null;
+  let lastQuery = '';
+
+  search.focus();
+  search.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = search.value.trim();
+    if (q.length < 2) {
+      results.style.display = 'none';
+      status.textContent = 'Type at least 2 characters to search.';
+      return;
+    }
+    timer = setTimeout(async () => {
+      lastQuery = q;
+      status.textContent = 'Searching…';
+      try {
+        const data = await api('GET', `/companies?text=${encodeURIComponent(q)}&limit=20`);
+        if (lastQuery !== q) return;
+        const list = (data.companies || []).filter(c => c.company_id !== duplicateSlug);
+        if (list.length === 0) {
+          results.style.display = 'none';
+          status.textContent = 'No matching companies.';
+          return;
+        }
+        status.textContent = `${list.length} result${list.length === 1 ? '' : 's'}`;
+        results.innerHTML = list.map(c => `
+          <div class="mip-row" data-slug="${escapeHtml(c.company_id)}" data-name="${escapeHtml(c.name).replace(/"/g, '&quot;')}"
+               style="padding:8px 10px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div style="min-width:0">
+              <div style="font-weight:600;color:#1a1a1a;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c.name)}</div>
+              <div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(c.company_type || 'Unclassified')}${c.hq ? ' · ' + escapeHtml(c.hq) : ''}</div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px">Merge into this</button>
+          </div>
+        `).join('');
+        results.style.display = 'block';
+        results.querySelectorAll('.mip-row').forEach(row => {
+          const onPick = async () => {
+            const targetSlug = row.dataset.slug;
+            const targetName = row.dataset.name;
+            if (!await appConfirm(
+              `Merge "${duplicateName}" into "${targetName}"?\n\nThis cannot be undone. The duplicate row will be removed and its work history + sector/coverage entries will be re-pointed to the canonical.`,
+              { type: 'warning' }
+            )) return;
+            overlay.remove();
+            await _doMerge(duplicateSlug, targetSlug, targetName);
+          };
+          row.addEventListener('click', onPick);
+          row.addEventListener('mouseenter', () => row.style.background = '#F8F4F7');
+          row.addEventListener('mouseleave', () => row.style.background = '');
+        });
+      } catch (err) {
+        status.textContent = 'Search failed: ' + err.message;
+      }
+    }, 200);
+  });
+}
+
+async function _doMerge(duplicateSlug, canonicalSlug, canonicalName) {
+  try {
+    const result = await api('POST', `/companies/${encodeURIComponent(duplicateSlug)}/merge-into/${encodeURIComponent(canonicalSlug)}`, {});
+    invalidateAliasCache();
+    appAlert(
+      `Merged into "${canonicalName}".${result.work_history_rows_updated ? ` (${result.work_history_rows_updated} work-history rows re-pointed)` : ''}`,
+      { type: 'success' }
+    );
+    // Refresh the pool list
+    await renderCompanies();
+  } catch (err) {
+    appAlert('Merge failed: ' + err.message, { type: 'error' });
+  }
+}
+
+// ── Possible duplicates review ───────────────────────────────────────────────
+// Side-by-side view of pairs the database flags as similar names. Each pair
+// can be merged or dismissed.
+
+async function openDuplicatesReview() {
+  const overlay = _openModal(`
+    <div style="padding:20px 24px;border-bottom:1px solid #eee">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;margin-bottom:4px">Possible duplicates</div>
+          <div style="font-size:13px;color:#666">Companies whose names are at least 80% similar. Review each pair and either merge them or mark as not a duplicate.</div>
+        </div>
+        <button onclick="this.closest('.cp-modal-overlay').remove()" style="background:none;border:none;font-size:24px;color:#999;cursor:pointer;padding:0 4px">×</button>
+      </div>
+    </div>
+    <div id="dup-list" style="padding:8px 24px 24px;max-height:60vh;overflow-y:auto">
+      <div style="text-align:center;color:#888;padding:40px">Loading…</div>
+    </div>`);
+
+  await _renderDuplicatesList(overlay.querySelector('#dup-list'));
+}
+
+async function _renderDuplicatesList(container) {
+  try {
+    const data = await api('GET', '/companies/duplicates?limit=200');
+    const pairs = data.pairs || [];
+    if (pairs.length === 0) {
+      container.innerHTML = `<div style="text-align:center;color:#1B5E20;background:#E8F5E9;padding:24px;border-radius:8px;margin-top:12px">✓ No pairs above the similarity threshold. The Company Pool looks clean.</div>`;
+      return;
+    }
+    container.innerHTML = pairs.map((p, i) => _renderDuplicatePair(p, i)).join('');
+    pairs.forEach((p, i) => {
+      const node = container.querySelector(`#dup-pair-${i}`);
+      if (!node) return;
+      node.querySelector('[data-act="merge-a-into-b"]').addEventListener('click', () => _confirmAndMergeFromPair(p.a_slug, p.a_name, p.b_slug, p.b_name, container));
+      node.querySelector('[data-act="merge-b-into-a"]').addEventListener('click', () => _confirmAndMergeFromPair(p.b_slug, p.b_name, p.a_slug, p.a_name, container));
+      node.querySelector('[data-act="ignore"]').addEventListener('click', () => _ignoreDuplicatePair(p.a_slug, p.b_slug, container));
+    });
+  } catch (err) {
+    container.innerHTML = `<div class="error-banner">Failed to load duplicates: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function _renderDuplicatePair(p, i) {
+  const sideHtml = (slug, name, type, hq, industry) => `
+    <div style="flex:1;padding:12px;background:#fafafa;border:1px solid #eee;border-radius:6px;min-width:0">
+      <div style="font-weight:700;color:#1a1a1a;font-size:14px;word-break:break-word">
+        <a href="#" onclick="event.preventDefault(); event.stopPropagation(); document.querySelector('.cp-modal-overlay')?.remove(); openCompanyDetail('${escapeHtml(slug)}')"
+           style="color:#6B2D5B;text-decoration:none">${escapeHtml(name)} ↗</a>
+      </div>
+      <div style="font-size:11px;color:#888;margin-top:4px">${escapeHtml(type || 'Unclassified')}${hq ? ' · ' + escapeHtml(hq) : ''}</div>
+      ${industry ? `<div style="font-size:11px;color:#888;margin-top:2px">${escapeHtml(industry)}</div>` : ''}
+    </div>`;
+
+  return `
+    <div id="dup-pair-${i}" style="border:1px solid #e0e0e0;border-radius:8px;padding:14px;margin-top:12px;background:#fff">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;color:#888">Similarity: <b style="color:#8A6100">${_fmtSim(p.similarity)}</b></div>
+        <button data-act="ignore" class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:11px">Not a duplicate</button>
+      </div>
+      <div style="display:flex;gap:10px;align-items:stretch">
+        ${sideHtml(p.a_slug, p.a_name, p.a_type, p.a_hq, p.a_industry || p.a_industry_sector)}
+        ${sideHtml(p.b_slug, p.b_name, p.b_type, p.b_hq, p.b_industry || p.b_industry_sector)}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+        <button data-act="merge-a-into-b" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px">Merge ← left into right</button>
+        <button data-act="merge-b-into-a" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px">Merge right into left →</button>
+      </div>
+    </div>`;
+}
+
+async function _confirmAndMergeFromPair(dupSlug, dupName, canonSlug, canonName, container) {
+  if (!await appConfirm(
+    `Merge "${dupName}" into "${canonName}"?\n\nThis cannot be undone. The duplicate row will be removed; its work history + sector/coverage entries are re-pointed to the canonical.`,
+    { type: 'warning' }
+  )) return;
+  try {
+    const result = await api('POST', `/companies/${encodeURIComponent(dupSlug)}/merge-into/${encodeURIComponent(canonSlug)}`, {});
+    invalidateAliasCache();
+    appAlert(`Merged into "${canonName}".${result.work_history_rows_updated ? ` (${result.work_history_rows_updated} work-history rows re-pointed)` : ''}`, { type: 'success' });
+    // Refresh the list inside the open modal and the pool count behind it.
+    cpDuplicateCount = Math.max(0, cpDuplicateCount - 1);
+    await _renderDuplicatesList(container);
+    await renderCompanies();
+    // Re-open the duplicates modal won't happen; renderCompanies redraws under it.
+  } catch (err) {
+    appAlert('Merge failed: ' + err.message, { type: 'error' });
+  }
+}
+
+async function _ignoreDuplicatePair(aSlug, bSlug, container) {
+  try {
+    await api('POST', '/companies/duplicates/ignore', { a_slug: aSlug, b_slug: bSlug });
+    cpDuplicateCount = Math.max(0, cpDuplicateCount - 1);
+    await _renderDuplicatesList(container);
+  } catch (err) {
+    appAlert('Failed to dismiss: ' + err.message, { type: 'error' });
   }
 }
