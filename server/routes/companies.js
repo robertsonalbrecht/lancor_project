@@ -184,7 +184,11 @@ router.get('/', async (req, res) => {
 // companies whose names are likely the same firm under different spellings.
 // Pairs the user has explicitly dismissed live in company_duplicate_ignored.
 
-const DEFAULT_DUPLICATE_THRESHOLD = 0.8;
+const DEFAULT_DUPLICATE_THRESHOLD = 0.7;
+
+// Both queries below compare names through normalize_company_name() so that
+// suffix-only differences (LLC, Partners, Inc, etc.) don't deflate the
+// similarity score. The function + expression index live in migration 013.
 
 // GET /api/companies/duplicates — list candidate pairs above threshold
 router.get('/duplicates', async (req, res) => {
@@ -196,10 +200,11 @@ router.get('/duplicates', async (req, res) => {
               a.hq AS a_hq, a.industry AS a_industry, a.industry_sector AS a_industry_sector,
               b.slug AS b_slug, b.name AS b_name, b.company_type AS b_type,
               b.hq AS b_hq, b.industry AS b_industry, b.industry_sector AS b_industry_sector,
-              similarity(a.name, b.name)::float AS similarity
+              similarity(normalize_company_name(a.name), normalize_company_name(b.name))::float AS similarity
          FROM companies a
-         JOIN companies b ON a.id < b.id AND a.name % b.name
-        WHERE similarity(a.name, b.name) >= $1
+         JOIN companies b ON a.id < b.id
+                          AND normalize_company_name(a.name) % normalize_company_name(b.name)
+        WHERE similarity(normalize_company_name(a.name), normalize_company_name(b.name)) >= $1
           AND NOT EXISTS (
             SELECT 1 FROM company_duplicate_ignored
              WHERE a_id = a.id AND b_id = b.id
@@ -221,8 +226,9 @@ router.get('/duplicates/count', async (req, res) => {
     const { rows } = await pool.query(
       `SELECT COUNT(*)::int AS count
          FROM companies a
-         JOIN companies b ON a.id < b.id AND a.name % b.name
-        WHERE similarity(a.name, b.name) >= $1
+         JOIN companies b ON a.id < b.id
+                          AND normalize_company_name(a.name) % normalize_company_name(b.name)
+        WHERE similarity(normalize_company_name(a.name), normalize_company_name(b.name)) >= $1
           AND NOT EXISTS (
             SELECT 1 FROM company_duplicate_ignored
              WHERE a_id = a.id AND b_id = b.id
@@ -483,6 +489,12 @@ router.post('/:duplicateSlug/merge-into/:canonicalSlug', async (req, res) => {
     return res.status(400).json({ error: 'duplicate and canonical must differ' });
   }
 
+  // Optional per-field overrides applied to the canonical row before the
+  // re-pointing logic. Keys are restricted to COMPANY_COLUMNS so a malicious
+  // body can't inject arbitrary SQL via column names. Values are passed
+  // through pg's parameter binding so they're safe.
+  const mergedFields = (req.body && req.body.merged_fields) || null;
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -496,6 +508,28 @@ router.post('/:duplicateSlug/merge-into/:canonicalSlug', async (req, res) => {
     if (!dup || !canon) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'One or both companies not found' });
+    }
+
+    // 0. Apply field-level picks to the canonical row, if any.
+    if (mergedFields && typeof mergedFields === 'object') {
+      const setClauses = [];
+      const setParams = [];
+      let i = 1;
+      for (const col of COMPANY_COLUMNS) {
+        if (col === 'last_updated' || col === 'date_added') continue;
+        if (Object.prototype.hasOwnProperty.call(mergedFields, col)) {
+          setClauses.push(`${col} = $${i++}`);
+          setParams.push(mergedFields[col]);
+        }
+      }
+      if (setClauses.length > 0) {
+        setClauses.push(`last_updated = NOW()`);
+        setParams.push(canon.id);
+        await client.query(
+          `UPDATE companies SET ${setClauses.join(', ')} WHERE id = $${i}`,
+          setParams
+        );
+      }
     }
 
     // 1. Re-point candidate work history (no unique constraint on company_id).

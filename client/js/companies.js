@@ -956,9 +956,50 @@ function _openModal(innerHtml) {
   return overlay;
 }
 
+// Fields shown row-by-row in the merge comparison modal. Only rows where at
+// least one side has a value are rendered. Anything not in this list is left
+// untouched on the canonical (the canonical's value wins by default).
+const _MERGE_COMPARE_FIELDS = [
+  { key: 'name',                 label: 'Name' },
+  { key: 'company_type',         label: 'Type' },
+  { key: 'hq',                   label: 'HQ' },
+  { key: 'description',          label: 'Description' },
+  { key: 'website_url',          label: 'Website' },
+  { key: 'linkedin_company_url', label: 'LinkedIn URL' },
+  { key: 'industry',             label: 'Industry' },
+  { key: 'industry_sector',      label: 'Industry Sector' },
+  { key: 'year_founded',         label: 'Year Founded' },
+  { key: 'employee_count',       label: 'Employees' },
+  { key: 'revenue_tier',         label: 'Revenue' },
+  { key: 'ownership_type',       label: 'Ownership' },
+  { key: 'entity_type',          label: 'Entity Type' },
+  { key: 'size_tier',            label: 'Fund Size' },
+  { key: 'strategy',             label: 'Strategy' },
+  { key: 'parent_company',       label: 'Parent Company' },
+  { key: 'ticker',               label: 'Ticker' },
+  { key: 'preferred_geography',  label: 'Preferred Geography' },
+  { key: 'notes',                label: 'Notes' }
+];
+
+// Hold the in-flight pair so the submit handler can read authoritative values
+// without re-fetching. Cleared when the modal closes.
+let _pendingMerge = null;
+
+// Pick the "richer" of two values: prefer non-empty, then longer string.
+function _smartPick(a, b) {
+  const sa = a == null ? '' : String(a);
+  const sb = b == null ? '' : String(b);
+  if (sa && !sb) return 'a';
+  if (!sa && sb) return 'b';
+  if (!sa && !sb) return 'a';
+  return sa.length >= sb.length ? 'a' : 'b';
+}
+
 // ── Merge target picker ──────────────────────────────────────────────────────
 // Opens a modal that lets the user search the Company Pool for the canonical
-// company to fold the duplicate into. On confirm, calls the merge endpoint.
+// company to fold the duplicate into. After a target is picked, hands off to
+// the side-by-side comparison modal so the user can choose which value wins
+// for each field.
 
 async function openMergeIntoPicker(duplicateSlug, duplicateName) {
   const overlay = _openModal(`
@@ -1019,13 +1060,8 @@ async function openMergeIntoPicker(duplicateSlug, duplicateName) {
         results.querySelectorAll('.mip-row').forEach(row => {
           const onPick = async () => {
             const targetSlug = row.dataset.slug;
-            const targetName = row.dataset.name;
-            if (!await appConfirm(
-              `Merge "${duplicateName}" into "${targetName}"?\n\nThis cannot be undone. The duplicate row will be removed and its work history + sector/coverage entries will be re-pointed to the canonical.`,
-              { type: 'warning' }
-            )) return;
             overlay.remove();
-            await _doMerge(duplicateSlug, targetSlug, targetName);
+            await openCompanyMergeComparison(duplicateSlug, targetSlug);
           };
           row.addEventListener('click', onPick);
           row.addEventListener('mouseenter', () => row.style.background = '#F8F4F7');
@@ -1038,17 +1074,156 @@ async function openMergeIntoPicker(duplicateSlug, duplicateName) {
   });
 }
 
-async function _doMerge(duplicateSlug, canonicalSlug, canonicalName) {
+// ── Side-by-side comparison ──────────────────────────────────────────────────
+// Mirrors the candidate merge UX (client/js/app.js:renderMergeComparison).
+// Profile A is the canonical (kept); Profile B is the duplicate (removed).
+// User picks which value wins for each field; on submit, the picks are sent
+// as merged_fields to the merge endpoint, then the rest of the merge logic
+// (re-pointing FKs, deleting duplicate) runs server-side.
+
+async function openCompanyMergeComparison(duplicateSlug, canonicalSlug) {
+  if (duplicateSlug === canonicalSlug) {
+    appAlert('Cannot merge a company with itself.', { type: 'error' });
+    return;
+  }
+
+  let canon, dup;
   try {
-    const result = await api('POST', `/companies/${encodeURIComponent(duplicateSlug)}/merge-into/${encodeURIComponent(canonicalSlug)}`, {});
+    [canon, dup] = await Promise.all([
+      api('GET', '/companies/' + encodeURIComponent(canonicalSlug)),
+      api('GET', '/companies/' + encodeURIComponent(duplicateSlug))
+    ]);
+  } catch (err) {
+    appAlert('Could not load both companies: ' + err.message, { type: 'error' });
+    return;
+  }
+  _pendingMerge = { canon, dup, canonicalSlug, duplicateSlug };
+
+  // Build only the rows where at least one side has a value.
+  const rowHtml = _MERGE_COMPARE_FIELDS.map(f => {
+    const va = canon[f.key];
+    const vb = dup[f.key];
+    const has = v => v != null && String(v).trim() !== '';
+    if (!has(va) && !has(vb)) return '';
+    const pick = _smartPick(va, vb);
+    const aChecked = pick === 'a' ? 'checked' : '';
+    const bChecked = pick === 'b' ? 'checked' : '';
+    const cell = (val, name, value, checked) => `
+      <td style="padding:8px;font-size:12px;vertical-align:top">
+        <label style="cursor:pointer;display:flex;align-items:flex-start;gap:6px">
+          <input type="radio" name="cm-${f.key}" value="${value}" ${checked} style="margin-top:2px">
+          <span style="word-break:break-word">${has(val) ? escapeHtml(String(val)) : '<span style="color:#ccc">—</span>'}</span>
+        </label>
+      </td>`;
+    return `
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:8px;font-size:12px;font-weight:600;color:#666;white-space:nowrap;vertical-align:top">${f.label}</td>
+        ${cell(va, f.key, 'a', aChecked)}
+        ${cell(vb, f.key, 'b', bChecked)}
+      </tr>`;
+  }).filter(Boolean).join('');
+
+  const aliasCountA = (canon.aliases || []).length;
+  const aliasCountB = (dup.aliases || []).length;
+  const sectorCountA = (canon.sector_focus_tags || []).length;
+  const sectorCountB = (dup.sector_focus_tags || []).length;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'cp-merge-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto';
+  overlay.innerHTML = `
+    <div style="background:#fff;max-width:820px;width:100%;border-radius:14px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.18)">
+      <div style="background:linear-gradient(135deg,#6B2D5B,#8B4D7B);padding:18px 24px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2 style="margin:0;font-size:1rem;font-weight:800;color:#fff">Merge Companies</h2>
+          <div style="font-size:12px;color:rgba(255,255,255,0.78);margin-top:2px">Choose which value to keep for each field. Aliases, sector tags, and work history will be combined automatically.</div>
+        </div>
+        <button onclick="closeCompanyMergeModal()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:13px">&#10005;</button>
+      </div>
+      <div style="padding:16px 24px">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:2px solid #e0e0e0">
+              <th style="padding:8px;font-size:11px;color:#999;text-align:left;width:140px">Field</th>
+              <th style="padding:8px;font-size:11px;color:#1B5E20;text-align:left">
+                Canonical (kept) <span style="color:#999;font-weight:400;font-size:10px">— ${escapeHtml(canon.name)}</span>
+              </th>
+              <th style="padding:8px;font-size:11px;color:#B71C1C;text-align:left">
+                Duplicate (removed) <span style="color:#999;font-weight:400;font-size:10px">— ${escapeHtml(dup.name)}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>${rowHtml || '<tr><td colspan="3" style="padding:14px;color:#888;font-size:13px;text-align:center">No conflicting fields — defaults will be kept.</td></tr>'}</tbody>
+        </table>
+
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="btn btn-ghost btn-sm" onclick="_applyMergePickAll('a')" style="font-size:11px">Use canonical for all</button>
+          <button class="btn btn-ghost btn-sm" onclick="_applyMergePickAll('b')" style="font-size:11px">Use duplicate for all</button>
+        </div>
+
+        <div style="margin-top:16px;padding:12px;background:#f9f9f9;border-radius:8px;font-size:12px;color:#666">
+          <strong>Will be combined automatically:</strong>
+          aliases (${aliasCountA} + ${aliasCountB}, plus the duplicate's name),
+          sector tags (${sectorCountA} + ${sectorCountB}),
+          work history rows, search coverage and sector roster entries.
+        </div>
+
+        <div style="margin-top:10px;padding:12px;background:#fff3e0;border-radius:8px;font-size:12px;color:#e65100">
+          <strong>Profile A will be kept.</strong> <strong>Profile B will be deleted</strong> and all references re-pointed. This cannot be undone.
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid #f0f0f0;margin-top:16px">
+          <button class="btn btn-ghost" onclick="closeCompanyMergeModal()">Cancel</button>
+          <button class="btn btn-primary" id="cp-merge-submit-btn" onclick="_submitCompanyMerge()">Merge Companies</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeCompanyMergeModal(); });
+}
+
+function closeCompanyMergeModal() {
+  document.getElementById('cp-merge-overlay')?.remove();
+  _pendingMerge = null;
+}
+
+// "Use canonical/duplicate for all" — flip every radio in the comparison.
+function _applyMergePickAll(side) {
+  document.querySelectorAll('#cp-merge-overlay input[type="radio"]').forEach(r => {
+    if (r.value === side) r.checked = true;
+  });
+}
+
+async function _submitCompanyMerge() {
+  if (!_pendingMerge) return;
+  const { canon, dup, canonicalSlug, duplicateSlug } = _pendingMerge;
+  const btn = document.getElementById('cp-merge-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Merging…'; }
+
+  // Walk the comparison rows, snap each radio's choice to the underlying value.
+  const merged_fields = {};
+  for (const f of _MERGE_COMPARE_FIELDS) {
+    const radio = document.querySelector(`#cp-merge-overlay input[name="cm-${f.key}"]:checked`);
+    if (!radio) continue; // row wasn't rendered (both empty)
+    merged_fields[f.key] = radio.value === 'b' ? (dup[f.key] ?? null) : (canon[f.key] ?? null);
+  }
+
+  try {
+    const result = await api(
+      'POST',
+      `/companies/${encodeURIComponent(duplicateSlug)}/merge-into/${encodeURIComponent(canonicalSlug)}`,
+      { merged_fields }
+    );
     invalidateAliasCache();
+    closeCompanyMergeModal();
     appAlert(
-      `Merged into "${canonicalName}".${result.work_history_rows_updated ? ` (${result.work_history_rows_updated} work-history rows re-pointed)` : ''}`,
+      `Merged into "${canon.name}".${result.work_history_rows_updated ? ` (${result.work_history_rows_updated} work-history rows re-pointed)` : ''}`,
       { type: 'success' }
     );
-    // Refresh the pool list
     await renderCompanies();
   } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Merge Companies'; }
     appAlert('Merge failed: ' + err.message, { type: 'error' });
   }
 }
@@ -1063,7 +1238,7 @@ async function openDuplicatesReview() {
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;margin-bottom:4px">Possible duplicates</div>
-          <div style="font-size:13px;color:#666">Companies whose names are at least 80% similar. Review each pair and either merge them or mark as not a duplicate.</div>
+          <div style="font-size:13px;color:#666">Companies whose names are at least 70% similar. Review each pair and either merge them or mark as not a duplicate.</div>
         </div>
         <button onclick="this.closest('.cp-modal-overlay').remove()" style="background:none;border:none;font-size:24px;color:#999;cursor:pointer;padding:0 4px">×</button>
       </div>
@@ -1087,8 +1262,16 @@ async function _renderDuplicatesList(container) {
     pairs.forEach((p, i) => {
       const node = container.querySelector(`#dup-pair-${i}`);
       if (!node) return;
-      node.querySelector('[data-act="merge-a-into-b"]').addEventListener('click', () => _confirmAndMergeFromPair(p.a_slug, p.a_name, p.b_slug, p.b_name, container));
-      node.querySelector('[data-act="merge-b-into-a"]').addEventListener('click', () => _confirmAndMergeFromPair(p.b_slug, p.b_name, p.a_slug, p.a_name, container));
+      // a-into-b: dup=a (left), canonical=b (right)
+      node.querySelector('[data-act="merge-a-into-b"]').addEventListener('click', () => {
+        document.querySelector('.cp-modal-overlay')?.remove();
+        openCompanyMergeComparison(p.a_slug, p.b_slug);
+      });
+      // b-into-a: dup=b (right), canonical=a (left)
+      node.querySelector('[data-act="merge-b-into-a"]').addEventListener('click', () => {
+        document.querySelector('.cp-modal-overlay')?.remove();
+        openCompanyMergeComparison(p.b_slug, p.a_slug);
+      });
       node.querySelector('[data-act="ignore"]').addEventListener('click', () => _ignoreDuplicatePair(p.a_slug, p.b_slug, container));
     });
   } catch (err) {
@@ -1122,25 +1305,6 @@ function _renderDuplicatePair(p, i) {
         <button data-act="merge-b-into-a" class="btn btn-ghost btn-sm" style="padding:4px 10px;font-size:11px">Merge right into left →</button>
       </div>
     </div>`;
-}
-
-async function _confirmAndMergeFromPair(dupSlug, dupName, canonSlug, canonName, container) {
-  if (!await appConfirm(
-    `Merge "${dupName}" into "${canonName}"?\n\nThis cannot be undone. The duplicate row will be removed; its work history + sector/coverage entries are re-pointed to the canonical.`,
-    { type: 'warning' }
-  )) return;
-  try {
-    const result = await api('POST', `/companies/${encodeURIComponent(dupSlug)}/merge-into/${encodeURIComponent(canonSlug)}`, {});
-    invalidateAliasCache();
-    appAlert(`Merged into "${canonName}".${result.work_history_rows_updated ? ` (${result.work_history_rows_updated} work-history rows re-pointed)` : ''}`, { type: 'success' });
-    // Refresh the list inside the open modal and the pool count behind it.
-    cpDuplicateCount = Math.max(0, cpDuplicateCount - 1);
-    await _renderDuplicatesList(container);
-    await renderCompanies();
-    // Re-open the duplicates modal won't happen; renderCompanies redraws under it.
-  } catch (err) {
-    appAlert('Merge failed: ' + err.message, { type: 'error' });
-  }
 }
 
 async function _ignoreDuplicatePair(aSlug, bSlug, container) {
